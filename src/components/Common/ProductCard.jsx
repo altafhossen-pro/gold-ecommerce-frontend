@@ -2,18 +2,21 @@
 
 import React from 'react';
 import { Heart, Star } from 'lucide-react';
+import Link from 'next/link';
 
 function ProductCard({ product, onWishlistToggle, onAddToCart, showWishlistOnHover = true }) {
     console.log(product)
     return (
-        <div className="relative group overflow-hidden rounded-xl shadow-lg border border-[#E7E7E7] hover:shadow-lg transition-all duration-300 cursor-pointer hover:ring-1 hover:ring-[#F7AABC]">
+        <div className="relative group overflow-hidden rounded-xl shadow-lg border border-[#E7E7E7] hover:shadow-lg transition-all duration-300  hover:ring-1 hover:ring-[#F7AABC]">
             {/* Product Image */}
             <div className="relative aspect-square overflow-hidden">
-                <img
-                    src={product.image}
-                    alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
+                <Link href={`/product/${product.id}`}>
+                    <img
+                        src={product.image}
+                        alt={product.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                </Link>
 
                 {/* Wishlist Icon */}
                 {product.isHighlighted ? (
@@ -48,7 +51,9 @@ function ProductCard({ product, onWishlistToggle, onAddToCart, showWishlistOnHov
             {/* Product Info */}
             <div className="p-3 sm:p-4 bg-white">
                 <div className='flex items-center justify-between mb-2'>
-                    <h3 className="font-semibold text-gray-800 text-sm sm:text-base lg:text-lg truncate flex-1 mr-2">{product.name}</h3>
+                    <Link href={`/product/${product.id}`}>
+                        <h3 className="font-semibold text-gray-800 text-sm sm:text-base lg:text-lg truncate flex-1 mr-2">{product.name}</h3>
+                    </Link>
                     <div className="flex items-center gap-1 flex-shrink-0">
                         <Star className="w-3 h-3 sm:w-4 sm:h-4 fill-yellow-400 text-yellow-400" />
                         <span className="text-xs sm:text-sm text-gray-600">{product.rating}</span>

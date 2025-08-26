@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import Image from 'next/image';
 import { Facebook, Twitter, Instagram, Linkedin, MapPin, Phone, Mail, MessageCircle } from 'lucide-react';
 
@@ -10,18 +11,18 @@ const footerData = {
     description: "From your very first visit, discover exquisite pink jewelry crafted with love and precision, backed by a team that treats your style as their own."
   },
   quickLinks: [
-    { name: "Home", href: "#", isActive: true },
+    { name: "Home", href: "/", isActive: true },
     { name: "Category", href: "#" },
     { name: "Shop", href: "#" },
     { name: "New Arrivals", href: "#" },
-    { name: "Offers", href: "#" }
+    { name: "Offers", href: "/offers" }
   ],
   utilities: [
-    { name: "Privacy Policy", href: "#" },
-    { name: "Terms & Condition", href: "#" },
-    { name: "FAQ", href: "#" },
+    { name: "Privacy Policy", href: "/privacy-policy" },
+    { name: "Terms & Condition", href: "/terms-conditions" },
+    { name: "FAQ", href: "/faq" },
     { name: "Blogs", href: "#" },
-    { name: "404 Not Found", href: "#" }
+    { name: "404 Not Found", href: "/not-found" }
   ],
   contact: {
     address: "230 Park Avenue, Suite 210, New York, NY 10169, USA",
@@ -48,14 +49,16 @@ export default function Footer() {
           <div className="space-y-4">
             {/* Logo */}
             <div className="flex items-center">
-              <Image 
-                src="/images/logo.png" 
-                alt="FORPINK.COM" 
-                width={170}
-                height={70}
-                className="w-32 sm:w-40 md:w-auto"
-                priority
-              />
+              <Link href="/">
+                <Image 
+                  src="/images/logo.png" 
+                  alt="FORPINK.COM" 
+                  width={170}
+                  height={70}
+                  className="w-32 sm:w-40 md:w-auto"
+                  priority
+                />
+              </Link>
             </div>
             
             {/* Description */}
@@ -66,14 +69,14 @@ export default function Footer() {
             {/* Social Media Icons */}
             <div className="flex space-x-4 pt-2">
               {footerData.socialMedia.map((social, index) => (
-                <a
+                <Link
                   key={index}
                   href={social.href}
                   className="text-white hover:text-pink-400 transition-colors duration-300"
                   aria-label={social.label}
                 >
                   <social.icon className="w-5 h-5" />
-                </a>
+                </Link>
               ))}
             </div>
           </div>
@@ -84,7 +87,7 @@ export default function Footer() {
             <ul className="space-y-2">
               {footerData.quickLinks.map((link, index) => (
                 <li key={index}>
-                  <a
+                  <Link
                     href={link.href}
                     className={`text-sm transition-colors duration-300 hover:text-pink-400 ${
                       link.isActive 
@@ -93,7 +96,7 @@ export default function Footer() {
                     }`}
                   >
                     {link.name}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -105,12 +108,12 @@ export default function Footer() {
             <ul className="space-y-2">
               {footerData.utilities.map((utility, index) => (
                 <li key={index}>
-                  <a
+                  <Link
                     href={utility.href}
                     className="text-gray-300 text-sm transition-colors duration-300 hover:text-pink-400"
                   >
                     {utility.name}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>

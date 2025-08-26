@@ -1,8 +1,19 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { Search, User, ShoppingCart, Heart, Truck, Menu, X } from 'lucide-react';
 import Image from 'next/image';
+
+// Dynamic navigation menu data - can be replaced with API data later
+const navigationMenu = [
+  { id: 1, name: "Home", href: "/", isActive: true },
+  { id: 2, name: "Category", href: "/category", isActive: false },
+  { id: 3, name: "Shop", href: "/shop", isActive: false },
+  { id: 4, name: "New Arrivals", href: "/new-arrivals", isActive: false },
+  { id: 5, name: "Offers", href: "/offers", isActive: false },
+  { id: 6, name: "Contact", href: "/contact", isActive: false }
+];
 
 export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -29,24 +40,33 @@ export default function Header() {
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center">
-            <Image 
-              src="/images/logo.png" 
-              alt="Logo" 
-              width={170}
-              height={70}
-              className="w-32 sm:w-40 md:w-auto -mt-3"
-              priority
-            />
+            <Link href="/">
+              <Image 
+                src="/images/logo.png" 
+                alt="Logo" 
+                width={170}
+                height={70}
+                className="w-32 sm:w-40 md:w-auto -mt-3"
+                priority
+              />
+            </Link>
           </div>
 
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center space-x-8">
-            <a href="#" className="text-gray-700 hover:text-pink-500 font-medium transition-colors">Home</a>
-            <a href="#" className="text-gray-700 hover:text-pink-500 font-medium transition-colors">Category</a>
-            <a href="#" className="text-gray-700 hover:text-pink-500 font-medium transition-colors">Shop</a>
-            <a href="#" className="text-gray-700 hover:text-pink-500 font-medium transition-colors">New Arrivals</a>
-            <a href="#" className="text-gray-700 hover:text-pink-500 font-medium transition-colors">Offers</a>
-            <a href="#" className="text-gray-700 hover:text-pink-500 font-medium transition-colors">Contact</a>
+            {navigationMenu.map((item) => (
+              <Link 
+                key={item.id}
+                href={item.href} 
+                className={`font-medium transition-colors ${
+                  item.isActive 
+                    ? 'text-pink-500' 
+                    : 'text-gray-700 hover:text-pink-500'
+                }`}
+              >
+                {item.name}
+              </Link>
+            ))}
           </nav>
 
           {/* Right section */}
@@ -82,7 +102,7 @@ export default function Header() {
               <button className="relative p-2 hover:bg-gray-100 rounded-full transition-colors">
                 <Heart className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700" />
                 <span className="absolute -top-1 -right-1 bg-pink-500 text-white text-xs rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center">
-                  0
+                  5
                 </span>
               </button>
 
@@ -90,7 +110,7 @@ export default function Header() {
               <button className="relative p-2 hover:bg-gray-100 rounded-full transition-colors">
                 <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700" />
                 <span className="absolute -top-1 -right-1 bg-pink-500 text-white text-xs rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center">
-                  1
+                  3
                 </span>
               </button>
 
@@ -130,12 +150,19 @@ export default function Header() {
         {isMobileMenuOpen && (
           <div className="lg:hidden mt-4 border-t border-gray-200 pt-4">
             <nav className="flex flex-col space-y-3">
-              <a href="#" className="text-gray-700 hover:text-pink-500 font-medium py-2 transition-colors">Home</a>
-              <a href="#" className="text-gray-700 hover:text-pink-500 font-medium py-2 transition-colors">Category</a>
-              <a href="#" className="text-gray-700 hover:text-pink-500 font-medium py-2 transition-colors">Shop</a>
-              <a href="#" className="text-gray-700 hover:text-pink-500 font-medium py-2 transition-colors">New Arrivals</a>
-              <a href="#" className="text-gray-700 hover:text-pink-500 font-medium py-2 transition-colors">Offers</a>
-              <a href="#" className="text-gray-700 hover:text-pink-500 font-medium py-2 transition-colors">Contact</a>
+              {navigationMenu.map((item) => (
+                <Link 
+                  key={item.id}
+                  href={item.href} 
+                  className={`font-medium py-2 transition-colors ${
+                    item.isActive 
+                      ? 'text-pink-500' 
+                      : 'text-gray-700 hover:text-pink-500'
+                  }`}
+                >
+                  {item.name}
+                </Link>
+              ))}
             </nav>
           </div>
         )}
