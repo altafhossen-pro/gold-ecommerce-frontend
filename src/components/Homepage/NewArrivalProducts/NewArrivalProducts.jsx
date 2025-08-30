@@ -1,90 +1,43 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation } from 'swiper/modules';
 import ProductCard from '@/components/Common/ProductCard';
+import toast from 'react-hot-toast';
+import { productAPI, transformProductData } from '@/services/api';
 
 // Import Swiper styles
 import 'swiper/css';
 import 'swiper/css/navigation';
 
-// New arrival products data
-const newArrivalProducts = [
-    {
-        id: 1,
-        name: "Hand Ring",
-        price: 240.00,
-        originalPrice: null,
-        rating: 4.5,
-        image: "/images/featured/img.png",
-        isWishlisted: false,
-        isHighlighted: false
-    },
-    {
-        id: 2,
-        name: "Nekless",
-        price: 240.00,
-        originalPrice: 440.00,
-        rating: 4.5,
-        image: "/images/featured/img1.png",
-        isWishlisted: false,
-        isHighlighted: true
-    },
-    {
-        id: 3,
-        name: "Hand Ring",
-        price: 240.00,
-        originalPrice: null,
-        rating: 4.5,
-        image: "/images/featured/img.png",
-        isWishlisted: false,
-        isHighlighted: false
-    },
-    {
-        id: 4,
-        name: "Combo Pack",
-        price: 240.00,
-        originalPrice: 440.00,
-        rating: 4.5,
-        image: "/images/featured/img1.png",
-        isWishlisted: true,
-        isHighlighted: true
-    },
-    {
-        id: 5,
-        name: "Hand Ring",
-        price: 240.00,
-        originalPrice: null,
-        rating: 4.5,
-        image: "/images/featured/img.png",
-        isWishlisted: false,
-        isHighlighted: false
-    },
-    {
-        id: 6,
-        name: "Nekless",
-        price: 240.00,
-        originalPrice: 440.00,
-        rating: 4.5,
-        image: "/images/featured/img1.png",
-        isWishlisted: false,
-        isHighlighted: false
-    },
-    {
-        id: 7,
-        name: "Combo Pack",
-        price: 240.00,
-        originalPrice: 440.00,
-        rating: 4.5,
-        image: "/images/featured/img.png",
-        isWishlisted: false,
-        isHighlighted: false
-    }
-];
-
 export default function NewArrivalProducts() {
-    const [products, setProducts] = React.useState(newArrivalProducts);
+    const [products, setProducts] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    // Fetch new arrival products
+    useEffect(() => {
+        fetchNewArrivalProducts();
+    }, []);
+
+    const fetchNewArrivalProducts = async () => {
+        try {
+            setLoading(true);
+            const data = await productAPI.getNewArrivalProducts(10);
+            
+            if (data.success) {
+                const transformedProducts = data.data.map(transformProductData);
+                setProducts(transformedProducts);
+            } else {
+                toast.error('Failed to fetch new arrival products');
+            }
+        } catch (error) {
+            console.error('Error fetching new arrival products:', error);
+            toast.error('Error fetching new arrival products');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleWishlistToggle = (productId) => {
         setProducts(prev => prev.map(product =>
@@ -122,42 +75,54 @@ export default function NewArrivalProducts() {
                 </div>
 
                 {/* Products Carousel */}
-                <Swiper
-                    modules={[Navigation]}
-                    spaceBetween={24}
-                    slidesPerView={1}
-                    loop={true}
-                    navigation={{
-                        nextEl: '.new-arrival-next-btn',
-                        prevEl: '.new-arrival-prev-btn',
-                    }}
-                    breakpoints={{
-                        640: {
-                            slidesPerView: 2,
-                        },
-                        768: {
-                            slidesPerView: 3,
-                        },
-                        1024: {
-                            slidesPerView: 4,
-                        },
-                        1280: {
-                            slidesPerView: 5,
-                        },
-                    }}
-                    className="new-arrival-swiper !py-5 !px-1"
-                >
-                    {products.map((product) => (
-                        <SwiperSlide key={product.id}>
-                            <ProductCard
-                                product={product}
-                                onWishlistToggle={handleWishlistToggle}
-                                onAddToCart={handleAddToCart}
-                                showWishlistOnHover={false}
-                            />
-                        </SwiperSlide>
-                    ))}
-                </Swiper>
+                {loading ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
+                        {[...Array(5)].map((_, index) => (
+                            <div key={index} className="animate-pulse">
+                                <div className="bg-gray-200 rounded-lg h-64 mb-4"></div>
+                                <div className="bg-gray-200 h-4 rounded mb-2"></div>
+                                <div className="bg-gray-200 h-4 rounded w-2/3"></div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <Swiper
+                        modules={[Navigation]}
+                        spaceBetween={24}
+                        slidesPerView={1}
+                        loop={true}
+                        navigation={{
+                            nextEl: '.new-arrival-next-btn',
+                            prevEl: '.new-arrival-prev-btn',
+                        }}
+                        breakpoints={{
+                            640: {
+                                slidesPerView: 2,
+                            },
+                            768: {
+                                slidesPerView: 3,
+                            },
+                            1024: {
+                                slidesPerView: 4,
+                            },
+                            1280: {
+                                slidesPerView: 5,
+                            },
+                        }}
+                        className="new-arrival-swiper !py-5 !px-1"
+                    >
+                        {products.map((product) => (
+                            <SwiperSlide key={product.id}>
+                                <ProductCard
+                                    product={product}
+                                    onWishlistToggle={handleWishlistToggle}
+                                    onAddToCart={handleAddToCart}
+                                    showWishlistOnHover={false}
+                                />
+                            </SwiperSlide>
+                        ))}
+                    </Swiper>
+                )}
             </div>
         </section>
     );

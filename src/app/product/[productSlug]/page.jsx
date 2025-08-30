@@ -3,12 +3,12 @@ import Header from '@/components/Header/Header';
 import ProductDetails from '@/components/ProductDetails/ProductDetails';
 import React from 'react';
 
-const page = () => {
+const page = ({ params }) => {
     return (
         <div>
             <Header />
 
-            <ProductDetails />
+            <ProductDetails productSlug={params.productSlug} />
 
             <Footer />
         </div>

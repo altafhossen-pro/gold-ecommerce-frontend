@@ -1,134 +1,65 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ProductCard from '@/components/Common/ProductCard';
+import toast from 'react-hot-toast';
+import { productAPI, categoryAPI, transformProductData } from '@/services/api';
 
-// Featured products data
-const featuredProducts = [
-    {
-        id: 1,
-        name: "Hand Ring",
-        price: 240.00,
-        originalPrice: null,
-        rating: 4.5,
-        image: "/images/featured/img.png",
-        category: "rings",
-        isWishlisted: false,
-        isHighlighted: false
-    },
-    {
-        id: 2,
-        name: "Nekless",
-        price: 240.00,
-        originalPrice: 440.00,
-        rating: 4.5,
-        image: "/images/featured/img.png",
-        category: "necklace",
-        isWishlisted: false,
-        isHighlighted: false
-    },
-    {
-        id: 3,
-        name: "Hand Ring",
-        price: 240.00,
-        originalPrice: null,
-        rating: 4.5,
-        image: "/images/featured/img.png",
-        category: "rings",
-        isWishlisted: false,
-        isHighlighted: false
-    },
-    {
-        id: 4,
-        name: "Combo Pack",
-        price: 240.00,
-        originalPrice: 440.00,
-        rating: 4.5,
-        image: "/images/featured/img.png",
-        category: "necklace",
-        isWishlisted: false,
-        isHighlighted: false
-    },
-    {
-        id: 5,
-        name: "Hand Ring",
-        price: 240.00,
-        originalPrice: null,
-        rating: 4.5,
-        image: "/images/featured/img.png",
-        category: "rings",
-        isWishlisted: true,
-        isHighlighted: true
-    },
-    {
-        id: 6,
-        name: "Hand Ring",
-        price: 240.00,
-        originalPrice: null,
-        rating: 4.5,
-        image: "/images/featured/img.png",
-        category: "rings",
-        isWishlisted: false,
-        isHighlighted: false
-    },
-    {
-        id: 7,
-        name: "Nekless",
-        price: 240.00,
-        originalPrice: 440.00,
-        rating: 4.5,
-        image: "/images/featured/img.png",
-        category: "necklace",
-        isWishlisted: false,
-        isHighlighted: false
-    },
-    {
-        id: 8,
-        name: "Hand Ring",
-        price: 240.00,
-        originalPrice: null,
-        rating: 4.5,
-        image: "/images/featured/img.png",
-        category: "rings",
-        isWishlisted: false,
-        isHighlighted: false
-    },
-    {
-        id: 9,
-        name: "Combo Pack",
-        price: 240.00,
-        originalPrice: 440.00,
-        rating: 4.5,
-        image: "/images/featured/img.png",
-        category: "necklace",
-        isWishlisted: false,
-        isHighlighted: false
-    },
-    {
-        id: 10,
-        name: "Hand Ring",
-        price: 240.00,
-        originalPrice: null,
-        rating: 4.5,
-        image: "/images/featured/img.png",
-        category: "rings",
-        isWishlisted: true,
-        isHighlighted: true
-    }
-];
-
-const filterCategories = [
-    { id: 'all', name: 'All' },
-    { id: 'earnings', name: 'Earnings' },
-    { id: 'rings', name: 'Rings' },
-    { id: 'necklace', name: 'Necklace' }
-];
+// Dynamic filter categories will be generated from API data
 
 
 
 export default function FeaturedProducts() {
     const [activeFilter, setActiveFilter] = useState('all');
-    const [products, setProducts] = useState(featuredProducts);
+    const [products, setProducts] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [categories, setCategories] = useState([]);
+
+    // Fetch featured products
+    useEffect(() => {
+        fetchFeaturedProducts();
+        fetchCategories();
+    }, []);
+
+    const fetchFeaturedProducts = async () => {
+        try {
+            setLoading(true);
+            const data = await productAPI.getFeaturedProducts(20);
+            
+            if (data.success) {
+                const transformedProducts = data.data.map(transformProductData);
+                setProducts(transformedProducts);
+            } else {
+                toast.error('Failed to fetch featured products');
+            }
+        } catch (error) {
+            console.error('Error fetching featured products:', error);
+            toast.error('Error fetching featured products');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchCategories = async () => {
+        try {
+            const data = await categoryAPI.getCategories();
+            
+            if (data.success) {
+                setCategories(data.data);
+            }
+        } catch (error) {
+            console.error('Error fetching categories:', error);
+        }
+    };
+
+    // Generate filter categories from products
+    const filterCategories = [
+        { id: 'all', name: 'All' },
+        ...categories.map(cat => ({
+            id: cat.name.toLowerCase(),
+            name: cat.name
+        }))
+    ];
 
     const filteredProducts = activeFilter === 'all'
         ? products
@@ -172,7 +103,17 @@ export default function FeaturedProducts() {
                 </div>
 
                 {/* Products Grid */}
-                {filteredProducts.length > 0 ? (
+                {loading ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
+                        {[...Array(10)].map((_, index) => (
+                            <div key={index} className="animate-pulse">
+                                <div className="bg-gray-200 rounded-lg h-64 mb-4"></div>
+                                <div className="bg-gray-200 h-4 rounded mb-2"></div>
+                                <div className="bg-gray-200 h-4 rounded w-2/3"></div>
+                            </div>
+                        ))}
+                    </div>
+                ) : filteredProducts.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
                         {filteredProducts.map((product) => (
                             <ProductCard

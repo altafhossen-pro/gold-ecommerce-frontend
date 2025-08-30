@@ -1,10 +1,24 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, ArrowRight, MessageCircle, Minus, Plus, Trash2, Check } from 'lucide-react';
 import Header from '@/components/Header/Header';
+import { useAppContext } from '@/context/AppContext';
+import { orderAPI } from '@/services/api';
+import toast from 'react-hot-toast';
+import { useRouter } from 'next/navigation';
 
 export default function Checkout() {
+    const { cart, cartTotal, updateCartItem, removeFromCart, cartLoading, user, clearCart } = useAppContext();
+    const router = useRouter();
+
+    // Show warning if cart is empty but don't redirect
+    useEffect(() => {
+        if (cart.length === 0 && !cartLoading  ) {
+            toast.error('Your cart is empty. Please add items to proceed.');
+        }
+    }, [cart.length, cartLoading]);
+    
     const [formData, setFormData] = useState({
         fullName: '',
         mobileNumber: '',
@@ -15,6 +29,10 @@ export default function Checkout() {
 
     const [paymentMethod, setPaymentMethod] = useState('cash');
     const [couponCode, setCouponCode] = useState('');
+    const [manualPaymentData, setManualPaymentData] = useState({
+        phoneNumber: '',
+        transactionId: ''
+    });
 
     const divisions = [
         'Dhaka',
@@ -27,18 +45,7 @@ export default function Checkout() {
         'Mymensingh'
     ];
 
-    const cartItems = [
-        {
-            id: 1,
-            name: 'গ্রাম্য চাকের মধু',
-            weight: '1 KG',
-            price: 1450,
-            quantity: 3,
-            image: '/images/featured/img.png'
-        }
-    ];
-
-    const subtotal = cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+    const subtotal = cartTotal;
     const shippingCost = 0;
     const discount = 0;
     const totalCost = subtotal + shippingCost - discount;
@@ -52,16 +59,138 @@ export default function Checkout() {
     };
 
     const handleQuantityChange = (itemId, change) => {
-        console.log(`Quantity changed for item ${itemId} by ${change}`);
+        const currentItem = cart.find(item => item.id === itemId);
+        if (currentItem) {
+            const newQuantity = currentItem.quantity + change;
+            if (newQuantity >= 1) {
+                updateCartItem(itemId, newQuantity);
+            }
+        }
     };
 
     const handleRemoveItem = (itemId) => {
-        console.log(`Remove item ${itemId}`);
+        removeFromCart(itemId);
     };
 
     const handleApplyCoupon = () => {
-        console.log('Applying coupon:', couponCode);
+        if (couponCode.trim()) {
+            toast.success('Coupon applied successfully!');
+        } else {
+            toast.error('Please enter a coupon code');
+        }
     };
+
+    const handleManualPaymentChange = (e) => {
+        const { name, value } = e.target;
+        setManualPaymentData(prev => ({
+            ...prev,
+            [name]: value
+        }));
+    };
+
+    const handleConfirmOrder = async () => {
+        // Validate form data
+        if (!formData.fullName || !formData.mobileNumber || !formData.division || !formData.deliveryAddress) {
+            toast.error('Please fill in all required fields');
+            return;
+        }
+
+        if (cart.length === 0) {
+            toast.error('Your cart is empty');
+            return;
+        }
+
+        // Validate manual payment data if selected
+        if (paymentMethod === 'manual') {
+            if (!manualPaymentData.phoneNumber || !manualPaymentData.transactionId) {
+                toast.error('Please fill in payment details');
+                return;
+            }
+        }
+
+        // Process order based on payment method
+        switch (paymentMethod) {
+            case 'cash':
+                try {
+                    // Prepare order data for Cash on Delivery
+                    const orderData = {
+                        user: user?._id || undefined, // Add user ID or undefined for guest
+                        items: cart.map(item => ({
+                            product: item.productId,
+                            variantSku: item.sku,
+                            name: item.name,
+                            image: item.image,
+                            price: item.price,
+                            quantity: item.quantity,
+                            subtotal: item.total,
+                            // Add variant information for admin
+                            variant: {
+                                size: item.size,
+                                color: item.color,
+                                colorHexCode: item.colorHexCode,
+                                sku: item.sku,
+                                stockQuantity: item.stockQuantity,
+                                stockStatus: item.stockStatus
+                            }
+                        })),
+                        shippingAddress: {
+                            label: 'Delivery Address',
+                            street: formData.deliveryAddress,
+                            city: formData.division,
+                            state: formData.division,
+                            postalCode: '',
+                            country: 'Bangladesh',
+                            isDefault: true
+                        },
+                        billingAddress: {
+                            label: 'Billing Address',
+                            street: formData.deliveryAddress,
+                            city: formData.division,
+                            state: formData.division,
+                            postalCode: '',
+                            country: 'Bangladesh',
+                            isDefault: true
+                        },
+                        paymentMethod: 'cod',
+                        paymentStatus: 'pending',
+                        total: totalCost,
+                        discount: discount,
+                        shippingCost: shippingCost,
+                        orderNotes: formData.orderNotes,
+                        coupon: couponCode || undefined
+                    };
+
+                    // Create order
+                    const response = await orderAPI.createOrder(orderData);
+                    
+                    if (response.success) {
+                        toast.success('Order placed successfully! Cash on delivery');
+                        // Clear cart and redirect to order confirmation
+                        clearCart();
+                        router.push('/order-confirmation');
+                    } else {
+                        toast.error('Failed to place order. Please try again.');
+                    }
+                } catch (error) {
+                    console.error('Error creating order:', error);
+                    toast.error('Failed to place order. Please try again.');
+                }
+                break;
+                
+            case 'bkash':
+                toast.error('This feature is currently under development');
+                break;
+                
+            case 'manual':
+                toast.error('This feature is currently under development');
+                break;
+                
+            default:
+                toast.error('Please select a payment method');
+        }
+    };
+
+
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -77,7 +206,7 @@ export default function Checkout() {
                     {/* Left Column - Checkout Form */}
                     <div className="space-y-6">
                         {/* Customer Information */}
-                        <div className="bg-white p-6">
+                        <div className="bg-white border border-gray-300 shadow rounded-lg p-6">
                             <h2 className="text-lg font-semibold text-gray-900 mb-6">01. Fill in the following information:</h2>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -162,7 +291,7 @@ export default function Checkout() {
                         </div>
 
                         {/* Payment Method */}
-                        <div className="bg-white p-6">
+                        <div className="bg-white border border-gray-300 shadow rounded-lg p-6">
                             <h2 className="text-lg font-semibold text-gray-900 mb-6">02. Payment Method <span className="text-red-500">*</span></h2>
 
                             <div className="space-y-3">
@@ -211,76 +340,191 @@ export default function Checkout() {
                                     </span>
                                 </label>
                             </div>
+
+                            {/* Payment Instructions */}
+                            {paymentMethod === 'bkash' && (
+                                <div className="mt-4 p-4 bg-pink-50 border border-pink-200 rounded-lg">
+                                    <h3 className="font-semibold text-pink-800 mb-2">Bkash Payment Instructions:</h3>
+                                    <div className="text-sm text-pink-700 space-y-1">
+                                        <p><strong>Personal Bkash/Nogod:</strong> +88 018 40 20 90 60 - (Send money only)</p>
+                                        <p><strong>Bkash Merchant:</strong> +88 016 10 80 04 74 - (Payment only)</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {paymentMethod === 'manual' && (
+                                <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                    <h3 className="font-semibold text-blue-800 mb-4">Manual Payment Details:</h3>
+                                    
+                                    {/* Payment Instructions */}
+                                    <div className="text-sm text-blue-700 space-y-1 mb-4">
+                                        <p><strong>Personal Bkash/Nogod:</strong> +88 018 40 20 90 60 - (Send money only)</p>
+                                        <p><strong>Bkash Merchant:</strong> +88 016 10 80 04 74 - (Payment only)</p>
+                                    </div>
+
+                                    {/* Manual Payment Form */}
+                                    <div className="space-y-3">
+                                        <div>
+                                            <label className="block text-sm font-medium text-blue-800 mb-1">
+                                                Phone Number <span className="text-red-500">*</span>
+                                            </label>
+                                            <input
+                                                type="tel"
+                                                name="phoneNumber"
+                                                value={manualPaymentData.phoneNumber}
+                                                onChange={handleManualPaymentChange}
+                                                placeholder="Enter phone number used for payment"
+                                                className="w-full px-3 py-2 border border-blue-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-blue-800 mb-1">
+                                                Transaction ID <span className="text-red-500">*</span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                name="transactionId"
+                                                value={manualPaymentData.transactionId}
+                                                onChange={handleManualPaymentChange}
+                                                placeholder="Enter transaction ID"
+                                                className="w-full px-3 py-2 border border-blue-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* Action Buttons */}
                         <div className="flex gap-4">
-                            <button className="flex-1 flex items-center justify-center gap-2 px-6 py-3 border border-gray-300 text-gray-700 rounded hover:bg-gray-50">
+                            <button 
+                                onClick={() => router.push('/')}
+                                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 border border-gray-300 text-gray-700 rounded hover:bg-gray-50"
+                            >
                                 <ArrowLeft className="w-4 h-4" />
-                                Continue Shipping
+                                Back to Shopping
                             </button>
-                            <button className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-pink-500 text-white rounded hover:bg-pink-600 font-semibold">
-                                Confirm Order
+                            <button 
+                                onClick={handleConfirmOrder}
+                                disabled={cartLoading || cart.length === 0}
+                                className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded font-semibold ${
+                                    cartLoading || cart.length === 0 
+                                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                                        : 'bg-pink-500 text-white hover:bg-pink-600'
+                                }`}
+                            >
+                                {cartLoading ? 'Loading...' :
+                                 cart.length === 0 ? 'Cart Empty' :
+                                 paymentMethod === 'cash' ? 'Confirm Order' : 
+                                 paymentMethod === 'bkash' ? 'Process to Bkash Payment' : 
+                                 'Confirm Manual Payment'}
                                 <ArrowRight className="w-4 h-4" />
                             </button>
                         </div>
                     </div>
 
                     {/* Right Column - Order Summary */}
-                    <div className="bg-white p-6">
+                    <div className="bg-white border border-gray-300 shadow rounded-lg h-fit p-6">
                         <h2 className="text-lg font-semibold text-gray-900 mb-6">Order Summary</h2>
 
                         {/* Cart Items */}
                         <div className="space-y-4">
-                            {cartItems.map((item) => (
-                                <div key={item.id} className="flex items-center space-x-4 p-3 border border-gray-200 rounded">
-                                    {/* Product Image */}
-                                    <div className="w-12 h-12 bg-orange-100 rounded flex items-center justify-center">
-                                        <span className="text-orange-600 text-2xl">🍯</span>
+                            {cartLoading ? (
+                                // Loading skeleton
+                                Array.from({ length: 2 }).map((_, index) => (
+                                    <div key={index} className="flex items-center space-x-4 p-3 border border-gray-200 rounded animate-pulse">
+                                        <div className="w-12 h-12 bg-gray-200 rounded flex-shrink-0"></div>
+                                        <div className="flex-1 space-y-2">
+                                            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                                            <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                                            <div className="h-3 bg-gray-200 rounded w-1/3"></div>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <div className="w-6 h-6 bg-gray-200 rounded"></div>
+                                            <div className="w-8 h-4 bg-gray-200 rounded"></div>
+                                            <div className="w-6 h-6 bg-gray-200 rounded"></div>
+                                        </div>
+                                        <div className="w-16 h-4 bg-gray-200 rounded"></div>
+                                        <div className="w-6 h-6 bg-gray-200 rounded"></div>
                                     </div>
-
-                                    <div className="flex-1">
-                                        <h3 className="font-medium text-gray-900 text-sm">{item.name}, Weight: {item.weight}</h3>
-                                        <p className="text-xs text-gray-600">Item Price: {item.price} Tk</p>
-                                    </div>
-
-                                    {/* Quantity Controls */}
-                                    <div className="flex items-center space-x-2">
-                                        <button
-                                            onClick={() => handleQuantityChange(item.id, -1)}
-                                            className="w-6 h-6 flex items-center justify-center border border-gray-300 rounded text-sm"
-                                        >
-                                            <Minus className="w-3 h-3" />
-                                        </button>
-                                        <span className="w-8 text-center text-sm">{item.quantity}</span>
-                                        <button
-                                            onClick={() => handleQuantityChange(item.id, 1)}
-                                            className="w-6 h-6 flex items-center justify-center border border-gray-300 rounded text-sm"
-                                        >
-                                            <Plus className="w-3 h-3" />
-                                        </button>
-                                    </div>
-
-                                    {/* Total Price */}
-                                    <div className="text-right">
-                                        <p className="font-semibold text-gray-900 text-sm">{item.price * item.quantity} Tk</p>
-                                    </div>
-
-                                    {/* Remove Button */}
-                                    <button
-                                        onClick={() => handleRemoveItem(item.id)}
-                                        className="text-pink-500 hover:text-pink-700"
+                                ))
+                            ) : cart.length === 0 ? (
+                                <div className="text-center py-8">
+                                    <p className="text-gray-500 mb-4">Your cart is empty</p>
+                                    <button 
+                                        onClick={() => router.push('/')}
+                                        className="px-4 py-2 bg-pink-500 text-white rounded hover:bg-pink-600 text-sm"
                                     >
-                                        <Trash2 className="w-4 h-4" />
+                                        Continue Shopping
                                     </button>
                                 </div>
-                            ))}
-                        </div>
+                            ) : (
+                                cart.map((item) => (
+                                    <div key={item.id} className="flex items-center space-x-4 p-3 border border-gray-200 rounded">
+                                        {/* Product Image */}
+                                        <div className="w-12 h-12 rounded overflow-hidden flex-shrink-0">
+                                            <img 
+                                                src={item.image} 
+                                                alt={item.name}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        </div>
 
-                        {/* Free Delivery Banner */}
-                        <div className="mt-4 p-3 bg-pink-100 text-pink-700 rounded flex items-center gap-2">
-                            <Check className="w-5 h-5 text-pink-500" />
-                            <span className="text-sm font-medium">স্বাগতম! আপনার এই অর্ডারটির ডেলিভারি চার্জ সম্পূর্ণ ফ্রি!</span>
+                                        <div className="flex-1 min-w-0">
+                                            <h3 className="font-medium text-gray-900 text-sm truncate">{item.name}</h3>
+                                            {item.size && (
+                                                <p className="text-xs text-gray-600">Size: {item.size}</p>
+                                            )}
+                                            {item.color && (
+                                                <div className="flex items-center gap-1 mt-1">
+                                                    <span className="text-xs text-gray-600">Color:</span>
+                                                    <div 
+                                                        className="w-3 h-3 rounded-full border border-gray-300"
+                                                        style={{ 
+                                                            backgroundColor: item.colorHexCode,
+                                                            border: item.colorHexCode?.toLowerCase() === '#ffffff' || item.colorHexCode?.toLowerCase() === '#fff' 
+                                                                ? '1px solid #d1d5db' 
+                                                                : 'none'
+                                                        }}
+                                                        title={item.color}
+                                                    ></div>
+                                                </div>
+                                            )}
+                                            <p className="text-xs text-gray-600">Item Price: {item.price} ৳</p>
+                                        </div>
+
+                                        {/* Quantity Controls */}
+                                        <div className="flex items-center space-x-2">
+                                            <button
+                                                onClick={() => handleQuantityChange(item.id, -1)}
+                                                className="w-6 h-6 flex items-center justify-center border border-gray-300 rounded text-sm hover:bg-gray-50"
+                                            >
+                                                <Minus className="w-3 h-3" />
+                                            </button>
+                                            <span className="w-8 text-center text-sm">{item.quantity}</span>
+                                            <button
+                                                onClick={() => handleQuantityChange(item.id, 1)}
+                                                className="w-6 h-6 flex items-center justify-center border border-gray-300 rounded text-sm hover:bg-gray-50"
+                                            >
+                                                <Plus className="w-3 h-3" />
+                                            </button>
+                                        </div>
+
+                                        {/* Total Price */}
+                                        <div className="text-right">
+                                            <p className="font-semibold text-gray-900 text-sm">{item.total} ৳</p>
+                                        </div>
+
+                                        {/* Remove Button */}
+                                        <button
+                                            onClick={() => handleRemoveItem(item.id)}
+                                            className="text-pink-500 hover:text-pink-700 p-1"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                ))
+                            )}
                         </div>
 
                         {/* Coupon Code */}
@@ -304,32 +548,47 @@ export default function Checkout() {
                         </div>
 
                         {/* Cost Breakdown */}
-                        <div className="mt-6 space-y-2 text-sm">
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">Subtotal</span>
-                                <span className="text-gray-900">{subtotal} Tk</span>
+                        {cartLoading ? (
+                            <div className="mt-6 space-y-2 text-sm animate-pulse">
+                                <div className="flex justify-between">
+                                    <span className="text-gray-600">Subtotal</span>
+                                    <div className="h-4 bg-gray-200 rounded w-16"></div>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-600">Shipping Cost</span>
+                                    <span className="text-pink-500 font-medium">Free</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-600">Discount</span>
+                                    <div className="h-4 bg-gray-200 rounded w-12"></div>
+                                </div>
+                                <div className="flex justify-between text-base font-bold text-gray-900 pt-2 border-t border-gray-200">
+                                    <span>TOTAL COST:</span>
+                                    <div className="h-5 bg-gray-200 rounded w-20"></div>
+                                </div>
                             </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">Shipping Cost</span>
-                                <span className="text-pink-500 font-medium">Free</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">Discount</span>
-                                <span className="text-orange-500">{discount} Tk</span>
-                            </div>
+                        ) : cart.length > 0 && (
+                            <div className="mt-6 space-y-2 text-sm">
+                                <div className="flex justify-between">
+                                    <span className="text-gray-600">Subtotal</span>
+                                    <span className="text-gray-900">{subtotal} ৳</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-600">Shipping Cost</span>
+                                    <span className="text-pink-500 font-medium">Free</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-gray-600">Discount</span>
+                                    <span className="text-orange-500">{discount} ৳</span>
+                                </div>
 
-                            {/* Free Delivery Banner (Bottom) */}
-                            <div className="p-3 bg-pink-100 text-pink-700 rounded flex items-center gap-2">
-                                <Check className="w-4 h-4 text-pink-500" />
-                                <span className="text-xs font-medium">স্বাগতম! আপনার এই অর্ডারটির ডেলিভারি চার্জ সম্পূর্ণ ফ্রি!</span>
+                                {/* Total Cost */}
+                                <div className="flex justify-between text-base font-bold text-gray-900 pt-2 border-t border-gray-200">
+                                    <span>TOTAL COST:</span>
+                                    <span>{totalCost} ৳</span>
+                                </div>
                             </div>
-
-                            {/* Total Cost */}
-                            <div className="flex justify-between text-base font-bold text-gray-900 pt-2 border-t border-gray-200">
-                                <span>TOTAL COST:</span>
-                                <span>{totalCost} TK</span>
-                            </div>
-                        </div>
+                        )}
                     </div>
                 </div>
             </div>

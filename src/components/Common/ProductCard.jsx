@@ -5,12 +5,12 @@ import { Heart, Star } from 'lucide-react';
 import Link from 'next/link';
 
 function ProductCard({ product, onWishlistToggle, onAddToCart, showWishlistOnHover = true }) {
-    console.log(product)
+    
     return (
         <div className="relative group overflow-hidden rounded-xl shadow-lg border border-[#E7E7E7] hover:shadow-lg transition-all duration-300  hover:ring-1 hover:ring-[#F7AABC]">
             {/* Product Image */}
             <div className="relative aspect-square overflow-hidden">
-                <Link href={`/product/${product.id}`}>
+                <Link href={`/product/${product.slug}`}>
                     <img
                         src={product.image}
                         alt={product.name}
@@ -51,7 +51,7 @@ function ProductCard({ product, onWishlistToggle, onAddToCart, showWishlistOnHov
             {/* Product Info */}
             <div className="p-3 sm:p-4 bg-white">
                 <div className='flex items-center justify-between mb-2'>
-                    <Link href={`/product/${product.id}`}>
+                    <Link href={`/product/${product.slug}`}>
                         <h3 className="font-semibold text-gray-800 text-sm sm:text-base lg:text-lg truncate flex-1 mr-2">{product.name}</h3>
                     </Link>
                     <div className="flex items-center gap-1 flex-shrink-0">
@@ -74,7 +74,7 @@ function ProductCard({ product, onWishlistToggle, onAddToCart, showWishlistOnHov
                         e.stopPropagation();
                         onAddToCart(product.id);
                     }}
-                    className="w-full py-2 sm:py-3 px-3 sm:px-4 rounded-lg font-semibold text-xs sm:text-sm transition-all duration-300 border border-[#EF3D6A] text-[#EF3D6A] hover:bg-[#EF3D6A] hover:text-white"
+                    className="w-full py-2 sm:py-3 px-3 sm:px-4 cursor-pointer rounded-lg font-semibold text-xs sm:text-sm transition-all duration-300 border border-[#EF3D6A] text-[#EF3D6A] hover:bg-[#EF3D6A] hover:text-white"
                 >
                     Add to cart
                 </button>

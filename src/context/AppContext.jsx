@@ -1,0 +1,349 @@
+'use client'
+
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import toast from 'react-hot-toast'
+import { getCookie, setCookie, deleteCookie } from 'cookies-next'
+
+// Create context
+const AppContext = createContext()
+
+// Custom hook to use the context
+export const useAppContext = () => {
+    const context = useContext(AppContext)
+    if (!context) {
+        throw new Error('useAppContext must be used within an AppProvider')
+    }
+    return context
+}
+
+// Provider component
+export const AppProvider = ({ children }) => {
+    // User state
+    const [user, setUser] = useState(null)
+    const [isAuthenticated, setIsAuthenticated] = useState(false)
+    const [token, setToken] = useState(null)
+
+    // Cart state
+    const [cart, setCart] = useState([])
+    const [cartCount, setCartCount] = useState(0)
+    const [cartTotal, setCartTotal] = useState(0)
+    const [cartLoading, setCartLoading] = useState(true)
+
+    // Wishlist state
+    const [wishlist, setWishlist] = useState([])
+    const [wishlistCount, setWishlistCount] = useState(0)
+
+    // UI state
+    const [loading, setLoading] = useState(false)
+    const [sidebarOpen, setSidebarOpen] = useState(false)
+
+    // Search state
+    const [searchQuery, setSearchQuery] = useState('')
+    const [searchResults, setSearchResults] = useState([])
+
+    // Filter state
+    const [filters, setFilters] = useState({
+        category: '',
+        priceRange: [0, 10000],
+        sortBy: 'newest',
+        inStock: false
+    })
+
+    // Cart functions
+    const addToCart = (product, selectedVariant, quantity = 1) => {
+        // Create variant key for unique identification
+        const variantKey = selectedVariant ? `${product._id}-${selectedVariant.size}-${selectedVariant.color}` : product._id;
+        
+        const cartItem = {
+            id: Date.now(), // Unique cart item ID
+            productId: product._id,
+            productInfo: {
+                _id: product._id,
+                title: product.title,
+                slug: product.slug,
+                featuredImage: product.featuredImage,
+                category: product.category
+            },
+            variantKey: variantKey,
+            name: product.title,
+            variant: selectedVariant ? `Size: ${selectedVariant.size}, Color: ${selectedVariant.color}` : 'Default',
+            price: selectedVariant?.currentPrice || product.basePrice || 0,
+            originalPrice: selectedVariant?.originalPrice || null,
+            image: product.featuredImage || '/images/placeholder.png',
+            quantity,
+            total: (selectedVariant?.currentPrice || product.basePrice || 0) * quantity,
+            size: selectedVariant?.size || null,
+            color: selectedVariant?.color || null,
+            colorHexCode: selectedVariant?.hexCode || null,
+            sku: selectedVariant?.sku || product.slug,
+            stockQuantity: selectedVariant?.stockQuantity || product.totalStock || 0,
+            stockStatus: selectedVariant?.stockStatus || 'in_stock'
+        }
+
+        const existingItemIndex = cart.findIndex(item => item.variantKey === variantKey);
+
+        if (existingItemIndex !== -1) {
+            // Update quantity if same variant exists
+            const updatedCart = [...cart];
+            updatedCart[existingItemIndex].quantity += quantity;
+            updatedCart[existingItemIndex].total = updatedCart[existingItemIndex].price * updatedCart[existingItemIndex].quantity;
+            setCart(updatedCart);
+            toast.success(`Quantity updated! Total: ${updatedCart[existingItemIndex].quantity}`);
+        } else {
+            // Add new item
+            setCart([...cart, cartItem]);
+            toast.success('Added to cart successfully!');
+        }
+    }
+
+    const removeFromCart = (cartItemId) => {
+        setCart(cart.filter(item => item.id !== cartItemId));
+        toast.success('Item removed from cart');
+    }
+
+    const updateCartItem = (cartItemId, quantity) => {
+        // Don't allow quantity less than 1
+        if (quantity < 1) {
+            toast.error('Quantity cannot be less than 1');
+            return;
+        }
+        
+        setCart(cart.map(item =>
+            item.id === cartItemId
+                ? { ...item, quantity, total: item.price * quantity }
+                : item
+        ));
+    }
+
+    const clearCart = () => {
+        setCart([])
+        setCartCount(0)
+        setCartTotal(0)
+    }
+
+    // Wishlist functions
+    const addToWishlist = (product) => {
+        const wishlistItem = {
+            productId: product._id,
+            name: product.name,
+            price: product.price,
+            image: product.featuredImage,
+            slug: product.slug
+        }
+
+        if (!wishlist.find(item => item.productId === product._id)) {
+            setWishlist([...wishlist, wishlistItem])
+        }
+    }
+
+    const removeFromWishlist = (productId) => {
+        setWishlist(wishlist.filter(item => item.productId !== productId))
+    }
+
+    const clearWishlist = () => {
+        setWishlist([])
+        setWishlistCount(0)
+    }
+
+    // User functions
+    const login = (userData, userToken) => {
+        setUser(userData)
+        setToken(userToken)
+        setIsAuthenticated(true)
+        setCookie('token', userToken, {
+            maxAge: 7 * 24 * 60 * 60, // 7 days
+            path: '/',
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict'
+        })
+    }
+
+    // Fetch user profile from backend
+    const fetchUserProfile = useCallback(async () => {
+        try {
+            const savedToken = getCookie('token')
+            if (!savedToken) {
+                return
+            }
+
+            const response = await fetch('http://localhost:5000/api/v1/user/profile', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${savedToken}`,
+                    'Content-Type': 'application/json',
+                },
+            })
+
+            const data = await response.json()
+
+            if (data.success) {
+                setUser(data.data)
+                setIsAuthenticated(true)
+                setToken(savedToken)
+            } else {
+                // Token is invalid, clear everything
+                // logout()
+            }
+        } catch (error) {
+            console.error('Error fetching user profile:', error)
+            // If there's an error, clear everything
+            logout()
+        }
+    }, [])
+
+    const logout = () => {
+        setUser(null)
+        setToken(null)
+        setIsAuthenticated(false)
+        setCart([])
+        setCartCount(0)
+        setCartTotal(0)
+        setWishlist([])
+        setWishlistCount(0)
+        deleteCookie('token')
+        localStorage.removeItem('cart')
+        localStorage.removeItem('wishlist')
+    }
+
+    const updateUser = (userData) => {
+        setUser(userData)
+    }
+
+    // UI functions
+    const toggleSidebar = () => {
+        setSidebarOpen(!sidebarOpen)
+    }
+
+    // Search functions
+    const updateSearchQuery = (query) => {
+        setSearchQuery(query)
+    }
+
+    const updateSearchResults = (results) => {
+        setSearchResults(results)
+    }
+
+    // Filter functions
+    const updateFilters = (newFilters) => {
+        setFilters({ ...filters, ...newFilters })
+    }
+
+    const clearFilters = () => {
+        setFilters({
+            category: '',
+            priceRange: [0, 10000],
+            sortBy: 'newest',
+            inStock: false
+        })
+    }
+
+    // Update cart totals when cart changes
+    const updateCartTotals = () => {
+        const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+        const count = cart.reduce((sum, item) => sum + item.quantity, 0)
+        setCartTotal(total)
+        setCartCount(count)
+    }
+
+    // Update wishlist count when wishlist changes
+    const updateWishlistCount = () => {
+        setWishlistCount(wishlist.length)
+    }
+
+    // Effect to update totals when cart/wishlist changes
+    useEffect(() => {
+        updateCartTotals()
+    }, [cart])
+
+    useEffect(() => {
+        updateWishlistCount()
+    }, [wishlist])
+
+    // Initialize from localStorage on mount
+    useEffect(() => {
+        const savedToken = getCookie('token')
+        const savedCart = localStorage.getItem('cart')
+        const savedWishlist = localStorage.getItem('wishlist')
+        
+        if (savedToken) {
+            setToken(savedToken)
+            // Fetch user profile from backend
+            fetchUserProfile()
+        }
+        if (savedCart) {
+            setCart(JSON.parse(savedCart))
+        }
+        if (savedWishlist) {
+            setWishlist(JSON.parse(savedWishlist))
+        }
+        
+        // Set cart loading to false after initialization
+        setCartLoading(false)
+    }, [])
+
+    // Save to localStorage when state changes
+    useEffect(() => {
+        localStorage.setItem('cart', JSON.stringify(cart))
+        localStorage.setItem('wishlist', JSON.stringify(wishlist))
+    }, [cart, wishlist])
+
+    const value = {
+        // State
+        user,
+        isAuthenticated,
+        token,
+        cart,
+        cartCount,
+        cartTotal,
+        cartLoading,
+        wishlist,
+        wishlistCount,
+        loading,
+        sidebarOpen,
+        searchQuery,
+        searchResults,
+        filters,
+
+        // Actions
+        setUser,
+        setIsAuthenticated,
+        setToken,
+        setCart,
+        setCartCount,
+        setCartTotal,
+        setWishlist,
+        setWishlistCount,
+        setLoading,
+        setSidebarOpen,
+        setSearchQuery,
+        setSearchResults,
+        setFilters,
+
+        // Functions
+        login,
+        logout,
+        updateUser,
+        fetchUserProfile,
+        addToCart,
+        removeFromCart,
+        updateCartItem,
+        clearCart,
+        addToWishlist,
+        removeFromWishlist,
+        clearWishlist,
+        toggleSidebar,
+        updateSearchQuery,
+        updateSearchResults,
+        updateFilters,
+        clearFilters
+    }
+
+    return (
+        <AppContext.Provider value={value}>
+            {children}
+        </AppContext.Provider>
+    )
+}
+
+export default AppContext
+

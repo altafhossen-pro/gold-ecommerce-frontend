@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
-.main-bg-color{
+.main-bg-color {
   background-color: #EF3D6A !important;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
