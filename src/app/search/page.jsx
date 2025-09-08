@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import ProductCard from '@/components/Common/ProductCard';
 import { productAPI, categoryAPI, transformProductData } from '@/services/api';
@@ -9,7 +9,7 @@ import Pagination from '@/components/Common/Pagination';
 import toast from 'react-hot-toast';
 import Header from '@/components/Header/Header';
 
-export default function SearchPage() {
+function SearchPageContent() {
     const searchParams = useSearchParams();
     const query = searchParams.get('query');
 
@@ -678,5 +678,22 @@ export default function SearchPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function SearchPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-gray-50">
+                <Header />
+                <div className="max-w-7xl mx-auto px-4 py-4">
+                    <div className="flex justify-center items-center py-12">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500"></div>
+                    </div>
+                </div>
+            </div>
+        }>
+            <SearchPageContent />
+        </Suspense>
     );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import ProductCard from '@/components/Common/ProductCard';
 import { productAPI, categoryAPI, transformProductData } from '@/services/api';
@@ -14,7 +14,7 @@ import toast from 'react-hot-toast';
 import Header from '@/components/Header/Header';
 import Footer from '@/components/Footer/Footer';
 
-export default function ShopPage() {
+function ShopPageContent() {
     const { addToCart, addToWishlist, removeFromWishlist, wishlist } = useAppContext();
     const searchParams = useSearchParams();
     const categorySlug = searchParams.get('category');
@@ -590,5 +590,23 @@ export default function ShopPage() {
             </div>
             <Footer />
         </div>
+    );
+}
+
+export default function ShopPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-gray-50">
+                <Header />
+                <div className="max-w-7xl mx-auto px-4 py-4">
+                    <div className="flex justify-center items-center py-12">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500"></div>
+                    </div>
+                </div>
+                <Footer />
+            </div>
+        }>
+            <ShopPageContent />
+        </Suspense>
     );
 }
