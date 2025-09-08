@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import toast from 'react-hot-toast'
 import { getCookie, setCookie, deleteCookie } from 'cookies-next'
+import { userAPI } from '@/services/api'
 
 // Create context
 const AppContext = createContext()
@@ -124,20 +125,88 @@ export const AppProvider = ({ children }) => {
     // Wishlist functions
     const addToWishlist = (product) => {
         const wishlistItem = {
+            id: Date.now(), // Unique wishlist item ID
             productId: product._id,
-            name: product.name,
+            _id: product._id,
+            name: product.title || product.name,
+            title: product.title || product.name,
             price: product.price,
-            image: product.featuredImage,
-            slug: product.slug
+            image: product.featuredImage || product.image,
+            slug: product.slug,
+            category: product.category,
+            variants: product.variants || [] // Preserve variants for moveToCart
         }
 
         if (!wishlist.find(item => item.productId === product._id)) {
-            setWishlist([...wishlist, wishlistItem])
+            const updatedWishlist = [...wishlist, wishlistItem];
+            setWishlist(updatedWishlist);
+            setWishlistCount(updatedWishlist.length);
+            // Save to localStorage
+            localStorage.setItem('wishlist', JSON.stringify(updatedWishlist));
         }
     }
 
     const removeFromWishlist = (productId) => {
-        setWishlist(wishlist.filter(item => item.productId !== productId))
+        const updatedWishlist = wishlist.filter(item => item.productId !== productId)
+        setWishlist(updatedWishlist)
+        setWishlistCount(updatedWishlist.length)
+        // Save to localStorage
+        localStorage.setItem('wishlist', JSON.stringify(updatedWishlist));
+    }
+
+    const moveToCart = (wishlistItem) => {
+        try {
+            // Create a product object for cart
+            const cartProduct = {
+                _id: wishlistItem._id,
+                title: wishlistItem.title || wishlistItem.name,
+                slug: wishlistItem.slug,
+                featuredImage: wishlistItem.image,
+                basePrice: wishlistItem.price,
+                variants: wishlistItem.variants || [] // Keep original variants if available
+            };
+
+            // Try to get original variant data from the product
+            let selectedVariant = null;
+            
+            if (wishlistItem.variants && wishlistItem.variants.length > 0) {
+                // Use the first original variant
+                const firstVariant = wishlistItem.variants[0];
+                const sizeAttr = firstVariant.attributes?.find(attr => attr.name === 'Size');
+                const colorAttr = firstVariant.attributes?.find(attr => attr.name === 'Color');
+                
+                selectedVariant = {
+                    size: sizeAttr?.value || 'Default',
+                    color: colorAttr?.value || 'Default',
+                    hexCode: colorAttr?.hexCode || '#000000',
+                    currentPrice: firstVariant.currentPrice || wishlistItem.price,
+                    originalPrice: firstVariant.originalPrice || null,
+                    sku: firstVariant.sku || wishlistItem.slug,
+                    stockQuantity: firstVariant.stockQuantity || 10,
+                    stockStatus: firstVariant.stockStatus || 'in_stock'
+                };
+            } else {
+                // If no variants, create a default variant
+                selectedVariant = {
+                    size: 'Default',
+                    color: 'Default',
+                    hexCode: '#000000',
+                    currentPrice: wishlistItem.price,
+                    originalPrice: null,
+                    sku: wishlistItem.slug,
+                    stockQuantity: 10,
+                    stockStatus: 'in_stock'
+                };
+            }
+
+            // Add to cart
+            addToCart(cartProduct, selectedVariant, 1);
+            
+            return true;
+        } catch (error) {
+            console.error('Error moving to cart:', error);
+            return false;
+        }
     }
 
     const clearWishlist = () => {
@@ -166,15 +235,7 @@ export const AppProvider = ({ children }) => {
                 return
             }
 
-            const response = await fetch('http://localhost:5000/api/v1/user/profile', {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${savedToken}`,
-                    'Content-Type': 'application/json',
-                },
-            })
-
-            const data = await response.json()
+            const data = await userAPI.getProfile(savedToken)
 
             if (data.success) {
                 setUser(data.data)
@@ -236,6 +297,20 @@ export const AppProvider = ({ children }) => {
             inStock: false
         })
     }
+
+    // Load wishlist from localStorage on mount
+    useEffect(() => {
+        const savedWishlist = localStorage.getItem('wishlist');
+        if (savedWishlist) {
+            try {
+                const parsedWishlist = JSON.parse(savedWishlist);
+                setWishlist(parsedWishlist);
+                setWishlistCount(parsedWishlist.length);
+            } catch (error) {
+                console.error('Error parsing wishlist from localStorage:', error);
+            }
+        }
+    }, []);
 
     // Update cart totals when cart changes
     const updateCartTotals = () => {
@@ -335,7 +410,8 @@ export const AppProvider = ({ children }) => {
         updateSearchQuery,
         updateSearchResults,
         updateFilters,
-        clearFilters
+        clearFilters,
+        moveToCart
     }
 
     return (

@@ -1,34 +1,65 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import ProductCard from '@/components/Common/ProductCard';
 import toast from 'react-hot-toast';
 import { productAPI, categoryAPI, transformProductData } from '@/services/api';
+import { useAppContext } from '@/context/AppContext';
+import { addProductToCart } from '@/utils/cartUtils';
+import { addProductToWishlist } from '@/utils/wishlistUtils';
+import { useRouter } from 'next/navigation';
 
 // Dynamic filter categories will be generated from API data
 
-
-
 export default function FeaturedProducts() {
+    const { addToCart, addToWishlist, wishlist } = useAppContext();
+    const router = useRouter();
     const [activeFilter, setActiveFilter] = useState('all');
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [categories, setCategories] = useState([]);
+    const [totalFeaturedProducts, setTotalFeaturedProducts] = useState(0);
 
-    // Fetch featured products
+    // Fetch featured products (limited to 10 for 2 rows × 5 columns layout)
+    // "See More" button shows only when total featured products > 10
     useEffect(() => {
         fetchFeaturedProducts();
         fetchCategories();
     }, []);
 
+    // Update products wishlist state when global wishlist changes
+    useEffect(() => {
+        if (products.length > 0) {
+            setProducts(prev => prev.map(product => ({
+                ...product,
+                isWishlisted: wishlist.some(item => item.productId === product._id)
+            })));
+        }
+    }, [wishlist]);
+
     const fetchFeaturedProducts = async () => {
         try {
             setLoading(true);
-            const data = await productAPI.getFeaturedProducts(20);
+            const data = await productAPI.getFeaturedProducts(10); // Limit to 10 products
             
             if (data.success) {
-                const transformedProducts = data.data.map(transformProductData);
+                // Keep original data for variants like SimilarProducts does
+                const productsData = data.data || [];
+                const transformedProducts = productsData.map(product => ({
+                    ...transformProductData(product),
+                    variants: product.variants || [], // Keep original variants
+                    _id: product._id, // Keep original ID
+                    title: product.title, // Keep original title
+                    slug: product.slug, // Keep original slug
+                    featuredImage: product.featuredImage, // Keep original image
+                    isWishlisted: wishlist.some(item => item.productId === product._id) // Sync with global wishlist
+                }));
                 setProducts(transformedProducts);
+                
+                // Store total count for "See More" button logic
+                if (data.pagination && data.pagination.total) {
+                    setTotalFeaturedProducts(data.pagination.total);
+                }
             } else {
                 toast.error('Failed to fetch featured products');
             }
@@ -66,17 +97,19 @@ export default function FeaturedProducts() {
         : products.filter(product => product.category === activeFilter);
 
     const handleWishlistToggle = (productId) => {
-        setProducts(prev => prev.map(product =>
-            product.id === productId
-                ? { ...product, isWishlisted: !product.isWishlisted }
-                : product
-        ));
+        const product = products.find(p => p.id === productId || p._id === productId);
+        if (product) {
+            addProductToWishlist(product, addToWishlist);
+            // Local state will be updated by useEffect when global wishlist changes
+        }
     };
 
-    const handleAddToCart = (productId) => {
-        // Add to cart logic here
-        console.log('Added to cart:', productId);
-    };
+    const handleAddToCart = useCallback((productId) => {
+        const selectedProduct = products.find(p => p.id === productId || p._id === productId);
+        if (selectedProduct) {
+            addProductToCart(selectedProduct, addToCart, 1);
+        }
+    }, [products, addToCart]);
 
     return (
         <section className="py-8 sm:py-12 px-4 bg-white">
@@ -102,7 +135,7 @@ export default function FeaturedProducts() {
                     </div>
                 </div>
 
-                {/* Products Grid */}
+                {/* Products Grid - Maximum 10 products (2 rows × 5 columns) */}
                 {loading ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
                         {[...Array(10)].map((_, index) => (
@@ -144,6 +177,18 @@ export default function FeaturedProducts() {
                                 View All Products
                             </button>
                         </div>
+                    </div>
+                )}
+
+                {/* See More Button - Show only when there are more than 10 total featured products */}
+                {totalFeaturedProducts > 10 && (
+                    <div className="text-center mt-8 sm:mt-12">
+                        <button 
+                            onClick={() => router.push('/shop')}
+                            className="bg-white text-pink-500 px-6 sm:px-8 py-3 rounded-lg font-semibold text-sm sm:text-base border-2 border-pink-500 hover:bg-pink-500 hover:text-white transition-all duration-300 shadow-sm hover:shadow-md"
+                        >
+                            See More Products
+                        </button>
                     </div>
                 )}
             </div>

@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { ArrowLeft, Save } from 'lucide-react'
 import ImageUpload from '@/components/Common/ImageUpload'
 import toast from 'react-hot-toast'
+import { categoryAPI } from '@/services/api'
 
 export default function CreateCategoryPage() {
     const router = useRouter()
@@ -24,8 +25,7 @@ export default function CreateCategoryPage() {
 
     const fetchCategories = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/v1/category')
-            const data = await response.json()
+            const data = await categoryAPI.getCategories()
             if (data.success) {
                 setCategories(data.data)
             }
@@ -57,15 +57,7 @@ export default function CreateCategoryPage() {
         setLoading(true)
 
         try {
-            const response = await fetch('http://localhost:5000/api/v1/category', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(formData),
-            })
-
-            const data = await response.json()
+            const data = await categoryAPI.createCategory(formData)
 
             if (data.success) {
                 toast.success('Category created successfully!')

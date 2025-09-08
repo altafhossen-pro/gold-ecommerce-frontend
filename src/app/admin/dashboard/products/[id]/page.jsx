@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Edit, Trash2, Package, Tag, Calendar, DollarSign, Star, Eye, EyeOff } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { productAPI } from '@/services/api'
 
 export default function ProductDetailsPage() {
     const router = useRouter()
@@ -22,13 +23,12 @@ export default function ProductDetailsPage() {
     const fetchProduct = async () => {
         try {
             setLoading(true)
-            const response = await fetch(`http://localhost:5000/api/v1/product/${productId}`)
-            const data = await response.json()
+            const data = await productAPI.getProductById(productId)
             
             if (data.success) {
                 setProduct(data.data)
             } else {
-                toast.error('Failed to fetch product: ' + data.message)
+                console.log('Failed to fetch product: ' + data.message)
                 router.push('/admin/dashboard/products')
             }
         } catch (error) {
@@ -45,10 +45,7 @@ export default function ProductDetailsPage() {
 
         try {
             setDeleting(true)
-            const response = await fetch(`http://localhost:5000/api/v1/product/${productId}`, {
-                method: 'DELETE',
-            })
-            const data = await response.json()
+            const data = await productAPI.deleteProduct(productId)
             
             if (data.success) {
                 toast.success('Product deleted successfully!')
@@ -216,6 +213,49 @@ export default function ProductDetailsPage() {
                             <p className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">{product.description}</p>
                         </div>
                     </div>
+
+                    {/* Jewelry Properties */}
+                    {(product.isBracelet || product.isRing) && (
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                            <h2 className="text-lg font-medium text-gray-900 mb-4">Jewelry Properties</h2>
+                            
+                            <div className="space-y-4">
+                                {product.isBracelet && (
+                                    <div>
+                                        <h3 className="text-md font-medium text-gray-700 mb-2">Bracelet Sizes</h3>
+                                        <div className="flex flex-wrap gap-2">
+                                            {product.braceletSizes && product.braceletSizes.length > 0 ? (
+                                                product.braceletSizes.map((size, index) => (
+                                                    <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                                                        {size}
+                                                    </span>
+                                                ))
+                                            ) : (
+                                                <span className="text-sm text-gray-500">No sizes specified</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                                
+                                {product.isRing && (
+                                    <div>
+                                        <h3 className="text-md font-medium text-gray-700 mb-2">Ring Sizes</h3>
+                                        <div className="flex flex-wrap gap-2">
+                                            {product.ringSizes && product.ringSizes.length > 0 ? (
+                                                product.ringSizes.map((size, index) => (
+                                                    <span key={index} className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                                                        {size}
+                                                    </span>
+                                                ))
+                                            ) : (
+                                                <span className="text-sm text-gray-500">No sizes specified</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Product Flags */}
                     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">

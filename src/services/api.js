@@ -47,6 +47,26 @@ export const productAPI = {
         return apiCall(`/product/discounted?limit=${limit}`);
     },
 
+    // Search products with filters
+    searchProducts: (searchQuery, filters = {}) => {
+        const params = { ...filters };
+        if (searchQuery) {
+            params.search = searchQuery;
+        }
+        const queryString = new URLSearchParams(params).toString();
+        return apiCall(`/product/search?${queryString}`);
+    },
+
+    // Get available filters based on categories
+    getAvailableFilters: (categoryIds = []) => {
+        const params = {};
+        if (categoryIds.length > 0) {
+            params.category = categoryIds.join(',');
+        }
+        const queryString = new URLSearchParams(params).toString();
+        return apiCall(`/product/filters?${queryString}`);
+    },
+
     // Get single product by ID
     getProductById: (id) => {
         return apiCall(`/product/${id}`);
@@ -83,9 +103,31 @@ export const productAPI = {
 
 // Category API functions
 export const categoryAPI = {
-    // Get all categories
-    getCategories: () => {
-        return apiCall('/category');
+    // Get all categories with pagination
+    getCategories: (params = {}) => {
+        const queryString = new URLSearchParams(params).toString();
+        return apiCall(`/category?${queryString}`);
+    },
+
+    // Get categories for homepage (limited, active categories)
+    getHomepageCategories: (limit = 10) => {
+        return apiCall(`/category/homepage?limit=${limit}`);
+    },
+
+    // Get only main/parent categories (no children)
+    getMainCategories: () => {
+        return apiCall('/category/main');
+    },
+
+    // Get paginated main categories with pagination
+    getPaginatedMainCategories: (params = {}) => {
+        const queryString = new URLSearchParams(params).toString();
+        return apiCall(`/category/main/paginated?${queryString}`);
+    },
+
+    // Get featured categories for homepage
+    getFeaturedCategories: (limit = 6) => {
+        return apiCall(`/category/featured?limit=${limit}`);
     },
 
     // Get single category by ID
@@ -141,8 +183,12 @@ export const userAPI = {
     },
 
     // Get user profile
-    getProfile: () => {
-        return apiCall('/user/profile');
+    getProfile: (token) => {
+        return apiCall('/user/profile', {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
     },
 
     // Update user profile
@@ -248,7 +294,7 @@ export const orderAPI = {
     // Update order status (for admin)
     updateOrderStatus: (orderId, status) => {
         return apiCall(`/order/${orderId}`, {
-            method: 'PUT',
+            method: 'PATCH',
             body: JSON.stringify({ status }),
         });
     },

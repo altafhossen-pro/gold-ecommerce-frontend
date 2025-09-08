@@ -5,7 +5,9 @@ import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Save, Plus, X, Trash2 } from 'lucide-react'
 import ImageUpload from '@/components/Common/ImageUpload'
+import GalleryImageUpload from '@/components/Common/GalleryImageUpload'
 import toast from 'react-hot-toast'
+import { productAPI, categoryAPI } from '@/services/api'
 
 export default function EditProductPage() {
     const router = useRouter()
@@ -27,12 +29,20 @@ export default function EditProductPage() {
         isFeatured: false,
         isBestselling: false,
         isNewArrival: false,
+        // Jewelry specific properties
+        isBracelet: false,
+        isRing: false,
+        braceletSizes: [],
+        ringSizes: [],
         slug: '',
         featuredImage: '',
         gallery: [],
         specifications: [],
         variants: []
     })
+
+    const [customBraceletSize, setCustomBraceletSize] = useState('');
+    const [customRingSize, setCustomRingSize] = useState('');
 
     const [variantForm, setVariantForm] = useState({
         image: '',
@@ -52,8 +62,7 @@ export default function EditProductPage() {
 
     const fetchCategories = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/v1/category')
-            const data = await response.json()
+            const data = await categoryAPI.getCategories()
             if (data.success) {
                 setCategories(data.data)
             }
@@ -65,8 +74,7 @@ export default function EditProductPage() {
     const fetchProduct = async () => {
         try {
             setFetching(true)
-            const response = await fetch(`http://localhost:5000/api/v1/product/${productId}`)
-            const data = await response.json()
+            const data = await productAPI.getProductById(productId)
             
             if (data.success) {
                 const product = data.data
@@ -82,6 +90,11 @@ export default function EditProductPage() {
                     isFeatured: product.isFeatured || false,
                     isBestselling: product.isBestselling || false,
                     isNewArrival: product.isNewArrival || false,
+                    // Jewelry specific properties
+                    isBracelet: product.isBracelet || false,
+                    isRing: product.isRing || false,
+                    braceletSizes: product.braceletSizes || [],
+                    ringSizes: product.ringSizes || [],
                     slug: product.slug || '',
                     featuredImage: product.featuredImage || '',
                     gallery: product.gallery || [],
@@ -213,15 +226,7 @@ export default function EditProductPage() {
         setLoading(true)
 
         try {
-            const response = await fetch(`http://localhost:5000/api/v1/product/${productId}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(formData),
-            })
-
-            const data = await response.json()
+            const data = await productAPI.updateProduct(productId, formData)
 
             if (data.success) {
                 toast.success('Product updated successfully!')
@@ -411,16 +416,243 @@ export default function EditProductPage() {
                     </div>
                 </div>
 
+                {/* Jewelry Type Selection */}
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <h2 className="text-lg font-medium text-gray-900 mb-6">Jewelry Type & Sizes</h2>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div className="space-y-4">
+                            <label className="flex items-center">
+                                <input
+                                    type="checkbox"
+                                    name="isBracelet"
+                                    checked={formData.isBracelet}
+                                    onChange={handleInputChange}
+                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                />
+                                <span className="ml-2 text-sm font-medium text-gray-700">This is a Bracelet</span>
+                            </label>
+                            
+                            <label className="flex items-center">
+                                <input
+                                    type="checkbox"
+                                    name="isRing"
+                                    checked={formData.isRing}
+                                    onChange={handleInputChange}
+                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                />
+                                <span className="ml-2 text-sm font-medium text-gray-700">This is a Ring</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    {/* Bracelet Sizes */}
+                    {formData.isBracelet && (
+                        <div className="mb-6">
+                            <h3 className="text-md font-medium text-gray-900 mb-3">Available Bracelet Sizes</h3>
+                            <div className="space-y-3">
+                                {/* Predefined Adjustable option */}
+                                <label className="flex items-center space-x-2 cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={formData.braceletSizes.includes('Adjustable')} 
+                                        onChange={(e) => {
+                                            if (e.target.checked) {
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    braceletSizes: [...prev.braceletSizes, 'Adjustable']
+                                                }));
+                                            } else {
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    braceletSizes: prev.braceletSizes.filter(size => size !== 'Adjustable')
+                                                }));
+                                            }
+                                        }} 
+                                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                                    />
+                                    <span className="text-sm text-gray-700">Adjustable</span>
+                                </label>
+                                
+                                {/* Custom sizes input */}
+                                <div className="space-y-2">
+                                    <div className="flex items-center space-x-2">
+                                        <input
+                                            type="text"
+                                            placeholder="Add custom size (e.g., 7.5, 8, 8.5)"
+                                            value={customBraceletSize}
+                                            onChange={(e) => setCustomBraceletSize(e.target.value)}
+                                            onKeyPress={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    if (customBraceletSize.trim() && !formData.braceletSizes.includes(customBraceletSize.trim())) {
+                                                        setFormData(prev => ({
+                                                            ...prev,
+                                                            braceletSizes: [...prev.braceletSizes, customBraceletSize.trim()]
+                                                        }));
+                                                        setCustomBraceletSize('');
+                                                    }
+                                                }
+                                            }}
+                                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                if (customBraceletSize.trim() && !formData.braceletSizes.includes(customBraceletSize.trim())) {
+                                                    setFormData(prev => ({
+                                                        ...prev,
+                                                        braceletSizes: [...prev.braceletSizes, customBraceletSize.trim()]
+                                                    }));
+                                                    setCustomBraceletSize('');
+                                                }
+                                            }}
+                                            className="px-3 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        >
+                                            Add
+                                        </button>
+                                    </div>
+                                    
+                                    {/* Display added sizes */}
+                                    {formData.braceletSizes.filter(size => size !== 'Adjustable').length > 0 && (
+                                        <div className="flex flex-wrap gap-2">
+                                            {formData.braceletSizes.filter(size => size !== 'Adjustable').map((size, index) => (
+                                                <span key={index} className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
+                                                    {size}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setFormData(prev => ({
+                                                                ...prev,
+                                                                braceletSizes: prev.braceletSizes.filter(s => s !== size)
+                                                            }));
+                                                        }}
+                                                        className="ml-2 text-blue-600 hover:text-blue-800"
+                                                    >
+                                                        ×
+                                                    </button>
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Ring Sizes */}
+                    {formData.isRing && (
+                        <div className="mb-6">
+                            <h3 className="text-md font-medium text-gray-900 mb-3">Available Ring Sizes</h3>
+                            <div className="space-y-3">
+                                {/* Predefined Adjustable option */}
+                                <label className="flex items-center space-x-2 cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={formData.ringSizes.includes('Adjustable')} 
+                                        onChange={(e) => {
+                                            if (e.target.checked) {
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    ringSizes: [...prev.ringSizes, 'Adjustable']
+                                                }));
+                                            } else {
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    ringSizes: prev.ringSizes.filter(size => size !== 'Adjustable')
+                                                }));
+                                            }
+                                        }} 
+                                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                                    />
+                                    <span className="text-sm text-gray-700">Adjustable</span>
+                                </label>
+                                
+                                {/* Custom sizes input */}
+                                <div className="space-y-2">
+                                    <div className="flex items-center space-x-2">
+                                        <input
+                                            type="text"
+                                            placeholder="Add custom size (e.g., 6, 6.5, 7, 7.5)"
+                                            value={customRingSize}
+                                            onChange={(e) => setCustomRingSize(e.target.value)}
+                                            onKeyPress={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    if (customRingSize.trim() && !formData.ringSizes.includes(customRingSize.trim())) {
+                                                        setFormData(prev => ({
+                                                            ...prev,
+                                                            ringSizes: [...prev.ringSizes, customRingSize.trim()]
+                                                        }));
+                                                        setCustomRingSize('');
+                                                    }
+                                                }
+                                            }}
+                                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                if (customRingSize.trim() && !formData.ringSizes.includes(customRingSize.trim())) {
+                                                    setFormData(prev => ({
+                                                        ...prev,
+                                                        ringSizes: [...prev.ringSizes, customRingSize.trim()]
+                                                    }));
+                                                    setCustomRingSize('');
+                                                }
+                                            }}
+                                            className="px-3 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        >
+                                            Add
+                                        </button>
+                                    </div>
+                                    
+                                    {/* Display added sizes */}
+                                    {formData.ringSizes.filter(size => size !== 'Adjustable').length > 0 && (
+                                        <div className="flex flex-wrap gap-2">
+                                            {formData.ringSizes.filter(size => size !== 'Adjustable').map((size, index) => (
+                                                <span key={index} className="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-sm rounded-full"
+                                                >
+                                                    {size}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setFormData(prev => ({
+                                                                ...prev,
+                                                                ringSizes: prev.ringSizes.filter(s => s !== size)
+                                                            }));
+                                                        }}
+                                                        className="ml-2 text-green-600 hover:text-green-800"
+                                                    >
+                                                        ×
+                                                    </button>
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
                 {/* Images */}
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                     <h2 className="text-lg font-medium text-gray-900 mb-6">Images</h2>
                     
-                    <div className="space-y-4">
+                    <div className="space-y-6">
                         <ImageUpload
                             onImageUpload={(url) => setFormData(prev => ({ ...prev, featuredImage: url }))}
                             onImageRemove={() => setFormData(prev => ({ ...prev, featuredImage: '' }))}
                             currentImage={formData.featuredImage}
                             label="Featured Image"
+                        />
+                        
+                        <GalleryImageUpload
+                            onImagesChange={(images) => setFormData(prev => ({ ...prev, gallery: images }))}
+                            currentImages={formData.gallery}
+                            label="Gallery Images"
+                            maxImages={10}
                         />
                     </div>
                 </div>

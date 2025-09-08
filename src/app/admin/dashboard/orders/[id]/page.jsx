@@ -41,6 +41,9 @@ export default function OrderDetailsPage() {
 
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+    const [newStatus, setNewStatus] = useState('');
+    const [updatingStatus, setUpdatingStatus] = useState(false);
 
     useEffect(() => {
         fetchOrderDetails();
@@ -138,6 +141,39 @@ export default function OrderDetailsPage() {
         toast.success('Order ID copied!');
     };
 
+    const openStatusModal = () => {
+        setNewStatus(order.status);
+        setIsStatusModalOpen(true);
+    };
+
+    const closeStatusModal = () => {
+        setIsStatusModalOpen(false);
+        setNewStatus('');
+    };
+
+    const handleStatusUpdate = async () => {
+        if (!newStatus) return;
+
+        try {
+            setUpdatingStatus(true);
+            const response = await orderAPI.updateOrderStatus(order._id, newStatus);
+            
+            if (response.success) {
+                toast.success('Order status updated successfully');
+                // Update the order in the local state
+                setOrder({ ...order, status: newStatus });
+                closeStatusModal();
+            } else {
+                toast.error(response.message || 'Failed to update order status');
+            }
+        } catch (error) {
+            console.error('Error updating order status:', error);
+            toast.error('Error updating order status');
+        } finally {
+            setUpdatingStatus(false);
+        }
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -206,7 +242,10 @@ export default function OrderDetailsPage() {
                                 <span className="ml-2">{order.status.charAt(0).toUpperCase() + order.status.slice(1)}</span>
                             </span>
                             <div className="flex items-center space-x-2">
-                                <button className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
+                                <button 
+                                    onClick={openStatusModal}
+                                    className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                                >
                                     <Edit3 className="h-4 w-4 mr-2" />
                                     Update Status
                                 </button>
@@ -559,7 +598,10 @@ export default function OrderDetailsPage() {
                         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
                             <h2 className="text-xl font-bold text-slate-900 mb-6">Quick Actions</h2>
                             <div className="grid grid-cols-1 gap-4">
-                                <button className="group flex items-center justify-center px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-xl">
+                                <button 
+                                    onClick={openStatusModal}
+                                    className="group flex items-center justify-center px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-xl"
+                                >
                                     <Edit3 className="h-5 w-5 mr-3 group-hover:scale-110 transition-transform" />
                                     <span className="font-semibold">Update Order Status</span>
                                 </button>
@@ -573,6 +615,76 @@ export default function OrderDetailsPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Status Update Modal */}
+            {isStatusModalOpen && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-medium text-gray-900">Update Order Status</h3>
+                            <button
+                                onClick={closeStatusModal}
+                                className="text-gray-400 hover:text-gray-600"
+                            >
+                                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div className="mb-4">
+                            <p className="text-sm text-gray-600 mb-2">
+                                Order ID: <span className="font-medium">#{order._id.slice(-8).toUpperCase()}</span>
+                            </p>
+                            <p className="text-sm text-gray-600 mb-4">
+                                Customer: <span className="font-medium">{order.user?.email || 'N/A'}</span>
+                            </p>
+                            
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Current Status: <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
+                                    {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                                </span>
+                            </label>
+
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                New Status
+                            </label>
+                            <select
+                                value={newStatus}
+                                onChange={(e) => setNewStatus(e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                            >
+                                <option value="pending">Pending</option>
+                                <option value="confirmed">Confirmed</option>
+                                <option value="processing">Processing</option>
+                                <option value="shipped">Shipped</option>
+                                <option value="delivered">Delivered</option>
+                                <option value="cancelled">Cancelled</option>
+                            </select>
+                        </div>
+
+                        <div className="flex justify-end space-x-3">
+                            <button
+                                onClick={closeStatusModal}
+                                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleStatusUpdate}
+                                disabled={updatingStatus || newStatus === order.status}
+                                className={`px-4 py-2 rounded-md text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+                                    updatingStatus || newStatus === order.status
+                                        ? 'bg-gray-400 cursor-not-allowed'
+                                        : 'bg-blue-600 hover:bg-blue-700'
+                                }`}
+                            >
+                                {updatingStatus ? 'Updating...' : 'Update Status'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

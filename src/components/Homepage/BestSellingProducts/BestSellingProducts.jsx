@@ -1,11 +1,14 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation } from 'swiper/modules';
 import ProductCard from '@/components/Common/ProductCard';
 import toast from 'react-hot-toast';
 import { productAPI, transformProductData } from '@/services/api';
+import { useAppContext } from '@/context/AppContext';
+import { addProductToCart } from '@/utils/cartUtils';
+import { addProductToWishlist } from '@/utils/wishlistUtils';
 
 // Import Swiper styles
 import 'swiper/css';
@@ -14,6 +17,7 @@ import 'swiper/css/navigation';
 
 
 export default function BestSellingProducts() {
+    const { addToCart, addToWishlist, wishlist } = useAppContext();
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -22,14 +26,33 @@ export default function BestSellingProducts() {
         fetchBestsellingProducts();
     }, []);
 
+    // Update products wishlist state when global wishlist changes
+    useEffect(() => {
+        if (products.length > 0) {
+            setProducts(prev => prev.map(product => ({
+                ...product,
+                isWishlisted: wishlist.some(item => item.productId === product._id)
+            })));
+        }
+    }, [wishlist]);
+
     const fetchBestsellingProducts = async () => {
         try {
             setLoading(true);
             const data = await productAPI.getBestsellingProducts(10);
             
             if (data.success) {
-                // Transform API data to match component structure
-                const transformedProducts = data.data.map(product => transformProductData(product));
+                // Keep original data for variants like FeaturedProducts does
+                const productsData = data.data || [];
+                const transformedProducts = productsData.map(product => ({
+                    ...transformProductData(product),
+                    variants: product.variants || [], // Keep original variants
+                    _id: product._id, // Keep original ID
+                    title: product.title, // Keep original title
+                    slug: product.slug, // Keep original slug
+                    featuredImage: product.featuredImage, // Keep original image
+                    isWishlisted: wishlist.some(item => item.productId === product._id) // Sync with global wishlist
+                }));
                 setProducts(transformedProducts);
             } else {
                 console.error('Failed to fetch bestselling products:', data.message);
@@ -42,17 +65,19 @@ export default function BestSellingProducts() {
     };
 
     const handleWishlistToggle = (productId) => {
-        setProducts(prev => prev.map(product =>
-            product.id === productId
-                ? { ...product, isWishlisted: !product.isWishlisted }
-                : product
-        ));
+        const product = products.find(p => p.id === productId || p._id === productId);
+        if (product) {
+            addProductToWishlist(product, addToWishlist);
+            // Local state will be updated by useEffect when global wishlist changes
+        }
     };
 
-    const handleAddToCart = (productId) => {
-        // Add to cart logic here
-        console.log('Added to cart:', productId);
-    };
+    const handleAddToCart = useCallback((productId) => {
+        const selectedProduct = products.find(p => p.id === productId || p._id === productId);
+        if (selectedProduct) {
+            addProductToCart(selectedProduct, addToCart, 1);
+        }
+    }, [products, addToCart]);
 
     return (
         <section className="py-8 px-4 bg-white">

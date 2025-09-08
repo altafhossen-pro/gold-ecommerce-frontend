@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { ArrowLeft, Save } from 'lucide-react'
 import ImageUpload from '@/components/Common/ImageUpload'
 import toast from 'react-hot-toast'
+import { categoryAPI } from '@/services/api'
 
 export default function EditCategoryPage() {
     const router = useRouter()
@@ -30,8 +31,7 @@ export default function EditCategoryPage() {
     const fetchCategory = async () => {
         try {
             setFetching(true)
-            const response = await fetch(`http://localhost:5000/api/v1/category/${categoryId}`)
-            const data = await response.json()
+            const data = await categoryAPI.getCategoryById(categoryId)
             
             if (data.success) {
                 setFormData({
@@ -55,8 +55,7 @@ export default function EditCategoryPage() {
 
     const fetchCategories = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/v1/category')
-            const data = await response.json()
+            const data = await categoryAPI.getCategories()
             if (data.success) {
                 // Filter out the current category from parent options
                 const filteredCategories = data.data.filter(cat => cat._id !== categoryId)
@@ -90,15 +89,7 @@ export default function EditCategoryPage() {
         setLoading(true)
 
         try {
-            const response = await fetch(`http://localhost:5000/api/v1/category/${categoryId}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(formData),
-            })
-
-            const data = await response.json()
+            const data = await categoryAPI.updateCategory(categoryId, formData)
 
             if (data.success) {
                 toast.success('Category updated successfully!')

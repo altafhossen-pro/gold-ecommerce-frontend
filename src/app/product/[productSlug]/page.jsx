@@ -3,12 +3,14 @@ import Header from '@/components/Header/Header';
 import ProductDetails from '@/components/ProductDetails/ProductDetails';
 import React from 'react';
 
-const page = ({ params }) => {
+const page = async ({ params }) => {
+    const { productSlug } = await params;
+    
     return (
         <div>
             <Header />
 
-            <ProductDetails productSlug={params.productSlug} />
+            <ProductDetails productSlug={productSlug} />
 
             <Footer />
         </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Eye, Trash2, Package, Calendar, User, MapPin, CreditCard, Mail } from 'lucide-react';
+import { Eye, Trash2, Package, Calendar, User, MapPin, CreditCard, Mail, Edit } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { formatDateForTable } from '@/utils/formatDate';
@@ -10,6 +10,10 @@ import { orderAPI } from '@/services/api';
 export default function AdminOrdersPage() {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+    const [selectedOrder, setSelectedOrder] = useState(null);
+    const [newStatus, setNewStatus] = useState('');
+    const [updatingStatus, setUpdatingStatus] = useState(false);
 
     useEffect(() => {
         fetchOrders();
@@ -67,6 +71,45 @@ export default function AdminOrdersPage() {
 
     const handleDeleteOrder = (orderId) => {
         toast.error('Admin cannot delete orders. Please contact system administrator.');
+    };
+
+    const openStatusModal = (order) => {
+        setSelectedOrder(order);
+        setNewStatus(order.status);
+        setIsStatusModalOpen(true);
+    };
+
+    const closeStatusModal = () => {
+        setIsStatusModalOpen(false);
+        setSelectedOrder(null);
+        setNewStatus('');
+    };
+
+    const handleStatusUpdate = async () => {
+        if (!selectedOrder || !newStatus) return;
+
+        try {
+            setUpdatingStatus(true);
+            const response = await orderAPI.updateOrderStatus(selectedOrder._id, newStatus);
+            
+            if (response.success) {
+                toast.success('Order status updated successfully');
+                // Update the order in the local state
+                setOrders(orders.map(order => 
+                    order._id === selectedOrder._id 
+                        ? { ...order, status: newStatus }
+                        : order
+                ));
+                closeStatusModal();
+            } else {
+                toast.error(response.message || 'Failed to update order status');
+            }
+        } catch (error) {
+            console.error('Error updating order status:', error);
+            toast.error('Error updating order status');
+        } finally {
+            setUpdatingStatus(false);
+        }
     };
 
     if (loading) {
@@ -195,6 +238,13 @@ export default function AdminOrdersPage() {
                                                     View
                                                 </Link>
                                                 <button
+                                                    onClick={() => openStatusModal(order)}
+                                                    className="inline-flex items-center px-3 py-1.5 border border-green-300 shadow-sm text-xs font-medium rounded-md text-green-700 bg-white hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                                                >
+                                                    <Edit className="h-3 w-3 mr-1" />
+                                                    Status
+                                                </button>
+                                                <button
                                                     onClick={() => handleDeleteOrder(order._id)}
                                                     className="inline-flex items-center px-3 py-1.5 border border-red-300 shadow-sm text-xs font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                                                 >
@@ -210,6 +260,76 @@ export default function AdminOrdersPage() {
                     </div>
                 )}
             </div>
+
+            {/* Status Update Modal */}
+            {isStatusModalOpen && selectedOrder && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-medium text-gray-900">Update Order Status</h3>
+                            <button
+                                onClick={closeStatusModal}
+                                className="text-gray-400 hover:text-gray-600"
+                            >
+                                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div className="mb-4">
+                            <p className="text-sm text-gray-600 mb-2">
+                                Order ID: <span className="font-medium">#{selectedOrder._id.slice(-8).toUpperCase()}</span>
+                            </p>
+                            <p className="text-sm text-gray-600 mb-4">
+                                Customer: <span className="font-medium">{selectedOrder.user?.email || 'N/A'}</span>
+                            </p>
+                            
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Current Status: <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(selectedOrder.status)}`}>
+                                    {selectedOrder.status.charAt(0).toUpperCase() + selectedOrder.status.slice(1)}
+                                </span>
+                            </label>
+
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                New Status
+                            </label>
+                            <select
+                                value={newStatus}
+                                onChange={(e) => setNewStatus(e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                            >
+                                <option value="pending">Pending</option>
+                                <option value="confirmed">Confirmed</option>
+                                <option value="processing">Processing</option>
+                                <option value="shipped">Shipped</option>
+                                <option value="delivered">Delivered</option>
+                                <option value="cancelled">Cancelled</option>
+                            </select>
+                        </div>
+
+                        <div className="flex justify-end space-x-3">
+                            <button
+                                onClick={closeStatusModal}
+                                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleStatusUpdate}
+                                disabled={updatingStatus || newStatus === selectedOrder.status}
+                                className={`px-4 py-2 rounded-md text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+                                    updatingStatus || newStatus === selectedOrder.status
+                                        ? 'bg-gray-400 cursor-not-allowed'
+                                        : 'bg-blue-600 hover:bg-blue-700'
+                                }`}
+                            >
+                                {updatingStatus ? 'Updating...' : 'Update Status'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -13,11 +13,12 @@ import toast from 'react-hot-toast';
 import { productAPI, transformProductData } from '@/services/api';
 import { useAppContext } from '@/context/AppContext';
 import { useRouter } from 'next/navigation';
+import { addProductToWishlist } from '@/utils/wishlistUtils';
 
 
 
 export default function ProductDetails({ productSlug }) {
-    const { addToCart } = useAppContext();
+    const { addToCart, addToWishlist, removeFromWishlist, wishlist } = useAppContext();
     const router = useRouter();
     const [selectedImage, setSelectedImage] = useState(0);
     const [quantity, setQuantity] = useState(1);
@@ -35,6 +36,22 @@ export default function ProductDetails({ productSlug }) {
             fetchProduct();
         }
     }, [productSlug]);
+
+    // Check if product is in wishlist
+    useEffect(() => {
+        if (product && wishlist) {
+            const isInWishlist = wishlist.some(item => item.productId === product._id);
+            console.log('Wishlist check:', { productId: product._id, wishlist, isInWishlist });
+            setIsWishlisted(isInWishlist);
+        }
+    }, [product, wishlist]);
+
+    // Reset selected image to 0 (featured image) when product changes
+    useEffect(() => {
+        if (product) {
+            setSelectedImage(0);
+        }
+    }, [product]);
 
     const fetchProduct = async () => {
         try {
@@ -185,14 +202,28 @@ export default function ProductDetails({ productSlug }) {
 
         // Add to cart using context
         addToCart(product, selectedVariantData, quantity);
-        
+
         // Navigate to checkout page
         router.push('/checkout');
     };
 
     const handleWishlistToggle = () => {
-        setIsWishlisted(!isWishlisted);
-        toast.success(isWishlisted ? 'Removed from wishlist' : 'Added to wishlist');
+        if (!product) return;
+
+        if (isWishlisted) {
+            removeFromWishlist(product._id);
+            setIsWishlisted(false);
+        } else {
+            // Ensure product has the required fields for wishlist
+            const productForWishlist = {
+                ...product,
+                price: product.variants?.[0]?.currentPrice || product.basePrice || 0,
+                category: product.category?.name || product.category || 'Other'
+            };
+            console.log('Adding to wishlist:', productForWishlist);
+            addProductToWishlist(productForWishlist, addToWishlist);
+            setIsWishlisted(true);
+        }
     };
 
     // Calculate price from selected variant
@@ -213,6 +244,43 @@ export default function ProductDetails({ productSlug }) {
     const currentPrice = getCurrentPrice();
     const originalPrice = getOriginalPrice();
     const discount = originalPrice ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100) : 0;
+
+    // Get all images (featured + gallery)
+    const getAllImages = () => {
+        if (!product) return [];
+
+        const images = [];
+
+        // Add featured image first (if exists)
+        if (product.featuredImage) {
+            images.push({
+                url: product.featuredImage,
+                altText: product.title,
+                isFeatured: true
+            });
+        }
+
+        // Add gallery images
+        if (product.gallery && product.gallery.length > 0) {
+            images.push(...product.gallery);
+        }
+
+        return images;
+    };
+
+    // Get display image based on selected index
+    const getDisplayImage = (index) => {
+        if (!product) return '/images/placeholder.png';
+
+        const allImages = getAllImages();
+        if (allImages.length > 0 && index < allImages.length) {
+            return allImages[index].url;
+        }
+        return '/images/placeholder.png';
+    };
+
+    // Get total number of images
+    const totalImages = product ? getAllImages().length : 0;
 
     if (loading) {
         return (
@@ -253,7 +321,7 @@ export default function ProductDetails({ productSlug }) {
                         {/* Main Image with light pink background */}
                         <div className="aspect-square bg-[#FEF2F4] rounded overflow-hidden border border-[#E7E7E7]">
                             <img
-                                src={product.gallery?.[selectedImage]?.url || product.featuredImage || '/images/placeholder.png'}
+                                src={getDisplayImage(selectedImage)}
                                 alt={product.title}
                                 className="w-full h-full object-cover p-2"
                             />
@@ -264,8 +332,8 @@ export default function ProductDetails({ productSlug }) {
                             <Swiper
                                 modules={[Navigation, Pagination]}
                                 spaceBetween={12}
-                                slidesPerView={4}
-                                loop={true}
+                                slidesPerView={Math.min(4, totalImages)}
+                                loop={totalImages > 4}
                                 navigation={{
                                     nextEl: '.swiper-button-next',
                                     prevEl: '.swiper-button-prev',
@@ -276,12 +344,12 @@ export default function ProductDetails({ productSlug }) {
                                 }}
                                 className="thumbnail-swiper"
                             >
-                                {product.gallery && product.gallery.length > 0 ? (
-                                    product.gallery.map((image, index) => (
+                                {product && totalImages > 0 ? (
+                                    getAllImages()?.map((image, index) => (
                                         <SwiperSlide key={index}>
                                             <button
                                                 onClick={() => setSelectedImage(index)}
-                                                className={`aspect-square bg-white rounded-lg overflow-hidden border-2 transition-all w-full ${selectedImage === index
+                                                className={`aspect-square bg-white rounded-lg overflow-hidden border-2 transition-all cursor-pointer w-full ${selectedImage === index
                                                     ? 'border-pink-500'
                                                     : 'border-gray-200 hover:border-pink-300'
                                                     }`}
@@ -291,6 +359,8 @@ export default function ProductDetails({ productSlug }) {
                                                     alt={image.altText || `${product.title} ${index + 1}`}
                                                     className="w-full h-full object-cover"
                                                 />
+                                                {/* Featured Image Badge */}
+
                                             </button>
                                         </SwiperSlide>
                                     ))
@@ -298,29 +368,43 @@ export default function ProductDetails({ productSlug }) {
                                     <SwiperSlide>
                                         <div className="aspect-square bg-white rounded-lg overflow-hidden border-2 border-gray-200">
                                             <img
-                                                src={product.featuredImage || '/images/placeholder.png'}
-                                                alt={product.title}
+                                                src="/images/placeholder.png"
+                                                alt={product?.title || 'Product'}
                                                 className="w-full h-full object-cover"
                                             />
                                         </div>
                                     </SwiperSlide>
                                 )}
-                            </Swiper>
 
-                            {/* Custom Navigation Buttons */}
-                            <button className="swiper-button-prev absolute left-0 top-1/2 transform -translate-y-1/2 z-10 w-4 h-4  rounded-full shadow-lg flex items-center justify-center  transition-colors">
-                                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                                </svg>
-                            </button>
-                            <button className="swiper-button-next absolute right-0 top-1/2 transform -translate-y-1/2 z-10 w-8 h-8  rounded-full shadow-lg flex items-center justify-center  transition-colors">
-                                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                </svg>
-                            </button>
+                            </Swiper>
+                            {
+                                totalImages > 4 && (
+                                    <>
+                                        <div className='!h-full !m-0 ' style={{display:"ruby-text"}}>
+                                            <button className="swiper-button-prev absolute left-0 top-1/2 transform -translate-y-1/2 z-10 w-4  flex items-center justify-center  transition-colors ">
+                                                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                                </svg>
+                                            </button>
+                                            <button className="swiper-button-next absolute right-0 top-1/2 transform -translate-y-1/2 z-10 w-4  flex items-center justify-center  transition-colors">
+                                                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        {/* Custom Navigation Buttons */}
+
+                                    </>
+                                )
+                            }
+
+
+
 
                             {/* Pagination Dots */}
-                            <div className="swiper-pagination flex justify-center mt-3 space-x-1"></div>
+                            {totalImages > 1 && (
+                                <div className="swiper-pagination flex justify-center mt-3 space-x-1"></div>
+                            )}
                         </div>
                     </div>
 
@@ -393,8 +477,8 @@ export default function ProductDetails({ productSlug }) {
                                                 key={size}
                                                 onClick={() => handleSizeChange(size)}
                                                 className={`w-8 h-8 rounded-md border-2 transition-all duration-200 flex items-center justify-center text-sm font-medium cursor-pointer ${selectedSize === size
-                                                        ? 'bg-pink-500 text-white border-pink-500 shadow-sm'
-                                                        : 'border-gray-300 text-gray-700 hover:border-pink-400 hover:bg-pink-50'
+                                                    ? 'bg-pink-500 text-white border-pink-500 shadow-sm'
+                                                    : 'border-gray-300 text-gray-700 hover:border-pink-400 hover:bg-pink-50'
                                                     }`}
                                             >
                                                 {size}
@@ -414,8 +498,8 @@ export default function ProductDetails({ productSlug }) {
                                                 key={color.value}
                                                 onClick={() => handleColorChange(color.value)}
                                                 className={`w-8 h-8 rounded-full border-2 transition-all duration-200 flex items-center justify-center cursor-pointer ${selectedColor === color.value
-                                                        ? 'border-pink-500 ring-2 ring-pink-200 shadow-sm'
-                                                        : 'border-gray-300 hover:border-pink-400 hover:shadow-sm'
+                                                    ? 'border-pink-500 ring-2 ring-pink-200 shadow-sm'
+                                                    : 'border-gray-300 hover:border-pink-400 hover:shadow-sm'
                                                     }`}
                                                 title={color.value}
                                             >
@@ -454,22 +538,22 @@ export default function ProductDetails({ productSlug }) {
                             </button>
                         </div>
 
-                                                 {/* Action Buttons */}
-                         <div className="flex gap-3 flex-wrap">
-                             <button
-                                 onClick={handleAddToCart}
-                                 className="flex-1 bg-white text-[#EF3D6A] py-3 px-1 lg:px-6 rounded cursor-pointer font-semibold border-[1.5px] border-[#EF3D6A] hover:bg-pink-50 transition-colors flex items-center justify-center gap-2"
-                             >
-                                 <ShoppingCart className="w-5 h-5" />
-                                 Add to cart
-                             </button>
-                             <button 
-                                 onClick={handleBuyNow}
-                                 className="flex-1 rounded bg-[#EF3D6A] text-white py-3 px-1 lg:px-6 cursor-pointer font-semibold hover:bg-[#C1274F] transition-colors"
-                             >
-                                 Buy Now
-                             </button>
-                         </div>
+                        {/* Action Buttons */}
+                        <div className="flex gap-3 flex-wrap">
+                            <button
+                                onClick={handleAddToCart}
+                                className="flex-1 bg-white text-[#EF3D6A] py-3 px-1 lg:px-6 rounded cursor-pointer font-semibold border-[1.5px] border-[#EF3D6A] hover:bg-pink-50 transition-colors flex items-center justify-center gap-2"
+                            >
+                                <ShoppingCart className="w-5 h-5" />
+                                Add to cart
+                            </button>
+                            <button
+                                onClick={handleBuyNow}
+                                className="flex-1 rounded bg-[#EF3D6A] text-white py-3 px-1 lg:px-6 cursor-pointer font-semibold hover:bg-[#C1274F] transition-colors"
+                            >
+                                Buy Now
+                            </button>
+                        </div>
                         <div className='border-b border-[#E7E7E7]'>
 
                         </div>
@@ -481,7 +565,7 @@ export default function ProductDetails({ productSlug }) {
                             <div className="border border-gray-200 rounded-lg overflow-hidden">
                                 <button
                                     onClick={() => setIsAdditionalOpen(!isAdditionalOpen)}
-                                    className="w-full px-6 py-4 flex items-center justify-between text-left bg-gray-50 hover:bg-gray-100 transition-colors"
+                                    className="w-full px-6 py-4 flex items-center justify-between text-left bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors"
                                 >
                                     <span className="font-semibold text-gray-900 flex items-center gap-2">
                                         <svg className="w-5 h-5 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -504,14 +588,8 @@ export default function ProductDetails({ productSlug }) {
                                                     <span className="text-sm font-medium text-gray-600">SKU</span>
                                                     <span className="text-sm text-gray-900">{selectedVariant?.sku || product.slug || 'FP-RING-001'}</span>
                                                 </div>
-                                                <div className="flex items-center justify-between py-2 border-b border-gray-100">
-                                                    <span className="text-sm font-medium text-gray-600">Category</span>
-                                                    <span className="text-sm text-gray-900">{product.category?.name || 'Jewelry'}</span>
-                                                </div>
-                                                <div className="flex items-center justify-between py-2 border-b border-gray-100">
-                                                    <span className="text-sm font-medium text-gray-600">Product Type</span>
-                                                    <span className="text-sm text-gray-900">{product.productType || 'simple'}</span>
-                                                </div>
+
+
                                             </div>
                                             <div className="space-y-3">
                                                 <div className="flex items-center justify-between py-2 border-b border-gray-100">
@@ -527,14 +605,8 @@ export default function ProductDetails({ productSlug }) {
                                                     <span className="text-sm font-medium text-gray-600">Stock Quantity</span>
                                                     <span className="text-sm text-gray-900">{selectedVariant?.stockQuantity || product.totalStock || 0}</span>
                                                 </div>
-                                                <div className="flex items-center justify-between py-2 border-b border-gray-100">
-                                                    <span className="text-sm font-medium text-gray-600">Weight</span>
-                                                    <span className="text-sm text-gray-900">{selectedVariant?.weight ? `${selectedVariant.weight}g` : '2.5g'}</span>
-                                                </div>
-                                                <div className="flex items-center justify-between py-2 border-b border-gray-100">
-                                                    <span className="text-sm font-medium text-gray-600">Warranty</span>
-                                                    <span className="text-sm text-gray-900">{product.warrantyInfo || '1 Year'}</span>
-                                                </div>
+
+
                                             </div>
                                         </div>
 
@@ -585,7 +657,7 @@ export default function ProductDetails({ productSlug }) {
                             <div className="border border-gray-200 rounded-lg overflow-hidden">
                                 <button
                                     onClick={() => setIsDeliveryOpen(!isDeliveryOpen)}
-                                    className="w-full px-6 py-4 flex items-center justify-between text-left bg-gray-50 hover:bg-gray-100 transition-colors"
+                                    className="w-full px-6 py-4 flex items-center justify-between text-left bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors"
                                 >
                                     <span className="font-semibold text-gray-900 flex items-center gap-2">
                                         <svg className="w-5 h-5 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -683,9 +755,9 @@ export default function ProductDetails({ productSlug }) {
 
 
                 {/* Similar Products */}
-                <SimilarProducts 
-                    currentProductId={product?._id} 
-                    currentProductCategory={product?.category?._id} 
+                <SimilarProducts
+                    currentProductId={product?._id}
+                    currentProductCategory={product?.category?._id}
                 />
             </div>
 
