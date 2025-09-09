@@ -17,7 +17,7 @@ export default function RootLayout({ children }) {
 
                 {/* Main Content - Scrollable within remaining height */}
                 <main className="flex-1 overflow-y-auto bg-gray-50 p-6">
-                    <div className="max-w-7xl mx-auto">
+                    <div className="2xl:max-w-7xl xl:max-w-6xl lg:xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl xl:2xl:max-w-7xl xl:max-w-6xl mx-auto">
                         {children}
                     </div>
                 </main>

@@ -113,7 +113,7 @@ export default function FeaturedProducts() {
 
     return (
         <section className="py-8 sm:py-12 px-4 bg-white">
-            <div className="max-w-7xl mx-auto">
+            <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto">
                 {/* Header */}
                 <div className="text-center mb-6 sm:mb-8">
                     <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800 mb-4 sm:mb-6">Our Features Product</h2>

@@ -37,6 +37,7 @@ export const AppProvider = ({ children }) => {
     // UI state
     const [loading, setLoading] = useState(false)
     const [sidebarOpen, setSidebarOpen] = useState(false)
+    const [isCartOpen, setIsCartOpen] = useState(false)
 
     // Search state
     const [searchQuery, setSearchQuery] = useState('')
@@ -53,7 +54,9 @@ export const AppProvider = ({ children }) => {
     // Cart functions
     const addToCart = (product, selectedVariant, quantity = 1) => {
         // Create variant key for unique identification
-        const variantKey = selectedVariant ? `${product._id}-${selectedVariant.size}-${selectedVariant.color}` : product._id;
+        const variantKey = selectedVariant ? 
+            `${product._id}-${selectedVariant.size}-${selectedVariant.color || 'no-color'}` : 
+            product._id;
         
         const cartItem = {
             id: Date.now(), // Unique cart item ID
@@ -67,15 +70,17 @@ export const AppProvider = ({ children }) => {
             },
             variantKey: variantKey,
             name: product.title,
-            variant: selectedVariant ? `Size: ${selectedVariant.size}, Color: ${selectedVariant.color}` : 'Default',
+            variant: selectedVariant ? 
+                `Size: ${selectedVariant.size}${selectedVariant.color ? `, Color: ${selectedVariant.color}` : ''}` : 
+                'Default',
             price: selectedVariant?.currentPrice || product.basePrice || 0,
             originalPrice: selectedVariant?.originalPrice || null,
             image: product.featuredImage || '/images/placeholder.png',
             quantity,
             total: (selectedVariant?.currentPrice || product.basePrice || 0) * quantity,
             size: selectedVariant?.size || null,
-            color: selectedVariant?.color || null,
-            colorHexCode: selectedVariant?.hexCode || null,
+            color: selectedVariant?.color || null, // Can be null if no color
+            colorHexCode: selectedVariant?.hexCode || null, // Can be null if no color
             sku: selectedVariant?.sku || product.slug,
             stockQuantity: selectedVariant?.stockQuantity || product.totalStock || 0,
             stockStatus: selectedVariant?.stockStatus || 'in_stock'
@@ -95,6 +100,9 @@ export const AppProvider = ({ children }) => {
             setCart([...cart, cartItem]);
             toast.success('Added to cart successfully!');
         }
+        
+        // Auto-open cart modal after adding to cart
+        setIsCartOpen(true);
     }
 
     const removeFromCart = (cartItemId) => {
@@ -176,9 +184,9 @@ export const AppProvider = ({ children }) => {
                 const colorAttr = firstVariant.attributes?.find(attr => attr.name === 'Color');
                 
                 selectedVariant = {
-                    size: sizeAttr?.value || 'Default',
-                    color: colorAttr?.value || 'Default',
-                    hexCode: colorAttr?.hexCode || '#000000',
+                    size: sizeAttr?.value || 'Default', // Size is mandatory
+                    color: colorAttr?.value || null, // Color is optional
+                    hexCode: colorAttr?.hexCode || null, // Only set if color exists
                     currentPrice: firstVariant.currentPrice || wishlistItem.price,
                     originalPrice: firstVariant.originalPrice || null,
                     sku: firstVariant.sku || wishlistItem.slug,
@@ -188,9 +196,9 @@ export const AppProvider = ({ children }) => {
             } else {
                 // If no variants, create a default variant
                 selectedVariant = {
-                    size: 'Default',
-                    color: 'Default',
-                    hexCode: '#000000',
+                    size: 'Default', // Size is mandatory
+                    color: null, // Color is optional
+                    hexCode: null, // No color by default
                     currentPrice: wishlistItem.price,
                     originalPrice: null,
                     sku: wishlistItem.slug,
@@ -375,6 +383,7 @@ export const AppProvider = ({ children }) => {
         wishlistCount,
         loading,
         sidebarOpen,
+        isCartOpen,
         searchQuery,
         searchResults,
         filters,
@@ -390,6 +399,7 @@ export const AppProvider = ({ children }) => {
         setWishlistCount,
         setLoading,
         setSidebarOpen,
+        setIsCartOpen,
         setSearchQuery,
         setSearchResults,
         setFilters,

@@ -97,7 +97,7 @@ export default function Offers() {
             <Header />
 
             {/* Main Content */}
-            <div className="max-w-7xl mx-auto px-4 py-12">
+            <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto px-4 py-12">
                 {/* Header Section */}
                 <div className="text-center mb-12">
                     <div className="inline-flex items-center justify-center w-16 h-16 bg-pink-100 rounded-full mb-6">

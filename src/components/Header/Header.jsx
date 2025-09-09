@@ -20,10 +20,9 @@ const navigationMenu = [
 ];
 
 export default function Header({ isTrackingShow = true }) {
-  const { user, cartCount, cartLoading, wishlistCount } = useAppContext();
+  const { user, cartCount, cartLoading, wishlistCount, isCartOpen, setIsCartOpen } = useAppContext();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [isCartOpen, setIsCartOpen] = useState(false);
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
 
   const toggleMobileMenu = () => {
@@ -47,7 +46,7 @@ export default function Header({ isTrackingShow = true }) {
 
       {/* Main header */}
       <div className="bg-white shadow-sm px-4 py-4 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+        <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center">
             <Link href="/">
@@ -63,7 +62,7 @@ export default function Header({ isTrackingShow = true }) {
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center space-x-8">
+          <nav className="hidden lg:flex items-center space-x-5">
             {navigationMenu.map((item) => (
               <Link
                 key={item.id}
@@ -97,7 +96,11 @@ export default function Header({ isTrackingShow = true }) {
             <div className="flex items-center space-x-1 sm:space-x-3">
               {/* User */}
               {
-                user?.email ? (
+                user?.email ? user?.role === 'admin' ? (
+                  <Link href={`/admin/dashboard`} className="p-2 bg-gray-100 hover:bg-gray-200 cursor-pointer rounded-full transition-colors border border-gray-200">
+                    <User className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700" />
+                  </Link>
+                ) : (
                   <Link href={`/dashboard`} className="p-2 bg-gray-100 hover:bg-gray-200 cursor-pointer rounded-full transition-colors border border-gray-200">
                     <User className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700" />
                   </Link>

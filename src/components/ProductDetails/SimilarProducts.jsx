@@ -7,42 +7,44 @@ import { useAppContext } from '@/context/AppContext';
 import { productAPI, transformProductData } from '@/services/api';
 import ProductCard from '@/components/Common/ProductCard';
 import { addProductToCart } from '@/utils/cartUtils';
+import { addProductToWishlist } from '@/utils/wishlistUtils';
 
 const SimilarProducts = ({ currentProductId, currentProductCategory }) => {
-  const { addToCart } = useAppContext();
+  const { addToCart, addToWishlist, removeFromWishlist, wishlist } = useAppContext();
   const [similarProducts, setSimilarProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (currentProductId && currentProductCategory) {
+    if (currentProductId) {
       fetchSimilarProducts();
     }
-  }, [currentProductId, currentProductCategory]);
+  }, [currentProductId]);
 
   const fetchSimilarProducts = async () => {
     try {
       setLoading(true);
-      // Fetch products from the same category, excluding current product
-      const response = await productAPI.getProducts({
-        category: currentProductCategory,
-        limit: 8,
-        page: 1
-      });
+      // Use the new smart similar products API
+      const response = await productAPI.getSimilarProducts(currentProductId, 8, 4);
       
       if (response.success) {
-        // Filter out the current product and keep original data for variants
+        // Transform products and keep original data for variants
         const products = response.data || [];
-        const filteredProducts = products
-          .filter(product => product._id !== currentProductId)
-          .map(product => ({
-            ...transformProductData(product),
-            variants: product.variants || [], // Keep original variants
-            _id: product._id, // Keep original ID
-            title: product.title, // Keep original title
-            slug: product.slug, // Keep original slug
-            featuredImage: product.featuredImage // Keep original image
-          }));
-        setSimilarProducts(filteredProducts || []);
+        const transformedProducts = products.map(product => ({
+          ...transformProductData(product),
+          variants: product.variants || [], // Keep original variants
+          _id: product._id, // Keep original ID
+          title: product.title, // Keep original title
+          slug: product.slug, // Keep original slug
+          featuredImage: product.featuredImage // Keep original image
+        }));
+        setSimilarProducts(transformedProducts || []);
+        
+        // Log the source for debugging
+        console.log('Similar products fetched:', {
+          source: response.meta?.source,
+          totalFound: response.meta?.totalFound,
+          categoryName: response.meta?.categoryName
+        });
       }
     } catch (error) {
       console.error('Error fetching similar products:', error);
@@ -51,14 +53,41 @@ const SimilarProducts = ({ currentProductId, currentProductCategory }) => {
     }
   };
 
+  // Update products wishlist state when global wishlist changes
+  useEffect(() => {
+    if (similarProducts.length > 0) {
+      setSimilarProducts(prev => prev.map(product => ({
+        ...product,
+        isWishlisted: wishlist.some(item => item.productId === product._id)
+      })));
+    }
+  }, [wishlist]);
+
   const handleAddToCart = useCallback((product) => {
     addProductToCart(product, addToCart, 1);
   }, [addToCart]);
 
   const handleWishlistToggle = useCallback((productId) => {
-    // Wishlist functionality can be implemented here
-    toast.success('Added to wishlist!');
-  }, []);
+    const product = similarProducts.find(p => p.id === productId || p._id === productId);
+    if (product) {
+      // Check if product is already in wishlist
+      const isInWishlist = wishlist.some(item => item.productId === product._id);
+      
+      if (isInWishlist) {
+        // Remove from wishlist
+        removeFromWishlist(product._id);
+        toast.success('Removed from wishlist!');
+      } else {
+        // Add to wishlist
+        const productForWishlist = {
+          ...product,
+          price: product.variants?.[0]?.currentPrice || product.basePrice || 0,
+          category: product.category?.name || product.category || 'Other'
+        };
+        addProductToWishlist(productForWishlist, addToWishlist);
+      }
+    }
+  }, [similarProducts, wishlist, addToWishlist, removeFromWishlist]);
 
   const handleAddToCartFromCard = useCallback((productId) => {
     const selectedProduct = similarProducts.find(p => p.id === productId || p._id === productId);
@@ -70,7 +99,7 @@ const SimilarProducts = ({ currentProductId, currentProductCategory }) => {
   if (loading) {
     return (
       <div className="py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-8">Similar Products</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[...Array(4)].map((_, index) => (
@@ -86,19 +115,22 @@ const SimilarProducts = ({ currentProductId, currentProductCategory }) => {
     );
   }
 
-  if (!currentProductCategory || similarProducts.length === 0) {
+  if (!currentProductId || similarProducts.length === 0) {
     return null;
   }
 
   return (
-    <div className="py-12 bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="py-12 ">
+      <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto px-4 sm:px-6 lg:px-0">
         <h2 className="text-2xl font-bold text-gray-900 mb-8">Similar Products</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {similarProducts.map((product) => (
             <ProductCard
               key={product._id || product.id}
-              product={product}
+              product={{
+                ...product,
+                isWishlisted: wishlist.some(item => item.productId === product._id)
+              }}
               onWishlistToggle={handleWishlistToggle}
               onAddToCart={handleAddToCartFromCard}
               showWishlistOnHover={true}

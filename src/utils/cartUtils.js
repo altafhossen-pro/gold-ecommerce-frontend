@@ -18,9 +18,9 @@ export const addProductToCart = (product, addToCart, quantity = 1) => {
       const colorAttr = firstVariant.attributes?.find(attr => attr.name === 'Color');
       
       selectedVariant = {
-        size: sizeAttr?.value || 'Default',
-        color: colorAttr?.value || 'Default',
-        hexCode: colorAttr?.hexCode || '#000000',
+        size: sizeAttr?.value || 'Default', // Size is mandatory
+        color: colorAttr?.value || null, // Color is optional
+        hexCode: colorAttr?.hexCode || null, // Only set if color exists
         currentPrice: firstVariant.currentPrice || product.price,
         originalPrice: firstVariant.originalPrice || product.originalPrice,
         sku: firstVariant.sku,
@@ -30,9 +30,9 @@ export const addProductToCart = (product, addToCart, quantity = 1) => {
     } else {
       // If no variants, create a default variant
       selectedVariant = {
-        size: 'Default',
-        color: 'Default',
-        hexCode: '#000000',
+        size: 'Default', // Size is mandatory
+        color: null, // Color is optional
+        hexCode: null, // No color by default
         currentPrice: product.price,
         originalPrice: product.originalPrice,
         sku: product.slug || 'default-sku',

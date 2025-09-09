@@ -61,7 +61,7 @@ export default function ContactUsPage() {
             <Header />
 
             {/* Main Content */}
-            <div className="max-w-7xl mx-auto px-4 py-12">
+            <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto px-4 py-12">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     {/* Contact Form */}
                     <div className="bg-white h-fit rounded-2xl shadow-lg border border-gray-300 p-8">

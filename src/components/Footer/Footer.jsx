@@ -42,20 +42,20 @@ export default function Footer() {
   return (
     <footer className="text-white" style={{ background: 'linear-gradient(280.37deg, #2C1A25 1.99%, #1C071B 53.16%, #200C25 99.63%)' }}>
       {/* Main Footer Content */}
-      <div className="max-w-7xl mx-auto px-4 py-12">
+      <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           
           {/* About Section */}
           <div className="space-y-4">
             {/* Logo */}
             <div className="flex items-center">
-              <Link href="/">
+              <Link className='' href="/">
                 <Image 
-                  src="/images/logo.png" 
+                  src="/images/footer_logo.png" 
                   alt="FORPINK.COM" 
-                  width={170}
-                  height={70}
-                  className="w-32 sm:w-40 md:w-auto"
+                  width={190}
+                  height={80}
+                  className="w-36 sm:w-40 "
                   priority
                 />
               </Link>
@@ -161,7 +161,7 @@ export default function Footer() {
 
       {/* Copyright Section */}
       <div className="border-t border-pink-400/30">
-        <div className="max-w-7xl mx-auto px-4 py-6">
+        <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto px-4 py-6">
           <div className="text-center">
             <p className="text-gray-300 text-sm">
               ©2025 Forpink. All rights reserved.

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Star, Heart, Minus, Plus, ShoppingCart, ChevronDown } from 'lucide-react';
+import { Star, Heart, Minus, Plus, ShoppingCart } from 'lucide-react';
 import CountdownTimer from '@/components/Common/CountdownTimer';
 import SimilarProducts from './SimilarProducts';
 import { Swiper, SwiperSlide } from 'swiper/react';
@@ -25,8 +25,7 @@ export default function ProductDetails({ productSlug }) {
     const [selectedSize, setSelectedSize] = useState("");
     const [selectedColor, setSelectedColor] = useState("");
     const [isWishlisted, setIsWishlisted] = useState(false);
-    const [isAdditionalOpen, setIsAdditionalOpen] = useState(false);
-    const [isDeliveryOpen, setIsDeliveryOpen] = useState(false);
+    const [activeTab, setActiveTab] = useState('description');
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
 
@@ -66,12 +65,21 @@ export default function ProductDetails({ productSlug }) {
                     const sizeAttr = firstVariant.attributes.find(attr => attr.name === 'Size');
                     const colorAttr = firstVariant.attributes.find(attr => attr.name === 'Color');
 
-                    if (sizeAttr) setSelectedSize(sizeAttr.value);
-                    if (colorAttr) setSelectedColor(colorAttr.value);
+                    // Size is mandatory - set it if available
+                    if (sizeAttr) {
+                        setSelectedSize(sizeAttr.value);
+                    }
+                    
+                    // Color is optional - only set if variant has color
+                    if (colorAttr) {
+                        setSelectedColor(colorAttr.value);
+                    } else {
+                        setSelectedColor(""); // No color for this variant
+                    }
                 } else {
                     // If no variants, set default values
                     setSelectedSize("Default");
-                    setSelectedColor("Default");
+                    setSelectedColor(""); // No color by default
                 }
             } else {
                 toast.error('Product not found');
@@ -86,7 +94,7 @@ export default function ProductDetails({ productSlug }) {
 
 
 
-    // Get unique sizes and colors from variants
+    // Get unique sizes from variants (mandatory)
     const getUniqueSizes = () => {
         if (!product?.variants) return [];
         const sizes = product.variants
@@ -96,18 +104,19 @@ export default function ProductDetails({ productSlug }) {
         return [...new Set(sizes)];
     };
 
+    // Get unique colors from variants (optional - only if variants have color)
     const getUniqueColors = () => {
         if (!product?.variants) return [];
         const colors = product.variants
             .map(variant => variant.attributes.find(attr => attr.name === 'Color'))
-            .filter(color => color)
+            .filter(color => color) // Only include variants that have color
             .map(color => ({ value: color.value, hexCode: color.hexCode }));
         return colors.filter((color, index, self) =>
             index === self.findIndex(c => c.value === color.value)
         );
     };
 
-    // Get available colors for selected size
+    // Get available colors for selected size (optional)
     const getAvailableColorsForSize = (size) => {
         if (!product?.variants) return [];
         return product.variants
@@ -119,16 +128,35 @@ export default function ProductDetails({ productSlug }) {
                 const colorAttr = variant.attributes.find(attr => attr.name === 'Color');
                 return colorAttr ? { value: colorAttr.value, hexCode: colorAttr.hexCode } : null;
             })
-            .filter(color => color);
+            .filter(color => color); // Only include variants that have color
     };
 
-    // Get selected variant
+    // Get selected variant (size mandatory, color optional)
     const getSelectedVariant = () => {
         if (!product?.variants) return null;
         return product.variants.find(variant => {
             const sizeAttr = variant.attributes.find(attr => attr.name === 'Size');
             const colorAttr = variant.attributes.find(attr => attr.name === 'Color');
-            return sizeAttr?.value === selectedSize && colorAttr?.value === selectedColor;
+            
+            // Size must match (mandatory)
+            const sizeMatches = sizeAttr?.value === selectedSize;
+            
+            // Color matching logic:
+            // 1. If variant has color and we have selectedColor, both must match
+            // 2. If variant has no color and we have no selectedColor, it matches
+            // 3. If variant has color but we have no selectedColor, it doesn't match
+            // 4. If variant has no color but we have selectedColor, it doesn't match
+            let colorMatches = true;
+            if (colorAttr && selectedColor) {
+                colorMatches = colorAttr.value === selectedColor;
+            } else if (colorAttr && !selectedColor) {
+                colorMatches = false; // Variant has color but we don't have selected color
+            } else if (!colorAttr && selectedColor) {
+                colorMatches = false; // We have selected color but variant has no color
+            }
+            // If both variant and selectedColor are null/empty, colorMatches remains true
+            
+            return sizeMatches && colorMatches;
         });
     };
 
@@ -152,6 +180,7 @@ export default function ProductDetails({ productSlug }) {
         if (colorsForSize.length > 0) {
             setSelectedColor(colorsForSize[0].value);
         } else {
+            // If no colors available for this size, clear selected color
             setSelectedColor("");
         }
     };
@@ -302,8 +331,8 @@ export default function ProductDetails({ productSlug }) {
     }
 
     return (
-        <div className="min-h-screen ">
-            <div className="max-w-6xl mx-auto px-8 py-4">
+        <div className="min-h-screen px-4 lg:px-4 py-4">
+            <div className="2xl:2xl:max-w-7xl xl:max-w-6xl xl:max-w-6xl  max-w-xl mx-auto">
                 {/* Breadcrumb */}
                 <div className="mb-6">
                     <nav className="flex text-sm text-gray-500">
@@ -380,7 +409,7 @@ export default function ProductDetails({ productSlug }) {
                             {
                                 totalImages > 4 && (
                                     <>
-                                        <div className='!h-full !m-0 ' style={{display:"ruby-text"}}>
+                                        <div className='!h-full !m-0 ' style={{ display: "ruby-text" }}>
                                             <button className="swiper-button-prev absolute left-0 top-1/2 transform -translate-y-1/2 z-10 w-4  flex items-center justify-center  transition-colors ">
                                                 <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -488,7 +517,7 @@ export default function ProductDetails({ productSlug }) {
                                 </div>
                             )}
 
-                            {/* Color Selector */}
+                            {/* Color Selector - Only show if colors are available */}
                             {availableColors.length > 0 && (
                                 <div className="space-y-2">
                                     <label className="block text-sm font-medium text-gray-700">Select Color</label>
@@ -559,196 +588,218 @@ export default function ProductDetails({ productSlug }) {
                         </div>
 
 
-                        {/* Collapsible Sections */}
-                        <div className="space-y-4">
-                            {/* Additional Info */}
-                            <div className="border border-gray-200 rounded-lg overflow-hidden">
-                                <button
-                                    onClick={() => setIsAdditionalOpen(!isAdditionalOpen)}
-                                    className="w-full px-6 py-4 flex items-center justify-between text-left bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors"
-                                >
-                                    <span className="font-semibold text-gray-900 flex items-center gap-2">
-                                        <svg className="w-5 h-5 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                        Additional Information
-                                    </span>
-                                    <ChevronDown className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${isAdditionalOpen ? 'rotate-180' : ''}`} />
-                                </button>
 
-                                {isAdditionalOpen && (
-                                    <div className="px-6 py-4 bg-white">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div className="space-y-3">
-                                                <div className="flex items-center justify-between py-2 border-b border-gray-100">
-                                                    <span className="text-sm font-medium text-gray-600">Brand</span>
-                                                    <span className="text-sm text-gray-900">{product.brand || 'ForPink'}</span>
-                                                </div>
-                                                <div className="flex items-center justify-between py-2 border-b border-gray-100">
-                                                    <span className="text-sm font-medium text-gray-600">SKU</span>
-                                                    <span className="text-sm text-gray-900">{selectedVariant?.sku || product.slug || 'FP-RING-001'}</span>
-                                                </div>
+                    </div>
 
+                </div>
+                <div>
+                    {/* Tab Navigation */}
+                    <div className="border-b border-gray-200">
+                        <nav className="flex space-x-8">
+                            <button
+                                onClick={() => setActiveTab('description')}
+                                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                                    activeTab === 'description'
+                                        ? 'border-pink-500 text-pink-600'
+                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                }`}
+                            >
+                                Description
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('additional')}
+                                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                                    activeTab === 'additional'
+                                        ? 'border-pink-500 text-pink-600'
+                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                }`}
+                            >
+                                Additional Information
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('delivery')}
+                                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                                    activeTab === 'delivery'
+                                        ? 'border-pink-500 text-pink-600'
+                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                }`}
+                            >
+                                Delivery & Return
+                            </button>
+                        </nav>
+                    </div>
 
-                                            </div>
-                                            <div className="space-y-3">
-                                                <div className="flex items-center justify-between py-2 border-b border-gray-100">
-                                                    <span className="text-sm font-medium text-gray-600">Stock Status</span>
-                                                    <span className="text-sm text-gray-900">
-                                                        {selectedVariant?.stockStatus === 'in_stock' ? 'In Stock' :
-                                                            selectedVariant?.stockStatus === 'out_of_stock' ? 'Out of Stock' :
-                                                                selectedVariant?.stockStatus === 'low_stock' ? 'Low Stock' :
-                                                                    selectedVariant?.stockStatus === 'pre_order' ? 'Pre Order' : 'In Stock'}
-                                                    </span>
-                                                </div>
-                                                <div className="flex items-center justify-between py-2 border-b border-gray-100">
-                                                    <span className="text-sm font-medium text-gray-600">Stock Quantity</span>
-                                                    <span className="text-sm text-gray-900">{selectedVariant?.stockQuantity || product.totalStock || 0}</span>
-                                                </div>
-
-
-                                            </div>
-                                        </div>
-
-                                        {/* Specifications from API */}
-                                        {product.specifications && product.specifications.length > 0 && (
-                                            <div className="mt-6 pt-6 border-t border-gray-100">
-                                                <h4 className="font-semibold text-gray-900 mb-3">Specifications</h4>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    {product.specifications.map((spec, index) => (
-                                                        <div key={index} className="flex items-center justify-between py-2 border-b border-gray-50">
-                                                            <span className="text-sm font-medium text-gray-600">{spec.key}</span>
-                                                            <span className="text-sm text-gray-900">{spec.value}</span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {/* Static Specifications for Jewelry */}
-                                        {(!product.specifications || product.specifications.length === 0) && (
-                                            <div className="mt-6 pt-6 border-t border-gray-100">
-                                                <h4 className="font-semibold text-gray-900 mb-3">Specifications</h4>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    <div className="flex items-center justify-between py-2 border-b border-gray-50">
-                                                        <span className="text-sm font-medium text-gray-600">Material</span>
-                                                        <span className="text-sm text-gray-900">18k White Gold</span>
-                                                    </div>
-                                                    <div className="flex items-center justify-between py-2 border-b border-gray-50">
-                                                        <span className="text-sm font-medium text-gray-600">Stone</span>
-                                                        <span className="text-sm text-gray-900">Diamond</span>
-                                                    </div>
-                                                    <div className="flex items-center justify-between py-2 border-b border-gray-50">
-                                                        <span className="text-sm font-medium text-gray-600">Clarity</span>
-                                                        <span className="text-sm text-gray-900">VS1</span>
-                                                    </div>
-                                                    <div className="flex items-center justify-between py-2 border-b border-gray-50">
-                                                        <span className="text-sm font-medium text-gray-600">Color</span>
-                                                        <span className="text-sm text-gray-900">G</span>
-                                                    </div>
-                                                </div>
-                                            </div>
+                    {/* Tab Content */}
+                    <div className="py-6">
+                        {/* Description Tab */}
+                        {activeTab === 'description' && (
+                            <div className="space-y-4">
+                                <div className="prose max-w-none">
+                                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Product Description</h3>
+                                    <div className="text-gray-600 leading-relaxed">
+                                        {product.description ? (
+                                            <div dangerouslySetInnerHTML={{ __html: product.description.replace(/\n/g, '<br/>') }} />
+                                        ) : (
+                                            <p>{product.shortDescription || 'No detailed description available for this product.'}</p>
                                         )}
                                     </div>
-                                )}
+                                </div>
+                                
+                                
                             </div>
+                        )}
 
-                            {/* Delivery & Return Info */}
-                            <div className="border border-gray-200 rounded-lg overflow-hidden">
-                                <button
-                                    onClick={() => setIsDeliveryOpen(!isDeliveryOpen)}
-                                    className="w-full px-6 py-4 flex items-center justify-between text-left bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors"
-                                >
-                                    <span className="font-semibold text-gray-900 flex items-center gap-2">
-                                        <svg className="w-5 h-5 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                                        </svg>
-                                        Delivery & Return Information
-                                    </span>
-                                    <ChevronDown className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${isDeliveryOpen ? 'rotate-180' : ''}`} />
-                                </button>
+                        {/* Additional Information Tab */}
+                        {activeTab === 'additional' && (
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-3">
+                                        <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                                            <span className="text-sm font-medium text-gray-600">Brand</span>
+                                            <span className="text-sm text-gray-900">{product.brand || 'ForPink'}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between py-2 ">
+                                            <span className="text-sm font-medium text-gray-600">SKU</span>
+                                            <span className="text-sm text-gray-900">{selectedVariant?.sku || product.slug || 'FP-RING-001'}</span>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <div className="flex items-center justify-between py-2 border-b border-gray-100">
+                                            <span className="text-sm font-medium text-gray-600">Stock Status</span>
+                                            <span className="text-sm text-gray-900">
+                                                {selectedVariant?.stockStatus === 'in_stock' ? 'In Stock' :
+                                                    selectedVariant?.stockStatus === 'out_of_stock' ? 'Out of Stock' :
+                                                        selectedVariant?.stockStatus === 'low_stock' ? 'Low Stock' :
+                                                            selectedVariant?.stockStatus === 'pre_order' ? 'Pre Order' : 'In Stock'}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between py-2 ">
+                                            <span className="text-sm font-medium text-gray-600">Stock Quantity</span>
+                                            <span className="text-sm text-gray-900">{selectedVariant?.stockQuantity || product.totalStock || 0}</span>
+                                        </div>
+                                    </div>
+                                </div>
 
-                                {isDeliveryOpen && (
-                                    <div className="px-6 py-4 bg-white">
-                                        <div className="space-y-6">
-                                            {/* Delivery Info */}
-                                            <div className="space-y-3">
-                                                <h4 className="font-semibold text-gray-900 flex items-center gap-2">
-                                                    <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                                    </svg>
-                                                    Delivery Information
-                                                </h4>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    <div className="bg-green-50 p-3 rounded-lg">
-                                                        <div className="flex items-center gap-2 mb-1">
-                                                            <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                            </svg>
-                                                            <span className="text-sm font-medium text-green-800">Free Delivery</span>
-                                                        </div>
-                                                        <p className="text-xs text-green-700">On orders above ৳1000</p>
-                                                    </div>
-                                                    <div className="bg-blue-50 p-3 rounded-lg">
-                                                        <div className="flex items-center gap-2 mb-1">
-                                                            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                                            </svg>
-                                                            <span className="text-sm font-medium text-blue-800">Fast Delivery</span>
-                                                        </div>
-                                                        <p className="text-xs text-blue-700">2-3 business days</p>
-                                                    </div>
+                                {/* Specifications from API */}
+                                {product.specifications && product.specifications.length > 0 && (
+                                    <div className="pt-6 border-t border-gray-100">
+                                        <h4 className="font-semibold text-gray-900 mb-3">Specifications</h4>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {product.specifications.map((spec, index) => (
+                                                <div key={index} className="flex items-center justify-between py-2 border-b border-gray-50">
+                                                    <span className="text-sm font-medium text-gray-600">{spec.key}</span>
+                                                    <span className="text-sm text-gray-900">{spec.value}</span>
                                                 </div>
-                                                <div className="text-sm text-gray-600 space-y-1">
-                                                    <p>• Delivery within {product.shippingInfo?.handlingTime || 2}-{product.shippingInfo?.handlingTime ? product.shippingInfo.handlingTime + 1 : 3} business days</p>
-                                                    <p>• Free delivery on orders above ৳1000</p>
-                                                    <p>• Standard delivery charge: ৳60</p>
-                                                    <p>• Express delivery available at extra cost</p>
-                                                    {product.shippingInfo?.weight && (
-                                                        <p>• Product weight: {product.shippingInfo.weight}g</p>
-                                                    )}
-                                                    {product.shippingInfo?.dimensions && (
-                                                        <p>• Dimensions: {product.shippingInfo.dimensions.length}cm × {product.shippingInfo.dimensions.width}cm × {product.shippingInfo.dimensions.height}cm</p>
-                                                    )}
-                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Static Specifications for Jewelry */}
+                                {(!product.specifications || product.specifications.length === 0) && (
+                                    <div className="pt-6 border-t border-gray-100">
+                                        <h4 className="font-semibold text-gray-900 mb-3">Specifications</h4>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="flex items-center justify-between py-2 border-b border-gray-50">
+                                                <span className="text-sm font-medium text-gray-600">Material</span>
+                                                <span className="text-sm text-gray-900">18k White Gold</span>
                                             </div>
-
-                                            {/* Return Info */}
-                                            <div className="space-y-3 pt-4 border-t border-gray-100">
-                                                <h4 className="font-semibold text-gray-900 flex items-center gap-2">
-                                                    <svg className="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z" />
-                                                    </svg>
-                                                    Return & Exchange Policy
-                                                </h4>
-                                                <div className="bg-orange-50 p-3 rounded-lg">
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <svg className="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                        </svg>
-                                                        <span className="text-sm font-medium text-orange-800">7 Days Return</span>
-                                                    </div>
-                                                    <p className="text-xs text-orange-700">Easy return and exchange process</p>
-                                                </div>
-                                                <div className="text-sm text-gray-600 space-y-1">
-                                                    {product.returnPolicy ? (
-                                                        <div dangerouslySetInnerHTML={{ __html: product.returnPolicy.replace(/\n/g, '<br/>') }} />
-                                                    ) : (
-                                                        <>
-                                                            <p>• 7 days return policy from delivery date</p>
-                                                            <p>• Product must be unused and in original packaging</p>
-                                                            <p>• Free return shipping for defective items</p>
-                                                            <p>• Exchange available for size/color issues</p>
-                                                            <p>• Refund processed within 3-5 business days</p>
-                                                        </>
-                                                    )}
-                                                </div>
+                                            <div className="flex items-center justify-between py-2 border-b border-gray-50">
+                                                <span className="text-sm font-medium text-gray-600">Stone</span>
+                                                <span className="text-sm text-gray-900">Diamond</span>
+                                            </div>
+                                            <div className="flex items-center justify-between py-2 border-b border-gray-50">
+                                                <span className="text-sm font-medium text-gray-600">Clarity</span>
+                                                <span className="text-sm text-gray-900">VS1</span>
+                                            </div>
+                                            <div className="flex items-center justify-between py-2 border-b border-gray-50">
+                                                <span className="text-sm font-medium text-gray-600">Color</span>
+                                                <span className="text-sm text-gray-900">G</span>
                                             </div>
                                         </div>
                                     </div>
                                 )}
                             </div>
-                        </div>
+                        )}
+
+                        {/* Delivery & Return Tab */}
+                        {activeTab === 'delivery' && (
+                            <div className="space-y-6">
+                                {/* Delivery Info */}
+                                <div className="space-y-3">
+                                    <h4 className="font-semibold text-gray-900 flex items-center gap-2">
+                                        <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        Delivery Information
+                                    </h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="bg-green-50 p-3 rounded-lg">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                <span className="text-sm font-medium text-green-800">Free Delivery</span>
+                                            </div>
+                                            <p className="text-xs text-green-700">On orders above ৳1000</p>
+                                        </div>
+                                        <div className="bg-blue-50 p-3 rounded-lg">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                                </svg>
+                                                <span className="text-sm font-medium text-blue-800">Fast Delivery</span>
+                                            </div>
+                                            <p className="text-xs text-blue-700">2-3 business days</p>
+                                        </div>
+                                    </div>
+                                    <div className="text-sm text-gray-600 space-y-1">
+                                        <p>• Delivery within {product.shippingInfo?.handlingTime || 2}-{product.shippingInfo?.handlingTime ? product.shippingInfo.handlingTime + 1 : 3} business days</p>
+                                        <p>• Free delivery on orders above ৳1000</p>
+                                        <p>• Standard delivery charge: ৳60</p>
+                                        <p>• Express delivery available at extra cost</p>
+                                        {product.shippingInfo?.weight && (
+                                            <p>• Product weight: {product.shippingInfo.weight}g</p>
+                                        )}
+                                        {product.shippingInfo?.dimensions && (
+                                            <p>• Dimensions: {product.shippingInfo.dimensions.length}cm × {product.shippingInfo.dimensions.width}cm × {product.shippingInfo.dimensions.height}cm</p>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Return Info */}
+                                <div className="space-y-3 pt-4 border-t border-gray-100">
+                                    <h4 className="font-semibold text-gray-900 flex items-center gap-2">
+                                        <svg className="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z" />
+                                        </svg>
+                                        Return & Exchange Policy
+                                    </h4>
+                                    <div className="bg-orange-50 p-3 rounded-lg">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <svg className="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            <span className="text-sm font-medium text-orange-800">7 Days Return</span>
+                                        </div>
+                                        <p className="text-xs text-orange-700">Easy return and exchange process</p>
+                                    </div>
+                                    <div className="text-sm text-gray-600 space-y-1">
+                                        {product.returnPolicy ? (
+                                            <div dangerouslySetInnerHTML={{ __html: product.returnPolicy.replace(/\n/g, '<br/>') }} />
+                                        ) : (
+                                            <>
+                                                <p>• 7 days return policy from delivery date</p>
+                                                <p>• Product must be unused and in original packaging</p>
+                                                <p>• Free return shipping for defective items</p>
+                                                <p>• Exchange available for size/color issues</p>
+                                                <p>• Refund processed within 3-5 business days</p>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
 

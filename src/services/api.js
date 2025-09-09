@@ -77,6 +77,11 @@ export const productAPI = {
         return apiCall(`/product/slug/${slug}`);
     },
 
+    // Get similar products with smart fallback
+    getSimilarProducts: (productId, limit = 8, minRequired = 4) => {
+        return apiCall(`/product/similar/${productId}?limit=${limit}&minRequired=${minRequired}`);
+    },
+
     // Admin: Create new product
     createProduct: (productData) => {
         return apiCall('/product', {
@@ -331,6 +336,62 @@ export const transformProductData = (product) => ({
     totalSold: product.totalSold || 0,
 });
 
+// Offer Banner API
+export const offerBannerAPI = {
+    // Get active offer banners
+    getActiveBanners: () => {
+        return apiCall('/offer-banner/active');
+    },
+
+    // Get all banners (admin)
+    getAllBanners: (params = {}) => {
+        const queryString = new URLSearchParams(params).toString();
+        return apiCall(`/offer-banner?${queryString}`);
+    },
+
+    // Get banner by ID
+    getBannerById: (id) => {
+        return apiCall(`/offer-banner/${id}`);
+    },
+
+    // Create banner
+    createBanner: (data) => {
+        return apiCall('/offer-banner', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    },
+
+    // Update banner
+    updateBanner: (id, data) => {
+        return apiCall(`/offer-banner/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        });
+    },
+
+    // Delete banner
+    deleteBanner: (id) => {
+        return apiCall(`/offer-banner/${id}`, {
+            method: 'DELETE',
+        });
+    },
+
+    // Toggle banner status
+    toggleBannerStatus: (id) => {
+        return apiCall(`/offer-banner/${id}/toggle-status`, {
+            method: 'PATCH',
+        });
+    },
+
+    // Track banner click
+    trackBannerClick: (id) => {
+        return apiCall(`/offer-banner/${id}/click`, {
+            method: 'POST',
+        });
+    },
+};
+
 export default {
     productAPI,
     categoryAPI,
@@ -339,5 +400,6 @@ export default {
     wishlistAPI,
     orderAPI,
     uploadAPI,
+    offerBannerAPI,
     transformProductData,
 };

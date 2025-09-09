@@ -55,6 +55,8 @@ export default function EditProductPage() {
         stock: 0
     })
 
+    const [hasColorVariants, setHasColorVariants] = useState(true)
+
     useEffect(() => {
         fetchCategories()
         fetchProduct()
@@ -159,17 +161,41 @@ export default function EditProductPage() {
     }
 
     const addVariant = () => {
-        if (!variantForm.size || !variantForm.color || !variantForm.currentPrice) {
-            toast.error('Please fill in size, color, and current price')
+        if (!variantForm.size || !variantForm.currentPrice) {
+            toast.error('Please fill in size and current price')
             return
         }
 
+        // If color variants are enabled, color is required
+        if (hasColorVariants && !variantForm.color) {
+            toast.error('Please fill in color')
+            return
+        }
+
+        // Create attributes array - size is always required
+        const attributes = [
+            { name: 'Size', value: variantForm.size, displayValue: variantForm.size }
+        ]
+
+        // Add color only if color variants are enabled and color is provided
+        if (hasColorVariants && variantForm.color) {
+            attributes.push({ 
+                name: 'Color', 
+                value: variantForm.color, 
+                displayValue: variantForm.color, 
+                hexCode: variantForm.colorCode 
+            })
+        }
+
+        // Generate SKU
+        const skuSuffix = hasColorVariants && variantForm.color 
+            ? `${variantForm.size}-${variantForm.color}` 
+            : variantForm.size
+        const sku = variantForm.sku || `${formData.title?.toLowerCase().replace(/\s+/g, '-')}-${skuSuffix}`
+
         const newVariant = {
-            sku: variantForm.sku || `${formData.title?.toLowerCase().replace(/\s+/g, '-')}-${variantForm.size}-${variantForm.color}`,
-            attributes: [
-                { name: 'Size', value: variantForm.size, displayValue: variantForm.size },
-                { name: 'Color', value: variantForm.color, displayValue: variantForm.color, hexCode: variantForm.colorCode }
-            ],
+            sku,
+            attributes,
             currentPrice: parseFloat(variantForm.currentPrice),
             originalPrice: variantForm.oldPrice ? parseFloat(variantForm.oldPrice) : null,
             stockQuantity: parseInt(variantForm.stock),
@@ -716,7 +742,8 @@ export default function EditProductPage() {
                                 <div key={index} className="border border-gray-200 rounded-lg p-4">
                                     <div className="flex items-center justify-between mb-4">
                                         <h3 className="text-md font-medium text-gray-900">
-                                            {variant.attributes[0]?.value} - {variant.attributes[1]?.value}
+                                            {variant.attributes[0]?.value}
+                                            {variant.attributes[1] && ` - ${variant.attributes[1]?.value}`}
                                         </h3>
                                         <button
                                             type="button"
@@ -769,6 +796,37 @@ export default function EditProductPage() {
                     <h2 className="text-lg font-medium text-gray-900 mb-6">Add New Variants</h2>
                     <p className="text-sm text-gray-600 mb-4">Add new variants to the product.</p>
                     
+                    {/* Color Variants Toggle */}
+                    <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                        <label className="flex items-center space-x-3">
+                            <input
+                                type="checkbox"
+                                checked={hasColorVariants}
+                                onChange={(e) => setHasColorVariants(e.target.checked)}
+                                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                            />
+                            <span className="text-sm font-medium text-gray-700">
+                                Enable Color Variants
+                            </span>
+                        </label>
+                        <p className="text-xs text-gray-500 mt-1">
+                            {hasColorVariants 
+                                ? "Variants will have both size and color attributes" 
+                                : "Variants will have only size attributes (colorless products)"
+                            }
+                        </p>
+                    </div>
+
+                    {/* Variant Image Upload - Moved to top */}
+                    <div className="mb-6">
+                        <ImageUpload
+                            onImageUpload={(url) => setVariantForm(prev => ({ ...prev, image: url }))}
+                            onImageRemove={() => setVariantForm(prev => ({ ...prev, image: '' }))}
+                            currentImage={variantForm.image}
+                            label="Variant Image (Optional)"
+                        />
+                    </div>
+                    
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Size *</label>
@@ -782,27 +840,30 @@ export default function EditProductPage() {
                             />
                         </div>
                         
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Color *</label>
-                            <div className="flex space-x-2">
-                                <input
-                                    type="text"
-                                    name="color"
-                                    value={variantForm.color}
-                                    onChange={handleVariantInputChange}
-                                    placeholder="Red, Blue, Green"
-                                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                />
-                                <input
-                                    type="color"
-                                    name="colorCode"
-                                    value={variantForm.colorCode}
-                                    onChange={handleVariantInputChange}
-                                    className="w-12 h-10 border border-gray-300 rounded-lg cursor-pointer"
-                                    title="Pick color"
-                                />
+                        {/* Color field - only show if color variants are enabled */}
+                        {hasColorVariants && (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Color *</label>
+                                <div className="flex space-x-2">
+                                    <input
+                                        type="text"
+                                        name="color"
+                                        value={variantForm.color}
+                                        onChange={handleVariantInputChange}
+                                        placeholder="Red, Blue, Green"
+                                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    />
+                                    <input
+                                        type="color"
+                                        name="colorCode"
+                                        value={variantForm.colorCode}
+                                        onChange={handleVariantInputChange}
+                                        className="w-12 h-10 border border-gray-300 rounded-lg cursor-pointer"
+                                        title="Pick color"
+                                    />
+                                </div>
                             </div>
-                        </div>
+                        )}
                         
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Current Price *</label>
@@ -866,15 +927,6 @@ export default function EditProductPage() {
                         </div>
                     </div>
 
-                    {/* Variant Image Upload */}
-                    <div className="mb-6">
-                        <ImageUpload
-                            onImageUpload={(url) => setVariantForm(prev => ({ ...prev, image: url }))}
-                            onImageRemove={() => setVariantForm(prev => ({ ...prev, image: '' }))}
-                            currentImage={variantForm.image}
-                            label="Variant Image (Optional)"
-                        />
-                    </div>
                 </div>
 
                 {/* Product Flags */}

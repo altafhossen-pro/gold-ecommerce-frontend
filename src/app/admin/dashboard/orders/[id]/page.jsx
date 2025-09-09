@@ -208,7 +208,7 @@ export default function OrderDetailsPage() {
         <div className="min-h-screen bg-slate-50">
             {/* Top Header Bar */}
             <div className="bg-white border-b border-slate-200  z-10">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between h-16">
                         <div className="flex items-center space-x-4">
                             <Link
@@ -260,7 +260,7 @@ export default function OrderDetailsPage() {
             </div>
 
             {/* Main Content */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-0 py-8">
+            <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto px-4 sm:px-6 lg:px-0 py-8">
                 {/* Status Overview Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                     <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">

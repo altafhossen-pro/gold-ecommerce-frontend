@@ -248,7 +248,7 @@ function SearchPageContent() {
         return (
             <div className="min-h-screen bg-gray-50">
                 <Header />
-                <div className="max-w-7xl mx-auto px-4 py-8">
+                <div className="2xl:max-w-7xl xl:max-w-6xl mx-auto px-4 py-8">
                     {/* Mobile Filter Toggle Button */}
                     <div className="lg:hidden mb-6">
                         <button
@@ -465,7 +465,7 @@ function SearchPageContent() {
     return (
         <div className="min-h-screen bg-gray-50">
             <Header />
-            <div className="max-w-7xl mx-auto px-4 py-4">
+            <div className="2xl:max-w-7xl xl:max-w-6xl mx-auto px-4 py-4">
                 {/* Mobile Filter Toggle Button */}
                 <div className="lg:hidden mb-6">
                     <button
@@ -686,7 +686,7 @@ export default function SearchPage() {
         <Suspense fallback={
             <div className="min-h-screen bg-gray-50">
                 <Header />
-                <div className="max-w-7xl mx-auto px-4 py-4">
+                <div className="2xl:max-w-7xl xl:max-w-6xl mx-auto px-4 py-4">
                     <div className="flex justify-center items-center py-12">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500"></div>
                     </div>

@@ -17,7 +17,7 @@ export default function CustomerDashboardLayout({ children }) {
                 {/* Main Content Area - Scrollable */}
                 <div className="flex-1 overflow-y-auto">
                     <main className="p-6">
-                        <div className="max-w-7xl mx-auto">
+                        <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto">
                             {children}
                         </div>
                     </main>

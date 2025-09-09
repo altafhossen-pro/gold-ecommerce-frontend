@@ -5,18 +5,22 @@ import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation } from 'swiper/modules';
 import { categoryAPI } from '@/services/api';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 
 // Import Swiper styles
 import 'swiper/css';
 import 'swiper/css/navigation';
 
-function CategoryCard({ category, isActive = false }) {
+function CategoryCard({ category, isActive = false, onCategoryClick }) {
     return (
-        <div className={`relative  rounded-xl border transition-all duration-300 cursor-pointer hover:shadow-lg ${
-            isActive 
-                ? 'bg-pink-500 border-pink-500 text-white' 
-                : 'bg-white border-pink-100 text-gray-700 hover:border-pink-200'
-        }`}>
+        <div 
+            className={`relative  rounded-xl border transition-all duration-300 cursor-pointer hover:shadow-lg ${
+                isActive 
+                    ? 'bg-pink-500 border-pink-500 text-white' 
+                    : 'bg-white border-pink-100 text-gray-700 hover:border-pink-200'
+            }`}
+            onClick={() => onCategoryClick(category)}
+        >
             <div className="flex flex-col   space-y-3">
                 <div className={` ${isActive ? 'text-white' : 'text-pink-500'}`}>
                     {category.image ? (
@@ -62,6 +66,7 @@ export default function CategorySlider() {
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const router = useRouter();
 
     useEffect(() => {
         const fetchCategories = async () => {
@@ -85,10 +90,15 @@ export default function CategorySlider() {
         fetchCategories();
     }, []);
 
+    // Handle category click to navigate to shop page with category filter
+    const handleCategoryClick = (category) => {
+        router.push(`/shop?category=${category.slug}`);
+    };
+
     if (loading) {
         return (
             <section className="py-12 px-4 bg-white">
-                <div className="max-w-7xl mx-auto">
+                <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto">
                     <div className="flex items-center justify-between mb-8">
                         <h2 className="text-2xl font-bold text-gray-800">Browse Category</h2>
                     </div>
@@ -103,7 +113,7 @@ export default function CategorySlider() {
     if (error) {
         return (
             <section className="py-12 px-4 bg-white">
-                <div className="max-w-7xl mx-auto">
+                <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto">
                     <div className="flex items-center justify-between mb-8">
                         <h2 className="text-2xl font-bold text-gray-800">Browse Category</h2>
                     </div>
@@ -118,7 +128,7 @@ export default function CategorySlider() {
     if (!categories || categories.length === 0) {
         return (
             <section className="py-12 px-4 bg-white">
-                <div className="max-w-7xl mx-auto">
+                <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto">
                     <div className="flex items-center justify-between mb-8">
                         <h2 className="text-2xl font-bold text-gray-800">Browse Category</h2>
                     </div>
@@ -132,7 +142,7 @@ export default function CategorySlider() {
 
     return (
         <section className="py-12 px-4 bg-white">
-            <div className="max-w-7xl mx-auto">
+            <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-8">
                     <h2 className="text-2xl font-bold text-gray-800">Browse Category</h2>
@@ -182,6 +192,7 @@ export default function CategorySlider() {
                             <CategoryCard 
                                 category={category} 
                                 isActive={false}
+                                onCategoryClick={handleCategoryClick}
                             />
                         </SwiperSlide>
                     ))}

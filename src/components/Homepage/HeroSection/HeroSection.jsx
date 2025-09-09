@@ -205,7 +205,7 @@ function ProductImageGrid() {
 export default function HeroSection() {
     return (
         <section className="bg-gradient-to-br from-pink-50 via-white to-purple-50 py-4 sm:py-6 lg:py-8 px-4">
-            <div className="max-w-7xl mx-auto">
+            <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto">
                 <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
                     {/* Left Slider - Full width on mobile, 64% on desktop */}
                     <div className="w-full lg:w-[64%] h-64 sm:h-80 md:h-96 lg:h-auto">

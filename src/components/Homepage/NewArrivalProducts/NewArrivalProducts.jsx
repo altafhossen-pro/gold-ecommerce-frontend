@@ -80,7 +80,7 @@ export default function NewArrivalProducts() {
 
     return (
         <section className="py-8 px-4 bg-white">
-            <div className="max-w-7xl mx-auto">
+            <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-2">
                     <h2 className="text-2xl font-bold text-gray-800">New Arrival Product</h2>
