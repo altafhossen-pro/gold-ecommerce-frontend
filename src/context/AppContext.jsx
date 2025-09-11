@@ -35,7 +35,7 @@ export const AppProvider = ({ children }) => {
     const [wishlistCount, setWishlistCount] = useState(0)
 
     // UI state
-    const [loading, setLoading] = useState(false)
+    const [loading, setLoading] = useState(true)
     const [sidebarOpen, setSidebarOpen] = useState(false)
     const [isCartOpen, setIsCartOpen] = useState(false)
 
@@ -238,6 +238,7 @@ export const AppProvider = ({ children }) => {
     // Fetch user profile from backend
     const fetchUserProfile = useCallback(async () => {
         try {
+            setLoading(true)
             const savedToken = getCookie('token')
             if (!savedToken) {
                 return
@@ -251,12 +252,14 @@ export const AppProvider = ({ children }) => {
                 setToken(savedToken)
             } else {
                 // Token is invalid, clear everything
-                // logout()
+                logout()
             }
         } catch (error) {
             console.error('Error fetching user profile:', error)
             // If there's an error, clear everything
             logout()
+        } finally {
+            setLoading(false)
         }
     }, [])
 
@@ -344,25 +347,32 @@ export const AppProvider = ({ children }) => {
 
     // Initialize from localStorage on mount
     useEffect(() => {
-        const savedToken = getCookie('token')
-        const savedCart = localStorage.getItem('cart')
-        const savedWishlist = localStorage.getItem('wishlist')
+        const initializeApp = async () => {
+            const savedToken = getCookie('token')
+            const savedCart = localStorage.getItem('cart')
+            const savedWishlist = localStorage.getItem('wishlist')
+            
+            if (savedToken) {
+                setToken(savedToken)
+                // Fetch user profile from backend
+                await fetchUserProfile()
+            } else {
+                setLoading(false)
+            }
+            
+            if (savedCart) {
+                setCart(JSON.parse(savedCart))
+            }
+            if (savedWishlist) {
+                setWishlist(JSON.parse(savedWishlist))
+            }
+            
+            // Set cart loading to false after initialization
+            setCartLoading(false)
+        }
         
-        if (savedToken) {
-            setToken(savedToken)
-            // Fetch user profile from backend
-            fetchUserProfile()
-        }
-        if (savedCart) {
-            setCart(JSON.parse(savedCart))
-        }
-        if (savedWishlist) {
-            setWishlist(JSON.parse(savedWishlist))
-        }
-        
-        // Set cart loading to false after initialization
-        setCartLoading(false)
-    }, [])
+        initializeApp()
+    }, [fetchUserProfile])
 
     // Save to localStorage when state changes
     useEffect(() => {

@@ -46,7 +46,16 @@ export default function LoginPage() {
             if (data.success) {
                 // Use context login function
                 login(data.data.user, data.data.token)
-                router.push('/')
+                
+                // Show success message
+                toast.success('Login successful!')
+                
+                // Check user role and redirect accordingly
+                if (data.data.user?.role === 'admin') {
+                    router.push('/admin/dashboard')
+                } else {
+                    router.push('/')
+                }
             } else {
                 toast.error(data.message || 'Login failed')
             }
