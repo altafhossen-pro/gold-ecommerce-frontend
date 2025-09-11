@@ -9,7 +9,6 @@ import AdminSidebar from "@/components/Admin/AdminSidebar/AdminSidebar";
 export default function RootLayout({ children }) {
     const { user, isAuthenticated, loading } = useAppContext()
     const router = useRouter();
-    console.log(user, isAuthenticated, loading)
 
     useEffect(() => {
         // Wait for loading to complete
