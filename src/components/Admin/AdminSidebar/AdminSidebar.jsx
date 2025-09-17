@@ -14,7 +14,8 @@ import {
     Tag,
     Truck,
     Heart,
-    MessageSquare
+    MessageSquare,
+    Star
 } from 'lucide-react'
 
 const navigation = [
@@ -23,10 +24,9 @@ const navigation = [
     { name: 'Orders', href: '/admin/dashboard/orders', icon: ShoppingCart },
     { name: 'Customers', href: '/admin/dashboard/customers', icon: Users },
     { name: 'Categories', href: '/admin/dashboard/categories', icon: Tag },
+    { name: 'Testimonials', href: '/admin/dashboard/testimonials', icon: Star },
     { name: 'Inventory', href: '/admin/dashboard/inventory', icon: Store },
-    { name: 'Shipping', href: '/admin/dashboard/shipping', icon: Truck },
     { name: 'Reviews', href: '/admin/dashboard/reviews', icon: MessageSquare },
-    { name: 'Wishlist', href: '/admin/dashboard/wishlist', icon: Heart },
     { name: 'Analytics', href: '/admin/dashboard/analytics', icon: BarChart3 },
     { name: 'Settings', href: '/admin/dashboard/settings', icon: Settings },
 ]

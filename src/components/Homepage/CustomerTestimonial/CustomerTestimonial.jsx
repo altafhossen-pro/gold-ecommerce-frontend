@@ -4,57 +4,24 @@ import React, { useEffect, useState } from 'react';
 import { Star } from 'lucide-react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Pagination } from 'swiper/modules';
+import { testimonialAPI } from '@/services/api';
 
 // Import Swiper styles
 import 'swiper/css';
 import 'swiper/css/pagination';
 
-
-// Testimonial data
-const testimonials = [
-    {
-        id: 1,
-        name: "Frank ko",
-        role: "SEO Forpink.com",
-        rating: 4.5,
-        image: "/images/featured/img.png",
-        text: "From packaging to product quality—everything was top-notch! The rings were perfectly sized and added elegance to my wedding outfit."
-    },
-    {
-        id: 2,
-        name: "Sarah Johnson",
-        role: "Fashion Blogger",
-        rating: 4.5,
-        image: "/images/featured/img1.png",
-        text: "Amazing quality and beautiful designs. The jewelry exceeded my expectations and received so many compliments!"
-    },
-    {
-        id: 3,
-        name: "Michael Chen",
-        role: "Wedding Planner",
-        rating: 4.5,
-        image: "/images/featured/img.png",
-        text: "Perfect for special occasions. The craftsmanship is outstanding and the customer service was exceptional."
-    },
-    {
-        id: 4,
-        name: "Emily Davis",
-        role: "Style Consultant",
-        rating: 4.5,
-        image: "/images/featured/img1.png",
-        text: "Absolutely love the collection! The pieces are elegant, well-made, and perfect for any occasion."
-    },
-    {
-        id: 5,
-        name: "David Wilson",
-        role: "Event Coordinator",
-        rating: 4.5,
-        image: "/images/featured/img.png",
-        text: "Outstanding quality and beautiful designs. Highly recommend for anyone looking for premium jewelry."
-    }
-];
-
 function TestimonialCard({ testimonial }) {
+    const renderStars = (rating) => {
+        return Array.from({ length: 1 }, (_, index) => (
+            <Star
+                key={index}
+                className={`w-4 h-4 ${
+                    index < rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
+                }`}
+            />
+        ));
+    };
+
     return (
         <div className="bg-white border border-[#E7E7E7] rounded-xl shadow-lg p-6 h-full">
             {/* Profile Header */}
@@ -62,25 +29,27 @@ function TestimonialCard({ testimonial }) {
                 <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-full overflow-hidden">
                         <img
-                            src={testimonial.image}
+                            src={testimonial.profilePic}
                             alt={testimonial.name}
                             className="w-full h-full object-cover"
                         />
                     </div>
                     <div>
                         <h3 className="font-semibold text-gray-800 text-sm">{testimonial.name}</h3>
-                        <p className="text-gray-500 text-xs">{testimonial.role}</p>
+                        {testimonial.designation && (
+                            <p className="text-gray-500 text-xs">{testimonial.designation}</p>
+                        )}
                     </div>
                 </div>
                 <div className="flex items-center gap-1">
-                    <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                    <span className="text-sm font-medium text-gray-800">{testimonial.rating}</span>
+                    {renderStars(testimonial.rating)}
+                    <span className="text-sm font-medium text-gray-800 ml-1">{testimonial.rating}/5</span>
                 </div>
             </div>
 
             {/* Testimonial Text */}
             <p className="text-gray-600 text-sm leading-relaxed min-h-[91px]">
-                {testimonial.text}
+                {testimonial.reviewText}
             </p>
         </div>
     );
@@ -88,12 +57,41 @@ function TestimonialCard({ testimonial }) {
 
 export default function CustomerTestimonial() {
     const [mounted, setMounted] = useState(false);
+    const [testimonials, setTestimonials] = useState([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         setMounted(true);
+        fetchTestimonials();
     }, []);
 
+    const fetchTestimonials = async () => {
+        try {
+            setLoading(true);
+            const response = await testimonialAPI.getActiveTestimonials();
+            
+            if (response.success) {
+                setTestimonials(response.data.testimonials);
+            } else {
+                console.error('Failed to fetch testimonials:', response.message);
+                // Fallback to empty array if API fails
+                setTestimonials([]);
+            }
+        } catch (error) {
+            console.error('Error fetching testimonials:', error);
+            // Fallback to empty array if API fails
+            setTestimonials([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     if (!mounted) return null;
+
+    // Don't render if no testimonials
+    if (!loading && testimonials.length === 0) {
+        return null;
+    }
     return (
         <section className="py-12 px-4 bg-white">
             <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto">
@@ -105,35 +103,42 @@ export default function CustomerTestimonial() {
                     </p>
                 </div>
 
-                {/* Testimonials Carousel */}
-                <Swiper
-                    modules={[Pagination]}
-                    spaceBetween={24}
-                    slidesPerView={1}
-                    loop={true}
-                    pagination={{
-                        clickable: true,
-                        el: '.testimonial-pagination',
-                    }}
-                    breakpoints={{
-                        640: {
-                            slidesPerView: 2,
-                        },
-                        768: {
-                            slidesPerView: 3,
-                        },
-                        1024: {
-                            slidesPerView: 4,
-                        },
-                    }}
-                    className="testimonial-swiper !pb-4 !px-1"
-                >
-                    {testimonials.map((testimonial) => (
-                        <SwiperSlide key={testimonial.id}>
-                            <TestimonialCard testimonial={testimonial} />
-                        </SwiperSlide>
-                    ))}
-                </Swiper>
+                {/* Loading State */}
+                {loading ? (
+                    <div className="flex items-center justify-center py-12">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                    </div>
+                ) : (
+                    /* Testimonials Carousel */
+                    <Swiper
+                        modules={[Pagination]}
+                        spaceBetween={24}
+                        slidesPerView={1}
+                        loop={testimonials.length > 1}
+                        pagination={{
+                            clickable: true,
+                            el: '.testimonial-pagination',
+                        }}
+                        breakpoints={{
+                            640: {
+                                slidesPerView: 2,
+                            },
+                            768: {
+                                slidesPerView: 3,
+                            },
+                            1024: {
+                                slidesPerView: 4,
+                            },
+                        }}
+                        className="testimonial-swiper !pb-4 !px-1"
+                    >
+                        {testimonials.map((testimonial) => (
+                            <SwiperSlide key={testimonial._id}>
+                                <TestimonialCard testimonial={testimonial} />
+                            </SwiperSlide>
+                        ))}
+                    </Swiper>
+                )}
 
                 
 

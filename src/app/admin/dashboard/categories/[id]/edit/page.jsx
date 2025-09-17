@@ -20,7 +20,8 @@ export default function EditCategoryPage() {
         name: '',
         slug: '',
         image: '',
-        parent: ''
+        parent: '',
+        isFeatured: false
     })
 
     useEffect(() => {
@@ -38,7 +39,8 @@ export default function EditCategoryPage() {
                     name: data.data.name,
                     slug: data.data.slug,
                     image: data.data.image || '',
-                    parent: data.data.parent?._id || ''
+                    parent: data.data.parent?._id || '',
+                    isFeatured: data.data.isFeatured || false
                 })
             } else {
                 toast.error('Failed to fetch category: ' + data.message)
@@ -215,6 +217,24 @@ export default function EditCategoryPage() {
                                 currentImage={formData.image}
                                 label="Category Image"
                             />
+                        </div>
+                    </div>
+
+                    {/* Featured Category Checkbox */}
+                    <div className="mt-6">
+                        <div className="flex items-center">
+                            <input
+                                type="checkbox"
+                                id="isFeatured"
+                                name="isFeatured"
+                                checked={formData.isFeatured}
+                                onChange={handleInputChange}
+                                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                            />
+                            <label htmlFor="isFeatured" className="ml-2 block text-sm text-gray-900">
+                                <span className="font-medium">Featured Category</span>
+                                <span className="text-gray-500 ml-1">- Show this category in landing page filter options</span>
+                            </label>
                         </div>
                     </div>
                 </div>

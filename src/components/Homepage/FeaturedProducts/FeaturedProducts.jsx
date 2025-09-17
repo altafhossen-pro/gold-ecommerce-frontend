@@ -73,13 +73,13 @@ export default function FeaturedProducts() {
 
     const fetchCategories = async () => {
         try {
-            const data = await categoryAPI.getCategories();
+            const data = await categoryAPI.getFeaturedCategories();
             
             if (data.success) {
                 setCategories(data.data);
             }
         } catch (error) {
-            console.error('Error fetching categories:', error);
+            console.error('Error fetching featured categories:', error);
         }
     };
 

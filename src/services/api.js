@@ -3,14 +3,20 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/a
 // Generic API call function
 const apiCall = async (endpoint, options = {}) => {
     try {
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        const defaultHeaders = {
+            'Content-Type': 'application/json',
+        };
+        
+        const requestOptions = {
             headers: {
-                'Content-Type': 'application/json',
+                ...defaultHeaders,
                 ...options.headers,
             },
             ...options,
-        });
+        };
         
+        
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, requestOptions);
         const data = await response.json();
         return data;
     } catch (error) {
@@ -199,8 +205,89 @@ export const userAPI = {
     // Update user profile
     updateProfile: (userData) => {
         return apiCall('/user/profile', {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${userData.token}`,
+            },
+            body: JSON.stringify({
+                name: userData.name,
+                phone: userData.phone,
+                address: userData.address
+            }),
+        });
+    },
+
+    // Change password
+    changePassword: (passwordData) => {
+        return apiCall('/user/change-password', {
             method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${passwordData.token}`,
+            },
+            body: JSON.stringify({
+                currentPassword: passwordData.currentPassword,
+                newPassword: passwordData.newPassword
+            }),
+        });
+    },
+
+    // Admin - Get all users with pagination and filtering
+    getUsers: (params = {}, token) => {
+        const queryParams = new URLSearchParams();
+        Object.keys(params).forEach(key => {
+            if (params[key]) {
+                queryParams.append(key,  params[key]);
+            }
+        });
+        return apiCall(`/user/admin/users?${queryParams.toString()}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+
+    // Admin - Get single user by ID
+    getUserById: (userId, token) => {
+        return apiCall(`/user/admin/users/${userId}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+
+    // Admin - Update user by ID
+    updateUserById: (userId, userData, token) => {
+        return apiCall(`/user/admin/users/${userId}`, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
             body: JSON.stringify(userData),
+        });
+    },
+    AdminUserupdateProfile: (userId, userData, token) => {
+        return apiCall(`/user/admin/users/${userId}`, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(userData),
+        });
+    },
+
+    // Admin - Soft delete user
+    deleteUser: (userId, token) => {
+        return apiCall(`/user/admin/users/${userId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
         });
     },
 };
@@ -269,8 +356,36 @@ export const wishlistAPI = {
 // Order API functions
 export const orderAPI = {
     // Get user orders
-    getOrders: () => {
-        return apiCall('/order');
+    getOrders: (params = {}, token) => {
+        const queryParams = new URLSearchParams();
+        Object.keys(params).forEach(key => {
+            if (params[key]) {
+                queryParams.append(key, params[key]);
+            }
+        });
+        return apiCall(`/order?${queryParams.toString()}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+
+    // Get user's own orders
+    getUserOrders: (token) => {
+        return apiCall('/order/user', {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+
+    // Get user's single order by orderId
+    getUserOrderById: (orderId, token) => {
+        return apiCall(`/order/user/${orderId}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
     },
 
     // Get single order
@@ -336,6 +451,138 @@ export const transformProductData = (product) => ({
     totalSold: product.totalSold || 0,
 });
 
+// Review API functions
+export const reviewAPI = {
+    // Get all reviews for a product
+    getProductReviews: (productId) => {
+        return apiCall(`/review?product=${productId}`);
+    },
+
+    // Get user's reviews
+    getUserReviews: (token) => {
+        return apiCall('/review/user/reviews', {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+
+    // Get user's reviewable products (from delivered orders)
+    getUserReviewableProducts: (token) => {
+        return apiCall('/review/user/reviewable-products', {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+
+    // Create a new review
+    createReview: (reviewData, token) => {
+        return apiCall('/review', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(reviewData),
+        });
+    },
+
+    // Update a review
+    updateReview: (reviewId, reviewData, token) => {
+        return apiCall(`/review/${reviewId}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(reviewData),
+        });
+    },
+
+    // Delete a review
+    deleteReview: (reviewId, token) => {
+        return apiCall(`/review/${reviewId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+
+    // Get single review by ID
+    getReviewById: (reviewId) => {
+        return apiCall(`/review/${reviewId}`);
+    },
+};
+
+// Testimonial API
+export const testimonialAPI = {
+    // Get all testimonials (admin)
+    getTestimonials: (params = {}, token) => {
+        const queryString = new URLSearchParams(params).toString();
+        return apiCall(`/testimonial?${queryString}`,{
+            headers : {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+
+    // Get active testimonials (public)
+    getActiveTestimonials: () => {
+        return apiCall('/testimonial/active');
+    },
+
+    // Get testimonial by ID
+    getTestimonialById: (id, token) => {
+        return apiCall(`/testimonial/${id}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+
+    // Create testimonial
+    createTestimonial: (data,token) => {
+        return apiCall('/testimonial', {
+            method: 'POST',
+            body: JSON.stringify(data),
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+
+    // Update testimonial
+    updateTestimonial: (id, data, token) => {
+        return apiCall(`/testimonial/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+
+    // Delete testimonial
+    deleteTestimonial: (id,token) => {
+        return apiCall(`/testimonial/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+
+    // Toggle testimonial status
+    toggleTestimonialStatus: (id) => {
+        return apiCall(`/testimonial/${id}/toggle-status`, {
+            method: 'PATCH',
+        });
+    },
+};
+
 // Offer Banner API
 export const offerBannerAPI = {
     // Get active offer banners
@@ -400,6 +647,8 @@ export default {
     wishlistAPI,
     orderAPI,
     uploadAPI,
+    reviewAPI,
+    testimonialAPI,
     offerBannerAPI,
     transformProductData,
 };

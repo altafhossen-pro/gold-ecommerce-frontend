@@ -70,7 +70,7 @@ export default function CartModal({ isOpen, onClose }) {
             ></div>
 
             {/* Cart Modal */}
-            <div className={`fixed top-0 right-0 h-full w-full sm:w-96 bg-white shadow-2xl z-[10000] transform transition-all duration-300 ease-out flex flex-col ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+            <div className={`fixed top-0 right-0 h-full w-full sm:w-96 bg-white z-[10000] transform transition-all duration-300 ease-out flex flex-col ${isOpen ? 'translate-x-0 shadow-2xl' : 'translate-x-full shadow-none'}`}>
 
                 {/* Header */}
                 <div className={`flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0 transition-all duration-300 ease-out ${isOpen ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}`}>
