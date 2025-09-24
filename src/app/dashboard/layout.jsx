@@ -1,14 +1,30 @@
 'use client'
 
-import { useEffect, useState, useContext } from 'react'
+import { useEffect, useState, useContext, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { getCookie } from 'cookies-next'
-import CustomerSidebar from "@/components/Customer/CustomerSidebar/CustomerSidebar";
-import Header from "@/components/Header/Header";
+import dynamic from 'next/dynamic'
 import AppContext from '@/context/AppContext'
 import { userAPI } from '@/services/api'
 
-export default function CustomerDashboardLayout({ children }) {
+// Dynamic import for CustomerSidebar to avoid SSR issues
+const CustomerSidebar = dynamic(() => import("@/components/Customer/CustomerSidebar/CustomerSidebar"), {
+    ssr: false,
+    loading: () => (
+        <div className="hidden md:block md:w-64 bg-white border-r border-gray-200 shadow-sm">
+            <div className="p-6">
+                <div className="h-8 bg-gray-200 rounded animate-pulse mb-6"></div>
+                <div className="space-y-4">
+                    {[1, 2, 3, 4, 5, 6].map((i) => (
+                        <div key={i} className="h-10 bg-gray-200 rounded animate-pulse"></div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    )
+})
+
+function CustomerDashboardLayoutContent({ children }) {
     const router = useRouter()
     const { user, setUser, setLoading: setContextLoading } = useContext(AppContext)
     const [isLoading, setIsLoading] = useState(true)
@@ -71,9 +87,8 @@ export default function CustomerDashboardLayout({ children }) {
 
     // If authenticated, render the dashboard
     return (
-        <div className="min-h-screen bg-gray-50">
-            {/* Header - Fixed height */}
-            <Header isTrackingShow={false} />
+        <div className="min-h-[calc(100vh-80px)] bg-gray-50">
+            
             
             {/* Main Content with Sidebar */}
             <div className="flex h-[calc(100vh-80px)]">
@@ -92,5 +107,20 @@ export default function CustomerDashboardLayout({ children }) {
                 </div>
             </div>
         </div>
+    )
+}
+
+export default function CustomerDashboardLayout({ children }) {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="h-12 w-12 border-4 border-pink-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading dashboard...</p>
+                </div>
+            </div>
+        }>
+            <CustomerDashboardLayoutContent children={children} />
+        </Suspense>
     )
 }

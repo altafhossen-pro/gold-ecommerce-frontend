@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Header from "@/components/Header/Header";
 import Footer from "@/components/Footer/Footer";
 import { Clock, Tag, Copy, CheckCircle } from 'lucide-react';
 
@@ -94,7 +93,6 @@ export default function Offers() {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50">
-            <Header />
 
             {/* Main Content */}
             <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto px-4 py-12">

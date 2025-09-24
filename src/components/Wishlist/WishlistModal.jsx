@@ -96,6 +96,7 @@ export default function WishlistModal({ isOpen, onClose }) {
                     <button
                         onClick={onClose}
                         className="p-2 hover:bg-gray-100 rounded-full transition-colors duration-200 hover:scale-110"
+                        aria-label="Close wishlist"
                     >
                         <X className="w-5 h-5 text-gray-600" />
                     </button>
@@ -157,6 +158,7 @@ export default function WishlistModal({ isOpen, onClose }) {
                                         <button
                                             onClick={() => handleRemoveFromWishlist(item.productId)}
                                             className="p-2 h-fit text-[#EF3D6A] hover:bg-[#EF3D6A] hover:text-white rounded-full transition-colors cursor-pointer"
+                                            aria-label={`Remove ${item.title} from wishlist`}
                                         >
                                             <Trash2 className="w-4 h-4" />
                                         </button>

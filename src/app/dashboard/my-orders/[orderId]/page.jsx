@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { 
-    Package, 
-    Truck, 
-    CheckCircle, 
-    Clock, 
+import {
+    Package,
+    Truck,
+    CheckCircle,
+    Clock,
     AlertCircle,
     ArrowLeft,
     Download,
@@ -16,7 +16,9 @@ import {
     Phone,
     Mail,
     Calendar,
-    RefreshCw
+    RefreshCw,
+    Printer,
+    Coins
 } from 'lucide-react'
 import Link from 'next/link'
 import { useAppContext } from '@/context/AppContext'
@@ -40,7 +42,7 @@ export default function OrderDetails() {
         try {
             setLoading(true)
             const response = await orderAPI.getUserOrderById(params.orderId, token)
-            
+
             if (response.success) {
                 setOrder(response.data)
             } else {
@@ -145,244 +147,425 @@ export default function OrderDetails() {
         })
     }
 
+    // Print function
+    const handlePrint = () => {
+        window.print()
+    }
+
     return (
-        <div className="min-h-screen bg-gray-50">
-            {/* Back Button */}
-            <div className="bg-white border-b border-gray-200 px-6 py-4">
-                <Link
-                    href="/dashboard/my-orders"
-                    className="inline-flex items-center text-gray-600 hover:text-gray-900 text-sm font-medium"
-                >
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Back to Orders
-                </Link>
-            </div>
+        <>
+            {/* Print Styles */}
+            <style jsx global>{`
+                @media print {
+                    * {
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                    }
+                    body * {
+                        visibility: hidden;
+                    }
+                    .print-area, .print-area * {
+                        visibility: visible;
+                    }
+                    .print-area {
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        width: 100%;
+                        background: white !important;
+                        font-size: 12px !important;
+                        line-height: 1.2 !important;
+                    }
+                    .no-print {
+                        display: none !important;
+                    }
+                    .bg-gray-50 {
+                        background: white !important;
+                    }
+                    .shadow-lg {
+                        box-shadow: none !important;
+                    }
+                    .border-b {
+                        border-bottom: 1px solid #e5e7eb !important;
+                    }
+                    /* Reduce spacing for print */
+                    .print-area .px-8 {
+                        padding-left: 1rem !important;
+                        padding-right: 1rem !important;
+                    }
+                    .print-area .py-6 {
+                        padding-top: 0.75rem !important;
+                        padding-bottom: 0.75rem !important;
+                    }
+                    .print-area .mb-8 {
+                        margin-bottom: 1rem !important;
+                    }
+                    .print-area .mt-8 {
+                        margin-top: 1rem !important;
+                    }
+                    .print-area .mt-12 {
+                        margin-top: 1.5rem !important;
+                    }
+                    .print-area .pt-8 {
+                        padding-top: 1rem !important;
+                    }
+                    .print-area .gap-8 {
+                        gap: 1rem !important;
+                    }
+                    .print-area .text-3xl {
+                        font-size: 1.5rem !important;
+                    }
+                    .print-area .text-2xl {
+                        font-size: 1.25rem !important;
+                    }
+                    .print-area .text-lg {
+                        font-size: 1rem !important;
+                    }
+                    .print-area .h-16 {
+                        height: 3rem !important;
+                    }
+                    .print-area .w-16 {
+                        width: 3rem !important;
+                    }
+                    .print-area .py-4 {
+                        padding-top: 0.5rem !important;
+                        padding-bottom: 0.5rem !important;
+                    }
+                    .print-area .py-3 {
+                        padding-top: 0.25rem !important;
+                        padding-bottom: 0.25rem !important;
+                    }
+                    .print-area .px-4 {
+                        padding-left: 0.5rem !important;
+                        padding-right: 0.5rem !important;
+                    }
+                    .print-area .gap-6 {
+                        gap: 0.5rem !important;
+                    }
+                    .print-area .mb-1 {
+                        margin-bottom: 0.25rem !important;
+                    }
+                    .print-area .mt-1 {
+                        margin-top: 0.25rem !important;
+                    }
+                    .print-area .text-xs {
+                        font-size: 10px !important;
+                    }
+                    .print-area .text-sm {
+                        font-size: 12px !important;
+                    }
+                    /* Print header - White background with black text */
+                    .print-area .bg-gradient-to-r {
+                        background: #ffffff !important;
+                        border: none !important;
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                    }
+                    /* Force all text in header to be black */
+                    .print-area .bg-gradient-to-r,
+                    .print-area .bg-gradient-to-r *,
+                    .print-area .bg-gradient-to-r h1,
+                    .print-area .bg-gradient-to-r p,
+                    .print-area .bg-gradient-to-r div,
+                    .print-area .bg-gradient-to-r span {
+                        color: #000000 !important;
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                    }
+                    /* Specific targeting for header elements - Black text */
+                    .print-area [class*="text-white"],
+                    .print-area [class*="text-pink"] {
+                        color: #000000 !important;
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                    }
+                    /* Force black text on any element */
+                    .print-area .text-white {
+                        color: #000000 !important;
+                    }
+                    .print-area .text-pink-100 {
+                        color: #000000 !important;
+                    }
+                    .print-area .text-pink-200 {
+                        color: #000000 !important;
+                    }
+                }
+            `}</style>
 
-            {/* Invoice Container */}
-            <div className="max-w-4xl mx-auto p-6">
-                <div className="bg-white shadow-lg rounded-lg overflow-hidden">
-                    {/* Invoice Header */}
-                    <div className="bg-gradient-to-r from-pink-500 to-pink-600 px-8 py-6 text-white">
-                        <div className="flex justify-between items-start">
-                            <div>
-                                <h1 className="text-3xl font-bold">INVOICE</h1>
-                                <p className="text-pink-100 mt-2">Forpink.com</p>
-                                <p className="text-pink-100">Premium Gold Jewelry & Accessories</p>
-                            </div>
-                            <div className="text-right">
-                                <div className="text-2xl font-bold">#{order.orderId}</div>
-                                <div className="text-pink-100 mt-1">
-                                    {formatDate(order.createdAt)}
+            <div className="min-h-screen bg-gray-50">
+                {/* Back Button */}
+                <div className="max-w-4xl mx-auto px-6 pb-4 no-print">
+                    <Link
+                        href="/dashboard/my-orders"
+                        className="inline-flex items-center text-gray-600 hover:text-gray-900 text-sm font-medium"
+                    >
+                        <ArrowLeft className="h-4 w-4 mr-2" />
+                        Back to Orders
+                    </Link>
+                </div>
+
+                {/* Invoice Container */}
+                <div className="max-w-4xl mx-auto px-6 pb-6">
+                    <div className="bg-white shadow-lg rounded-lg overflow-hidden print-area">
+                        {/* Invoice Header */}
+                        <div className="bg-gradient-to-r from-pink-500 to-pink-600 px-6 py-4 text-white">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <h1 className="text-2xl font-bold">INVOICE</h1>
+                                    <p className="text-pink-100 mt-1 text-sm">Forpink.com</p>
+                                    <p className="text-pink-100 text-sm">Premium Gold Jewelry & Accessories</p>
                                 </div>
-                                <div className="text-pink-100">
-                                    {formatTime(order.createdAt)}
+                                <div className="text-right">
+                                    <div className="text-xl font-bold">#{order.orderId}</div>
+                                    <div className="text-pink-100 mt-1 text-sm">
+                                        {formatDate(order.createdAt)}
+                                    </div>
+                                    <div className="text-pink-100 text-sm">
+                                        {formatTime(order.createdAt)}
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    {/* Invoice Body */}
-                    <div className="px-8 py-6">
-                        {/* Status Badge */}
-                        <div className="flex justify-between items-center mb-8">
-                            <div className="flex items-center space-x-4">
-                                <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium ${statusInfo.bg} ${statusInfo.color}`}>
-                                    <StatusIcon className="h-4 w-4 mr-2" />
-                                    {statusInfo.label}
-                                </span>
+                        {/* Invoice Body */}
+                        <div className="px-6 py-4">
+                            {/* Status Badge */}
+                            <div className="flex justify-between items-center mb-4">
+                                <div className="flex items-center space-x-4">
+                                    <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium ${statusInfo.bg} ${statusInfo.color}`}>
+                                        <StatusIcon className="h-4 w-4 mr-2" />
+                                        {statusInfo.label}
+                                    </span>
+                                </div>
+                                {order.status === 'delivered' && (
+                                    <div className="flex items-center space-x-3 no-print">
+                                        <button className="inline-flex items-center px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors">
+                                            <Download className="h-4 w-4 mr-2" />
+                                            Download PDF
+                                        </button>
+                                    </div>
+                                )}
                             </div>
-                            {order.status === 'delivered' && (
-                                <button className="inline-flex items-center px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors">
-                                    <Download className="h-4 w-4 mr-2" />
-                                    Download PDF
-                                </button>
-                            )}
-                        </div>
 
-                        {/* Company & Customer Info */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-                            {/* Company Info */}
-                            <div>
-                                <h3 className="text-lg font-semibold text-gray-900 mb-4">From:</h3>
-                                <div className="text-gray-700">
-                                    <div className="font-semibold text-lg">Forpink.com</div>
-                                    <div className="mt-1">123 Jewelry Street</div>
-                                    <div>Dhaka 1000, Bangladesh</div>
-                                    <div className="mt-2">
-                                        <div className="flex items-center">
-                                            <Phone className="h-4 w-4 mr-2" />
+                            {/* Company & Customer Info - Compact Horizontal */}
+                            <div className="grid grid-cols-2 gap-6 mb-4">
+                                {/* Company Info */}
+                                <div>
+                                    <h3 className="text-sm font-semibold text-gray-900 mb-1">From:</h3>
+                                    <div className="text-gray-700 text-sm">
+                                        <div className="font-semibold">Forpink.com</div>
+                                        <div>123 Jewelry Street, Dhaka 1000</div>
+                                        <div className="flex items-center mt-1">
+                                            <Phone className="h-3 w-3 mr-1" />
                                             +880 1234 567890
                                         </div>
-                                        <div className="flex items-center mt-1">
-                                            <Mail className="h-4 w-4 mr-2" />
+                                        <div className="flex items-center">
+                                            <Mail className="h-3 w-3 mr-1" />
                                             info@goldstore.com
                                         </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            {/* Customer Info */}
-                            <div>
-                                <h3 className="text-lg font-semibold text-gray-900 mb-4">Bill To:</h3>
-                                <div className="text-gray-700">
-                                    <div className="font-semibold">{order.user?.name || 'Customer'}</div>
-                                    <div className="mt-1">{order.user?.email || 'customer@email.com'}</div>
-                                    {order.shippingAddress && (
-                                        <div className="mt-2">
-                                            <div className="flex items-start">
-                                                <MapPin className="h-4 w-4 mr-2 mt-1" />
-                                                <div>
-                                                    <div>{order.shippingAddress.label}</div>
-                                                    <div>{order.shippingAddress.street}</div>
-                                                    <div>{order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.postalCode}</div>
-                                                    <div>{order.shippingAddress.country}</div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Order Items Table */}
-                        <div className="mb-8">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Order Items</h3>
-                            <div className="overflow-x-auto">
-                                <table className="w-full border-collapse">
-                                    <thead>
-                                        <tr className="bg-gray-50">
-                                            <th className="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-900">Item</th>
-                                            <th className="border border-gray-300 px-4 py-3 text-left text-sm font-semibold text-gray-900">Description</th>
-                                            <th className="border border-gray-300 px-4 py-3 text-center text-sm font-semibold text-gray-900">Qty</th>
-                                            <th className="border border-gray-300 px-4 py-3 text-right text-sm font-semibold text-gray-900">Unit Price</th>
-                                            <th className="border border-gray-300 px-4 py-3 text-right text-sm font-semibold text-gray-900">Total</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {order.items?.map((item, index) => (
-                                            <tr key={index} className="hover:bg-gray-50">
-                                                <td className="border border-gray-300 px-4 py-4">
-                                                    <img
-                                                        src={item.image || '/images/placeholder.png'}
-                                                        alt={item.name}
-                                                        className="h-16 w-16 object-cover rounded"
-                                                    />
-                                                </td>
-                                                <td className="border border-gray-300 px-4 py-4">
-                                                    <div className="font-medium text-gray-900">{item.name}</div>
-                                                    {item.variant && (
-                                                        <div className="text-sm text-gray-500 mt-1">
-                                                            {item.variant.size && <span>Size: {item.variant.size}</span>}
-                                                            {item.variant.color && <span className="ml-2">Color: {item.variant.color}</span>}
-                                                        </div>
-                                                    )}
-                                                    <div className="text-sm text-gray-500">
-                                                        SKU: {item.variant?.sku || 'N/A'}
-                                                    </div>
-                                                </td>
-                                                <td className="border border-gray-300 px-4 py-4 text-center">
-                                                    {item.quantity}
-                                                </td>
-                                                <td className="border border-gray-300 px-4 py-4 text-right">
-                                                    ৳{item.price?.toLocaleString()}
-                                                </td>
-                                                <td className="border border-gray-300 px-4 py-4 text-right font-medium">
-                                                    ৳{item.subtotal?.toLocaleString()}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        {/* Order Summary */}
-                        <div className="flex justify-end">
-                            <div className="w-full max-w-sm">
-                                <div className="bg-gray-50 p-6 rounded-lg">
-                                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Order Summary</h3>
-                                    <div className="space-y-3">
-                                        <div className="flex justify-between text-sm">
-                                            <span className="text-gray-600">Subtotal</span>
-                                            <span className="text-gray-900">৳{(order.total - order.shippingCost + order.discount).toLocaleString()}</span>
-                                        </div>
-                                        {order.discount > 0 && (
-                                            <div className="flex justify-between text-sm">
-                                                <span className="text-gray-600">Discount</span>
-                                                <span className="text-green-600">-৳{order.discount.toLocaleString()}</span>
+                                {/* Customer Info */}
+                                <div>
+                                    <h3 className="text-sm font-semibold text-gray-900 mb-1">Bill To:</h3>
+                                    <div className="text-gray-700 text-sm">
+                                        <div className="font-semibold">{order.user?.name || 'Customer'}</div>
+                                        <div>{order.user?.email || 'customer@email.com'}</div>
+                                        {order.shippingAddress && (
+                                            <div className="mt-1">
+                                                <div className="font-medium text-gray-600">Delivery Address:</div>
+                                                <div>{order.shippingAddress.street}</div>
+                                                <div>{order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.postalCode}</div>
+                                                <div>{order.shippingAddress.country}</div>
                                             </div>
                                         )}
-                                        <div className="flex justify-between text-sm">
-                                            <span className="text-gray-600">Shipping</span>
-                                            <span className="text-gray-900">৳{order.shippingCost.toLocaleString()}</span>
-                                        </div>
-                                        <div className="border-t border-gray-300 pt-3">
-                                            <div className="flex justify-between text-lg font-bold">
-                                                <span className="text-gray-900">Total</span>
-                                                <span className="text-pink-600">৳{order.total.toLocaleString()}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Payment Information */}
-                        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div>
-                                <h3 className="text-lg font-semibold text-gray-900 mb-4">Payment Information</h3>
-                                <div className="text-gray-700">
-                                    <div className="flex items-center mb-2">
-                                        <CreditCard className="h-4 w-4 mr-2" />
-                                        <span className="font-medium">Payment Method:</span>
-                                        <span className="ml-2 capitalize">{order.paymentMethod || 'N/A'}</span>
-                                    </div>
-                                    <div className="flex items-center">
-                                        <Calendar className="h-4 w-4 mr-2" />
-                                        <span className="font-medium">Order Date:</span>
-                                        <span className="ml-2">{formatDate(order.createdAt)}</span>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Tracking Information */}
-                            {order.tracking && order.tracking.length > 0 && (
-                                <div>
-                                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Order Tracking</h3>
-                                    <div className="space-y-3">
-                                        {order.tracking.map((track, index) => (
-                                            <div key={index} className="flex items-start">
-                                                <div className="flex-shrink-0">
-                                                    <div className="w-3 h-3 bg-pink-600 rounded-full mt-1"></div>
-                                                </div>
-                                                <div className="ml-3">
-                                                    <div className="text-sm font-medium text-gray-900 capitalize">
-                                                        {track.status.replace('_', ' ')}
-                                                    </div>
-                                                    <div className="text-sm text-gray-500">
-                                                        {formatDate(track.date)} at {formatTime(track.date)}
-                                                    </div>
-                                                    {track.note && (
-                                                        <div className="text-sm text-gray-600 mt-1">
-                                                            {track.note}
+                            {/* Order Items Table */}
+                            <div className="mb-4">
+                                <h3 className="text-base font-semibold text-gray-900 mb-2">Order Items</h3>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full border-collapse">
+                                        <thead>
+                                            <tr className="bg-gray-50">
+                                                <th className="border border-gray-300 px-2 py-2 text-left text-xs font-semibold text-gray-900">Item</th>
+                                                <th className="border border-gray-300 px-2 py-2 text-left text-xs font-semibold text-gray-900">Description</th>
+                                                <th className="border border-gray-300 px-2 py-2 text-center text-xs font-semibold text-gray-900">Qty</th>
+                                                <th className="border border-gray-300 px-2 py-2 text-right text-xs font-semibold text-gray-900">Unit Price</th>
+                                                <th className="border border-gray-300 px-2 py-2 text-right text-xs font-semibold text-gray-900">Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {order.items?.map((item, index) => (
+                                                <tr key={index} className="hover:bg-gray-50">
+                                                    <td className="border border-gray-300 px-2 py-2">
+                                                        <img
+                                                            src={item.image || '/images/placeholder.png'}
+                                                            alt={item.name}
+                                                            className="h-12 w-12 object-cover rounded"
+                                                        />
+                                                    </td>
+                                                    <td className="border border-gray-300 px-2 py-2">
+                                                        <div className="font-medium text-gray-900 text-sm">{item.name}</div>
+                                                        {item.variant && (
+                                                            <div className="text-xs text-gray-500">
+                                                                {item.variant.size && <span>Size: {item.variant.size}</span>}
+                                                                {item.variant.color && <span className="ml-2">Color: {item.variant.color}</span>}
+                                                            </div>
+                                                        )}
+                                                        <div className="text-xs text-gray-500">
+                                                            SKU: {item.variant?.sku || 'N/A'}
                                                         </div>
-                                                    )}
+                                                    </td>
+                                                    <td className="border border-gray-300 px-2 py-2 text-center text-sm">
+                                                        {item.quantity}
+                                                    </td>
+                                                    <td className="border border-gray-300 px-2 py-2 text-right text-sm">
+                                                        ৳{item.price?.toLocaleString()}
+                                                    </td>
+                                                    <td className="border border-gray-300 px-2 py-2 text-right font-medium text-sm">
+                                                        ৳{item.subtotal?.toLocaleString()}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            {/* Order Summary */}
+                            <div className="flex justify-end">
+                                <div className="w-full max-w-sm">
+                                    <div className="bg-gray-50 p-4 rounded-lg">
+                                        <h3 className="text-base font-semibold text-gray-900 mb-2">Order Summary</h3>
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-gray-600">Subtotal</span>
+                                                <span className="text-gray-900">৳{(order.total + order.shippingCost).toLocaleString()}</span>
+                                            </div>
+                                            {order.couponDiscount > 0 && (
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-gray-600">Coupon Discount {order.coupon && `(${order.coupon})`}</span>
+                                                    <span className="text-blue-600">-৳{order.couponDiscount.toLocaleString()}</span>
+                                                </div>
+                                            )}
+                                            {order.discount > 0 && order.couponDiscount === 0 && (
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-gray-600">Discount</span>
+                                                    <span className="text-green-600">-৳{order.discount.toLocaleString()}</span>
+                                                </div>
+                                            )}
+                                            {order.loyaltyDiscount > 0 && (
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-gray-600">Loyalty Points Discount</span>
+                                                    <span className="text-pink-600">-৳{order.loyaltyDiscount.toLocaleString()}</span>
+                                                </div>
+                                            )}
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-gray-600">Shipping</span>
+                                                <span className="text-gray-900">৳{order.shippingCost.toLocaleString()}</span>
+                                            </div>
+                                            <div className="border-t border-gray-300 pt-2">
+                                                <div className="flex justify-between text-base font-bold">
+                                                    <span className="text-gray-900">Total</span>
+                                                    <span className="text-pink-600">৳{(order.total + order.shippingCost - (order.discount || 0) - (order.loyaltyDiscount || 0) - (order.couponDiscount || 0)).toLocaleString()}</span>
                                                 </div>
                                             </div>
-                                        ))}
+                                            {order.loyaltyPointsUsed > 0 && (
+                                                <div className="mt-2 p-2 bg-pink-50 rounded border border-pink-200">
+                                                    <div className="text-xs text-pink-800 text-center">
+                                                        <div className="font-semibold">🪙 Paid with {order.loyaltyPointsUsed} coins</div>
+                                                        <div>No additional payment required</div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
-                            )}
-                        </div>
+                            </div>
 
-                        {/* Footer */}
-                        <div className="mt-12 pt-8 border-t border-gray-200 text-center text-gray-500 text-sm">
-                            <p>Thank you for your business! For any questions about this invoice, please contact us.</p>
-                            <p className="mt-2">This is a computer-generated invoice and does not require a signature.</p>
+                            {/* Payment Information */}
+                            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <h3 className="text-base font-semibold text-gray-900 mb-2">Payment Information</h3>
+                                    <div className="text-gray-700 text-sm">
+                                        <div className="flex items-center mb-1">
+                                            <CreditCard className="h-3 w-3 mr-2" />
+                                            <span className="font-medium">Payment Method:</span>
+                                            <span className="ml-2 capitalize">
+                                                {order.paymentMethod === 'cod' ? 'Cash on Delivery' : (order.paymentMethod || 'N/A')}
+                                            </span>
+                                        </div>
+                                        {!!order.loyaltyPointsUsed && order.loyaltyPointsUsed > 0 && (
+                                            <div className="flex items-center mb-1">
+                                                <Coins className="h-3 w-3 mr-2" />
+                                                <span className="font-medium">Paid with Loyalty Points:</span>
+                                                <span className="ml-2 text-pink-600 font-semibold">
+                                                    {order.loyaltyPointsUsed} coins (৳{order.loyaltyDiscount?.toLocaleString()})
+                                                </span>
+                                            </div>
+                                        )}
+                                        <div className="flex items-center">
+                                            <Calendar className="h-3 w-3 mr-2" />
+                                            <span className="font-medium">Order Date:</span>
+                                            <span className="ml-2">{formatDate(order.createdAt)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Tracking Information */}
+                                {order.tracking && order.tracking.length > 0 && (
+                                    <div>
+                                        <h3 className="text-base font-semibold text-gray-900 mb-2">Order Tracking</h3>
+                                        <div className="space-y-2">
+                                            {order.tracking.map((track, index) => (
+                                                <div key={index} className="flex items-start">
+                                                    <div className="flex-shrink-0">
+                                                        <div className="w-2 h-2 bg-pink-600 rounded-full mt-1"></div>
+                                                    </div>
+                                                    <div className="ml-2">
+                                                        <div className="text-xs font-medium text-gray-900 capitalize">
+                                                            {track.status.replace('_', ' ')}
+                                                        </div>
+                                                        <div className="text-xs text-gray-500">
+                                                            {formatDate(track.date)} at {formatTime(track.date)}
+                                                        </div>
+                                                        {track.note && (
+                                                            <div className="text-xs text-gray-600">
+                                                                {track.note}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Footer */}
+                            <div className="mt-6 pt-4 border-t border-gray-200 text-center text-gray-500 text-xs">
+                                <p>Thank you for your business! For any questions about this invoice, please contact us.</p>
+                                <p className="mt-1">This is a computer-generated invoice and does not require a signature.</p>
+                            </div>
                         </div>
+                    </div>
+
+                    {/* Print Button - Outside Invoice */}
+                    <div className="mt-6 text-center no-print">
+                        <button
+                            onClick={handlePrint}
+                            className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-lg cursor-pointer"
+                        >
+                            <Printer className="h-5 w-5 mr-2" />
+                            Print Invoice
+                        </button>
                     </div>
                 </div>
             </div>
-        </div>
+        </>
     )
 }

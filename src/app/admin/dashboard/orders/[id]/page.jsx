@@ -28,7 +28,8 @@ import {
     Download,
     MoreVertical,
     Eye,
-    MessageSquare
+    MessageSquare,
+    Coins
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { formatDateForTable } from '@/utils/formatDate';
@@ -474,24 +475,47 @@ export default function OrderDetailsPage() {
                             <div className="space-y-4">
                                 <div className="flex justify-between items-center py-3 border-b border-slate-100">
                                     <span className="text-slate-600 font-medium">Subtotal</span>
-                                    <span className="font-bold text-slate-900">৳{order.total - order.shippingCost + order.discount}</span>
+                                    <span className="font-bold text-slate-900">৳{order.total + order.shippingCost}</span>
                                 </div>
                                 <div className="flex justify-between items-center py-3 border-b border-slate-100">
                                     <span className="text-slate-600 font-medium">Shipping</span>
                                     <span className="font-bold text-emerald-600">৳{order.shippingCost}</span>
                                 </div>
-                                {order.discount > 0 && (
+                                {order.couponDiscount > 0 && (
+                                    <div className="flex justify-between items-center py-3 border-b border-slate-100">
+                                        <span className="text-slate-600 font-medium">Coupon Discount {order.coupon && `(${order.coupon})`}</span>
+                                        <span className="font-bold text-blue-600">-৳{order.couponDiscount}</span>
+                                    </div>
+                                )}
+                                {order.discount > 0 && order.couponDiscount === 0 && (
                                     <div className="flex justify-between items-center py-3 border-b border-slate-100">
                                         <span className="text-slate-600 font-medium">Discount</span>
                                         <span className="font-bold text-red-600">-৳{order.discount}</span>
                                     </div>
                                 )}
+                                {order.loyaltyDiscount > 0 && (
+                                    <div className="flex justify-between items-center py-3 border-b border-slate-100">
+                                        <span className="text-slate-600 font-medium">Loyalty Points Discount</span>
+                                        <span className="font-bold text-pink-600">-৳{order.loyaltyDiscount}</span>
+                                    </div>
+                                )}
                                 <div className="pt-4">
                                     <div className="flex justify-between items-center">
                                         <span className="text-lg font-bold text-slate-900">Total</span>
-                                        <span className="text-2xl font-bold text-slate-900">৳{order.total}</span>
+                                        <span className="text-2xl font-bold text-slate-900">৳{order.total + order.shippingCost - (order.discount || 0) - (order.loyaltyDiscount || 0) - (order.couponDiscount || 0)}</span>
                                     </div>
                                 </div>
+                                {order.loyaltyPointsUsed > 0 && (
+                                    <div className="mt-4 p-4 bg-pink-50 rounded-xl border border-pink-200">
+                                        <div className="flex items-center justify-center">
+                                            <Coins className="h-5 w-5 text-pink-600 mr-2" />
+                                            <div className="text-center">
+                                                <div className="text-sm font-bold text-pink-800">Paid with {order.loyaltyPointsUsed} coins</div>
+                                                <div className="text-xs text-pink-600">No additional payment required</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -563,6 +587,20 @@ export default function OrderDetailsPage() {
                                     </div>
                                 </div>
                                 
+                                {order.loyaltyPointsUsed && order.loyaltyPointsUsed > 0 && (
+                                    <div className="flex items-center p-4 bg-pink-50 rounded-xl border border-pink-200">
+                                        <div className="p-2 bg-pink-100 rounded-lg">
+                                            <Coins className="h-4 w-4 text-pink-600" />
+                                        </div>
+                                        <div className="ml-4">
+                                            <p className="font-semibold text-pink-800">
+                                                Paid with {order.loyaltyPointsUsed} coins (৳{order.loyaltyDiscount})
+                                            </p>
+                                            <p className="text-xs text-pink-600 font-medium">Loyalty Points Payment</p>
+                                        </div>
+                                    </div>
+                                )}
+                                
                                 <div className="flex items-center p-4 bg-slate-50 rounded-xl">
                                     <span className={`inline-flex items-center px-3 py-2 rounded-full text-sm font-bold ${getPaymentStatusColor(order.paymentStatus)}`}>
                                         <DollarSign className="h-4 w-4 mr-1" />
@@ -606,10 +644,7 @@ export default function OrderDetailsPage() {
                                     <span className="font-semibold">Update Order Status</span>
                                 </button>
                                 
-                                <button className="group flex items-center justify-center px-6 py-4 bg-gradient-to-r from-slate-600 to-slate-700 text-white rounded-xl hover:from-slate-700 hover:to-slate-800 transition-all duration-200 shadow-lg hover:shadow-xl">
-                                    <Printer className="h-5 w-5 mr-3 group-hover:scale-110 transition-transform" />
-                                    <span className="font-semibold">Print Invoice</span>
-                                </button>
+                                
                             </div>
                         </div>
                     </div>
@@ -618,7 +653,7 @@ export default function OrderDetailsPage() {
 
             {/* Status Update Modal */}
             {isStatusModalOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
                     <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-lg font-medium text-gray-900">Update Order Status</h3>

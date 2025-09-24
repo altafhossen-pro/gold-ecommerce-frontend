@@ -247,7 +247,6 @@ function SearchPageContent() {
     if (!query) {
         return (
             <div className="min-h-screen bg-gray-50">
-                <Header />
                 <div className="2xl:max-w-7xl xl:max-w-6xl mx-auto px-4 py-8">
                     {/* Mobile Filter Toggle Button */}
                     <div className="lg:hidden mb-6">
@@ -285,7 +284,7 @@ function SearchPageContent() {
 
                     <div className="flex flex-col lg:flex-row gap-8">
                         {/* Left Sidebar - Filters */}
-                        <div className={`lg:w-80 ${showFilters ? 'block' : 'hidden lg:block'}`}>
+                        <div className={`lg:w-72 ${showFilters ? 'block' : 'hidden lg:block'}`}>
                             <div className="bg-white rounded-lg shadow-sm p-6 space-y-6">
                                 {/* Main Category Filter */}
                                 <div>
@@ -464,7 +463,6 @@ function SearchPageContent() {
 
     return (
         <div className="min-h-screen bg-gray-50">
-            <Header />
             <div className="2xl:max-w-7xl xl:max-w-6xl mx-auto px-4 py-4">
                 {/* Mobile Filter Toggle Button */}
                 <div className="lg:hidden mb-6">
@@ -504,7 +502,7 @@ function SearchPageContent() {
 
                 <div className="flex flex-col lg:flex-row gap-8">
                     {/* Left Sidebar - Filters */}
-                    <div className={`lg:w-80 ${showFilters ? 'block' : 'hidden lg:block'}`}>
+                    <div className={`lg:w-72 ${showFilters ? 'block' : 'hidden lg:block'}`}>
                         <div className="bg-white rounded-lg shadow-sm p-6 space-y-6">
                             {/* Main Category Filter */}
                             <div>
@@ -685,7 +683,6 @@ export default function SearchPage() {
     return (
         <Suspense fallback={
             <div className="min-h-screen bg-gray-50">
-                <Header />
                 <div className="2xl:max-w-7xl xl:max-w-6xl mx-auto px-4 py-4">
                     <div className="flex justify-center items-center py-12">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500"></div>

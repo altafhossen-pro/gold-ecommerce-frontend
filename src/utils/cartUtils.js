@@ -12,23 +12,46 @@ export const addProductToCart = (product, addToCart, quantity = 1) => {
     let selectedVariant = null;
     
     if (product.variants && product.variants.length > 0) {
-      // Get the first variant and extract size/color attributes
-      const firstVariant = product.variants[0];
-      const sizeAttr = firstVariant.attributes?.find(attr => attr.name === 'Size');
-      const colorAttr = firstVariant.attributes?.find(attr => attr.name === 'Color');
+      // Find the first available variant (with stock > 0)
+      let selectedVariantData = null;
+      
+      for (const variant of product.variants) {
+        if ((variant.stockQuantity || 0) > 0) {
+          selectedVariantData = variant;
+          break;
+        }
+      }
+      
+      // If no variant has stock, show error
+      if (!selectedVariantData) {
+        toast.error('This product is out of stock');
+        return;
+      }
+      
+      // Extract size/color attributes from the selected variant
+      const sizeAttr = selectedVariantData.attributes?.find(attr => attr.name === 'Size');
+      const colorAttr = selectedVariantData.attributes?.find(attr => attr.name === 'Color');
       
       selectedVariant = {
         size: sizeAttr?.value || 'Default', // Size is mandatory
         color: colorAttr?.value || null, // Color is optional
         hexCode: colorAttr?.hexCode || null, // Only set if color exists
-        currentPrice: firstVariant.currentPrice || product.price,
-        originalPrice: firstVariant.originalPrice || product.originalPrice,
-        sku: firstVariant.sku,
-        stockQuantity: firstVariant.stockQuantity || 10,
-        stockStatus: firstVariant.stockStatus || 'in_stock'
+        currentPrice: selectedVariantData.currentPrice || product.price,
+        originalPrice: selectedVariantData.originalPrice || product.originalPrice,
+        sku: selectedVariantData.sku,
+        stockQuantity: selectedVariantData.stockQuantity || 0,
+        stockStatus: selectedVariantData.stockStatus || 'in_stock'
       };
     } else {
       // If no variants, create a default variant
+      const isProductOutOfStock = (product.totalStock || 0) <= 0;
+      
+      if (isProductOutOfStock) {
+        // If product is out of stock, show error and don't add to cart
+        toast.error('This product is out of stock');
+        return;
+      }
+      
       selectedVariant = {
         size: 'Default', // Size is mandatory
         color: null, // Color is optional
@@ -36,8 +59,8 @@ export const addProductToCart = (product, addToCart, quantity = 1) => {
         currentPrice: product.price,
         originalPrice: product.originalPrice,
         sku: product.slug || 'default-sku',
-        stockQuantity: 10,
-        stockStatus: 'in_stock'
+        stockQuantity: product.totalStock || 0,
+        stockStatus: (product.totalStock || 0) > 0 ? 'in_stock' : 'out_of_stock'
       };
     }
 

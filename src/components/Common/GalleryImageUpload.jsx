@@ -136,7 +136,7 @@ export default function GalleryImageUpload({
                             />
                             
                             {/* Actions Overlay */}
-                            <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
+                            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
                                 <button
                                     type="button"
                                     onClick={() => handleRemoveImage(index)}
@@ -148,7 +148,7 @@ export default function GalleryImageUpload({
                             </div>
                             
                             {/* Drag Handle */}
-                            <div className="absolute bottom-2 right-2 bg-white bg-opacity-80 rounded-full p-1 cursor-move">
+                            <div className="absolute bottom-2 right-2 bg-white/80 rounded-full p-1 cursor-move">
                                 <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
                                 </svg>

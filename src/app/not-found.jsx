@@ -1,15 +1,19 @@
 'use client';
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import Link from 'next/link';
-import Header from "@/components/Header/Header";
-import Footer from "@/components/Footer/Footer";
+import dynamic from 'next/dynamic';
+
+// Dynamic import for Footer to avoid SSR issues
+const Footer = dynamic(() => import("@/components/Footer/Footer"), {
+    ssr: false,
+    loading: () => <div className="h-32 bg-gray-100"></div>
+});
 import { Home, Search, ArrowLeft, ShoppingBag, Heart } from 'lucide-react';
 
 export default function NotFound() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50">
-      <Header />
       
       {/* Main Content */}
       <div className="max-w-4xl mx-auto px-4 py-12">
@@ -131,7 +135,9 @@ export default function NotFound() {
         </div>
       </div>
 
-      <Footer />
+      <Suspense fallback={<div className="h-32 bg-gray-100"></div>}>
+        <Footer />
+      </Suspense>
     </div>
   );
 }

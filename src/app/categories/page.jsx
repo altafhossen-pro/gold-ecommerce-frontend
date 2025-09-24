@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { categoryAPI } from '@/services/api';
-import Header from '@/components/Header/Header';
 import { ChevronRight } from 'lucide-react';
 import Pagination from '@/components/Common/Pagination';
 import Footer from '@/components/Footer/Footer';
@@ -55,7 +54,6 @@ export default function CategoriesPage() {
     if (loading) {
         return (
             <div className="min-h-screen bg-gray-50">
-                <Header />
                 <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto px-4 py-8">
                     <div className="flex justify-center items-center py-12">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500"></div>
@@ -67,7 +65,6 @@ export default function CategoriesPage() {
 
     return (
         <div className="min-h-screen bg-gray-50">
-            <Header />
             <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto px-4 py-8">
                 {/* Page Header */}
                 <div className="text-center mb-8">

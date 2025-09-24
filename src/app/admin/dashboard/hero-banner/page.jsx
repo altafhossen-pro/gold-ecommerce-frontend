@@ -1,0 +1,519 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { Plus, Edit, Trash2, Eye, EyeOff, ArrowUp, ArrowDown, Upload, X } from 'lucide-react';
+import { heroBannerAPI } from '@/services/api';
+import DeleteConfirmationModal from '@/components/Common/DeleteConfirmationModal';
+import { toast } from 'react-hot-toast';
+import { getCookie } from 'cookies-next';
+
+export default function HeroBannerManagement() {
+    const [banners, setBanners] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [showModal, setShowModal] = useState(false);
+    const [editingBanner, setEditingBanner] = useState(null);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [bannerToDelete, setBannerToDelete] = useState(null);
+    const [deleting, setDeleting] = useState(false);
+
+    // Form data
+    const [formData, setFormData] = useState({
+        title: '',
+        description: '',
+        modelImage: '',
+        backgroundGradient: 'from-pink-100 via-pink-50 to-pink-100',
+        button1Text: 'Shop Now',
+        button1Link: '/shop',
+        button2Text: 'Explore Now',
+        button2Link: '/categories',
+        isActive: true,
+        order: 0
+    });
+
+    // Background gradient options
+    const gradientOptions = [
+        { value: 'from-pink-100 via-pink-50 to-pink-100', label: 'Pink Gradient' },
+        { value: 'from-purple-100 via-purple-50 to-purple-100', label: 'Purple Gradient' },
+        { value: 'from-rose-100 via-rose-50 to-rose-100', label: 'Rose Gradient' },
+        { value: 'from-blue-100 via-blue-50 to-blue-100', label: 'Blue Gradient' },
+        { value: 'from-green-100 via-green-50 to-green-100', label: 'Green Gradient' },
+        { value: 'from-yellow-100 via-yellow-50 to-yellow-100', label: 'Yellow Gradient' },
+        { value: 'from-indigo-100 via-indigo-50 to-indigo-100', label: 'Indigo Gradient' },
+        { value: 'from-orange-100 via-orange-50 to-orange-100', label: 'Orange Gradient' }
+    ];
+
+    useEffect(() => {
+        fetchBanners();
+    }, []);
+
+    const fetchBanners = async () => {
+        try {
+            setLoading(true);
+            const token = getCookie('token');
+            const response = await heroBannerAPI.getAllHeroBanners(token);
+            
+            if (response.success) {
+                setBanners(response.data || []);
+            } else {
+                toast.error(response.message || 'Failed to fetch banners');
+            }
+        } catch (error) {
+            console.error('Error fetching banners:', error);
+            toast.error('Error fetching banners');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleAddNew = () => {
+        setEditingBanner(null);
+        setFormData({
+            title: '',
+            description: '',
+            modelImage: '',
+            backgroundGradient: 'from-pink-100 via-pink-50 to-pink-100',
+            button1Text: 'Shop Now',
+            button1Link: '/shop',
+            button2Text: 'Explore Now',
+            button2Link: '/categories',
+            isActive: true,
+            order: banners.length
+        });
+        setShowModal(true);
+    };
+
+    const handleEdit = (banner) => {
+        setEditingBanner(banner);
+        setFormData({
+            title: banner.title || '',
+            description: banner.description || '',
+            modelImage: banner.modelImage || '',
+            backgroundGradient: banner.backgroundGradient || 'from-pink-100 via-pink-50 to-pink-100',
+            button1Text: banner.button1Text || 'Shop Now',
+            button1Link: banner.button1Link || '/shop',
+            button2Text: banner.button2Text || 'Explore Now',
+            button2Link: banner.button2Link || '/categories',
+            isActive: banner.isActive !== false,
+            order: banner.order || 0
+        });
+        setShowModal(true);
+    };
+
+    const handleDeleteClick = (banner) => {
+        setBannerToDelete(banner);
+        setShowDeleteModal(true);
+    };
+
+    const handleDeleteConfirm = async () => {
+        if (!bannerToDelete) return;
+
+        try {
+            setDeleting(true);
+            const token = getCookie('token');
+            const response = await heroBannerAPI.deleteHeroBanner(bannerToDelete._id, token);
+            
+            if (response.success) {
+                toast.success('Banner deleted successfully');
+                fetchBanners();
+            } else {
+                toast.error(response.message || 'Failed to delete banner');
+            }
+        } catch (error) {
+            console.error('Error deleting banner:', error);
+            toast.error('Error deleting banner');
+        } finally {
+            setDeleting(false);
+            setShowDeleteModal(false);
+            setBannerToDelete(null);
+        }
+    };
+
+    const handleDeleteCancel = () => {
+        setShowDeleteModal(false);
+        setBannerToDelete(null);
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        
+        try {
+            const token = getCookie('token');
+            let response;
+
+            if (editingBanner) {
+                response = await heroBannerAPI.updateHeroBanner(editingBanner._id, formData, token);
+            } else {
+                response = await heroBannerAPI.createHeroBanner(formData, token);
+            }
+
+            if (response.success) {
+                toast.success(editingBanner ? 'Banner updated successfully' : 'Banner created successfully');
+                setShowModal(false);
+                fetchBanners();
+            } else {
+                toast.error(response.message || 'Failed to save banner');
+            }
+        } catch (error) {
+            console.error('Error saving banner:', error);
+            toast.error('Error saving banner');
+        }
+    };
+
+    const handleInputChange = (e) => {
+        const { name, value, type, checked } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [name]: type === 'checkbox' ? checked : value
+        }));
+    };
+
+    const toggleBannerStatus = async (banner) => {
+        try {
+            const token = getCookie('adminToken');
+            const updatedData = { ...banner, isActive: !banner.isActive };
+            const response = await heroBannerAPI.updateHeroBanner(banner._id, updatedData, token);
+            
+            if (response.success) {
+                toast.success(`Banner ${!banner.isActive ? 'activated' : 'deactivated'} successfully`);
+                fetchBanners();
+            } else {
+                toast.error(response.message || 'Failed to update banner status');
+            }
+        } catch (error) {
+            console.error('Error updating banner status:', error);
+            toast.error('Error updating banner status');
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500"></div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-6">
+            {/* Header */}
+            <div className="flex justify-between items-center">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900">Hero Banner Management</h1>
+                    <p className="text-gray-600">Manage your homepage hero banners</p>
+                </div>
+                <button
+                    onClick={handleAddNew}
+                    className="bg-pink-500 text-white px-4 py-2 rounded-lg hover:bg-pink-600 transition-colors duration-200 flex items-center gap-2"
+                >
+                    <Plus className="w-4 h-4" />
+                    Add New Banner
+                </button>
+            </div>
+
+            {/* Banners List */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+                {banners.length === 0 ? (
+                    <div className="text-center py-16">
+                        <div className="w-20 h-20 mx-auto mb-6 bg-pink-100 rounded-full flex items-center justify-center">
+                            <svg className="w-10 h-10 text-pink-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                        <h3 className="text-xl font-semibold text-gray-900 mb-3">No Hero Banners Yet</h3>
+                        <p className="text-gray-500 mb-6 max-w-md mx-auto">
+                            Create engaging hero banners to showcase your products and attract customers to your homepage.
+                        </p>
+                        <div className="space-y-3">
+                            <button
+                                onClick={handleAddNew}
+                                className="bg-pink-500 text-white px-6 py-3 rounded-lg hover:bg-pink-600 transition-colors duration-200 font-medium flex items-center gap-2 mx-auto"
+                            >
+                                <Plus className="w-5 h-5" />
+                                Create First Banner
+                            </button>
+                            <p className="text-xs text-gray-400">
+                                Add multiple banners to create a dynamic slider experience
+                            </p>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                                <tr>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Preview</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                                {banners.map((banner) => (
+                                    <tr key={banner._id} className="hover:bg-gray-50">
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="flex items-center">
+                                                <div className={`w-16 h-10 rounded-lg bg-gradient-to-r ${banner.backgroundGradient} flex items-center justify-center`}>
+                                                    <span className="text-xs font-medium text-gray-700">Banner</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="text-sm font-medium text-gray-900">{banner.title}</div>
+                                            <div className="text-sm text-gray-500 truncate max-w-xs">{banner.description}</div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <button
+                                                onClick={() => toggleBannerStatus(banner)}
+                                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                                    banner.isActive 
+                                                        ? 'bg-green-100 text-green-800' 
+                                                        : 'bg-gray-100 text-gray-800'
+                                                }`}
+                                            >
+                                                {banner.isActive ? (
+                                                    <>
+                                                        <Eye className="w-3 h-3 mr-1" />
+                                                        Active
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <EyeOff className="w-3 h-3 mr-1" />
+                                                        Inactive
+                                                    </>
+                                                )}
+                                            </button>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            {banner.order}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                            <div className="flex items-center space-x-2">
+                                                <button
+                                                    onClick={() => handleEdit(banner)}
+                                                    className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 border border-gray-300 hover:border-blue-300 rounded-full transition-all duration-200 cursor-pointer"
+                                                >
+                                                    <Edit className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteClick(banner)}
+                                                    className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 border border-gray-300 hover:border-red-300 rounded-full transition-all duration-200 cursor-pointer"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
+
+            {/* Add/Edit Modal */}
+            {showModal && (
+                <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 p-4">
+                    <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                            <h2 className="text-xl font-semibold text-gray-900">
+                                {editingBanner ? 'Edit Banner' : 'Add New Banner'}
+                            </h2>
+                            <button
+                                onClick={() => setShowModal(false)}
+                                className="text-gray-400 hover:text-gray-600 transition-colors duration-200 cursor-pointer"
+                            >
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="md:col-span-2">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Title *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="title"
+                                        value={formData.title}
+                                        onChange={handleInputChange}
+                                        required
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500"
+                                        placeholder="Enter banner title"
+                                    />
+                                </div>
+
+                                <div className="md:col-span-2">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Description *
+                                    </label>
+                                    <textarea
+                                        name="description"
+                                        value={formData.description}
+                                        onChange={handleInputChange}
+                                        required
+                                        rows={3}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500"
+                                        placeholder="Enter banner description"
+                                    />
+                                </div>
+
+                                <div className="md:col-span-2">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Model Image URL *
+                                    </label>
+                                    <input
+                                        type="url"
+                                        name="modelImage"
+                                        value={formData.modelImage}
+                                        onChange={handleInputChange}
+                                        required
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500"
+                                        placeholder="https://example.com/image.jpg"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Background Gradient *
+                                    </label>
+                                    <select
+                                        name="backgroundGradient"
+                                        value={formData.backgroundGradient}
+                                        onChange={handleInputChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500"
+                                    >
+                                        {gradientOptions.map((option) => (
+                                            <option key={option.value} value={option.value}>
+                                                {option.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Order
+                                    </label>
+                                    <input
+                                        type="number"
+                                        name="order"
+                                        value={formData.order}
+                                        onChange={handleInputChange}
+                                        min="0"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Button 1 Text *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="button1Text"
+                                        value={formData.button1Text}
+                                        onChange={handleInputChange}
+                                        required
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500"
+                                        placeholder="e.g., Shop Now"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Button 1 Link *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="button1Link"
+                                        value={formData.button1Link}
+                                        onChange={handleInputChange}
+                                        required
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500"
+                                        placeholder="e.g., /shop"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Button 2 Text *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="button2Text"
+                                        value={formData.button2Text}
+                                        onChange={handleInputChange}
+                                        required
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500"
+                                        placeholder="e.g., Explore Now"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Button 2 Link *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="button2Link"
+                                        value={formData.button2Link}
+                                        onChange={handleInputChange}
+                                        required
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500"
+                                        placeholder="e.g., /categories"
+                                    />
+                                </div>
+
+                                <div className="md:col-span-2">
+                                    <div className="flex items-center">
+                                        <input
+                                            type="checkbox"
+                                            name="isActive"
+                                            checked={formData.isActive}
+                                            onChange={handleInputChange}
+                                            className="h-4 w-4 text-pink-600 focus:ring-pink-500 border-gray-300 rounded"
+                                        />
+                                        <label className="ml-2 text-sm text-gray-700">
+                                            Active (visible on website)
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowModal(false)}
+                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 transition-all duration-200 cursor-pointer"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-4 py-2 text-sm font-medium text-white bg-pink-500 border border-transparent rounded-md hover:bg-pink-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 transition-all duration-200 cursor-pointer"
+                                >
+                                    {editingBanner ? 'Update Banner' : 'Create Banner'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Confirmation Modal */}
+            <DeleteConfirmationModal
+                isOpen={showDeleteModal}
+                onClose={handleDeleteCancel}
+                onConfirm={handleDeleteConfirm}
+                title="Delete Hero Banner"
+                message="Are you sure you want to delete this hero banner? This action cannot be undone."
+                itemName={bannerToDelete?.title}
+                itemType="banner"
+                isLoading={deleting}
+                dangerLevel="high"
+            />
+        </div>
+    );
+}

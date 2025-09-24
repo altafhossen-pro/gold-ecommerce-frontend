@@ -17,6 +17,7 @@ export default function FeaturedProducts() {
     const [activeFilter, setActiveFilter] = useState('all');
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const [categories, setCategories] = useState([]);
     const [totalFeaturedProducts, setTotalFeaturedProducts] = useState(0);
 
@@ -40,6 +41,7 @@ export default function FeaturedProducts() {
     const fetchFeaturedProducts = async () => {
         try {
             setLoading(true);
+            setError(null);
             const data = await productAPI.getFeaturedProducts(10); // Limit to 10 products
             
             if (data.success) {
@@ -52,6 +54,7 @@ export default function FeaturedProducts() {
                     title: product.title, // Keep original title
                     slug: product.slug, // Keep original slug
                     featuredImage: product.featuredImage, // Keep original image
+                    totalStock: product.totalStock || 0, // Keep total stock
                     isWishlisted: wishlist.some(item => item.productId === product._id) // Sync with global wishlist
                 }));
                 setProducts(transformedProducts);
@@ -61,11 +64,11 @@ export default function FeaturedProducts() {
                     setTotalFeaturedProducts(data.pagination.total);
                 }
             } else {
-                toast.error('Failed to fetch featured products');
+                setError('Failed to load featured products');
             }
         } catch (error) {
             console.error('Error fetching featured products:', error);
-            toast.error('Error fetching featured products');
+            setError('Unable to load featured products');
         } finally {
             setLoading(false);
         }
@@ -145,6 +148,26 @@ export default function FeaturedProducts() {
                                 <div className="bg-gray-200 h-4 rounded w-2/3"></div>
                             </div>
                         ))}
+                    </div>
+                ) : error ? (
+                    <div className="text-center py-8 sm:py-12">
+                        <div className="max-w-md mx-auto px-4">
+                            <div className="w-16 h-16 sm:w-24 sm:h-24 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                                <svg className="w-8 h-8 sm:w-12 sm:h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                </svg>
+                            </div>
+                            <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-2">Unable to Load Products</h3>
+                            <p className="text-sm sm:text-base text-gray-600 mb-4">
+                                {error}
+                            </p>
+                            <button 
+                                onClick={fetchFeaturedProducts}
+                                className="bg-pink-500 text-white px-4 sm:px-6 py-2 rounded-lg font-semibold text-sm hover:bg-pink-600 transition-colors"
+                            >
+                                Try Again
+                            </button>
+                        </div>
                     </div>
                 ) : filteredProducts.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">

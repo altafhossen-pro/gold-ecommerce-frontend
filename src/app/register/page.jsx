@@ -10,9 +10,6 @@ import {
     EyeOff,
     User,
     Phone,
-    Github,
-    Chrome,
-    Facebook,
     ArrowRight,
     ArrowLeft
 } from 'lucide-react'
@@ -27,6 +24,7 @@ export default function RegisterPage() {
     const [loading, setLoading] = useState(false)
     const [showPassword, setShowPassword] = useState(false)
     const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+    const [activeTab, setActiveTab] = useState('email') // 'email', 'social'
 
     // Register form state
     const [registerForm, setRegisterForm] = useState({
@@ -45,7 +43,7 @@ export default function RegisterPage() {
         }))
     }
 
-    const handleRegister = async (e) => {
+    const handleEmailRegister = async (e) => {
         e.preventDefault()
         setLoading(true)
 
@@ -73,7 +71,9 @@ export default function RegisterPage() {
 
             if (data.success) {
                 // Auto-login after successful registration
-                // login(data.data, data.data.token)
+                if (data.data && data.data.token) {
+                    login(data.data.user, data.data.token)
+                }
                 toast.success('Registration successful! Welcome!')
                 router.push('/')
             } else {
@@ -98,179 +98,217 @@ export default function RegisterPage() {
                 <div className="bg-white rounded-2xl shadow-xl border border-gray-300 p-8">
                     {/* Header */}
                     <div className="text-center mb-8">
-
                         <h1 className="text-2xl font-bold text-gray-900">
                             Please Register
                         </h1>
+                        <p className="text-gray-600 mt-2">Choose your preferred registration method</p>
                     </div>
-                    {/* Register Form */}
-                    <form onSubmit={handleRegister} className="space-y-5">
-                        <div>
-                            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                                Full name
-                            </label>
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                    <User className="h-5 w-5 text-gray-400" />
-                                </div>
-                                <input
-                                    id="name"
-                                    name="name"
-                                    type="text"
-                                    autoComplete="name"
-                                    required
-                                    value={registerForm.name}
-                                    onChange={handleRegisterChange}
-                                    className="block w-full pl-12 pr-4 py-3 border border-gray-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50 focus:bg-white"
-                                    placeholder="Enter your full name"
-                                />
-                            </div>
-                        </div>
 
-                        <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                                Email address
-                            </label>
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                    <Mail className="h-5 w-5 text-gray-400" />
-                                </div>
-                                <input
-                                    id="email"
-                                    name="email"
-                                    type="email"
-                                    autoComplete="email"
-                                    required
-                                    value={registerForm.email}
-                                    onChange={handleRegisterChange}
-                                    className="block w-full pl-12 pr-4 py-3 border border-gray-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50 focus:bg-white"
-                                    placeholder="Enter your email"
-                                />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
-                                Phone number
-                            </label>
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                    <Phone className="h-5 w-5 text-gray-400" />
-                                </div>
-                                <input
-                                    id="phone"
-                                    name="phone"
-                                    type="tel"
-                                    autoComplete="tel"
-                                    value={registerForm.phone}
-                                    onChange={handleRegisterChange}
-                                    className="block w-full pl-12 pr-4 py-3 border border-gray-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50 focus:bg-white"
-                                    placeholder="Enter your phone number"
-                                />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                                Password
-                            </label>
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                    <Lock className="h-5 w-5 text-gray-400" />
-                                </div>
-                                <input
-                                    id="password"
-                                    name="password"
-                                    type={showPassword ? 'text' : 'password'}
-                                    autoComplete="new-password"
-                                    required
-                                    value={registerForm.password}
-                                    onChange={handleRegisterChange}
-                                    className="block w-full pl-12 pr-12 py-3 border border-gray-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50 focus:bg-white"
-                                    placeholder="Create a password"
-                                />
-                                <button
-                                    type="button"
-                                    className="absolute inset-y-0 right-0 pr-4 flex items-center"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                >
-                                    {showPassword ? (
-                                        <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                                    ) : (
-                                        <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                                    )}
-                                </button>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 mb-2">
-                                Confirm password
-                            </label>
-                            <div className="relative">
-                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                    <Lock className="h-5 w-5 text-gray-400" />
-                                </div>
-                                <input
-                                    id="confirm-password"
-                                    name="confirmPassword"
-                                    type={showConfirmPassword ? 'text' : 'password'}
-                                    autoComplete="new-password"
-                                    required
-                                    value={registerForm.confirmPassword}
-                                    onChange={handleRegisterChange}
-                                    className="block w-full pl-12 pr-12 py-3 border border-gray-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-gray-50 focus:bg-white"
-                                    placeholder="Confirm your password"
-                                />
-                                <button
-                                    type="button"
-                                    className="absolute inset-y-0 right-0 pr-4 flex items-center"
-                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                >
-                                    {showConfirmPassword ? (
-                                        <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                                    ) : (
-                                        <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                                    )}
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center">
-                            <input
-                                id="terms"
-                                name="terms"
-                                type="checkbox"
-                                required
-                                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                            />
-                            <label htmlFor="terms" className="ml-2 block text-sm text-gray-700">
-                                I agree to the{' '}
-                                <Link href="/terms" className="text-blue-600 hover:text-blue-500">
-                                    Terms of Service
-                                </Link>{' '}
-                                and{' '}
-                                <Link href="/privacy" className="text-blue-600 hover:text-blue-500">
-                                    Privacy Policy
-                                </Link>
-                            </label>
-                        </div>
-
+                    {/* Registration Method Tabs */}
+                    <div className="flex bg-gray-100 rounded-xl p-1 mb-6">
                         <button
-                            type="submit"
-                            disabled={loading}
-                            className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl"
+                            onClick={() => setActiveTab('email')}
+                            className={`flex-1 flex items-center justify-center py-2 px-4 rounded-lg text-sm font-medium transition-all ${
+                                activeTab === 'email'
+                                    ? 'bg-white text-pink-600 shadow-sm'
+                                    : 'text-gray-600 hover:text-gray-900'
+                            }`}
                         >
-                            {loading ? (
-                                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                            ) : (
-                                <>
-                                    Create account
-                                    <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                                </>
-                            )}
+                            <Mail className="w-4 h-4 mr-2" />
+                            Email
                         </button>
-                    </form>
+                        <button
+                            onClick={() => setActiveTab('social')}
+                            className={`flex-1 flex items-center justify-center py-2 px-4 rounded-lg text-sm font-medium transition-all ${
+                                activeTab === 'social'
+                                    ? 'bg-white text-pink-600 shadow-sm'
+                                    : 'text-gray-600 hover:text-gray-900'
+                            }`}
+                        >
+                            <User className="w-4 h-4 mr-2" />
+                            Social
+                        </button>
+                    </div>
+                    {/* Email Registration Form */}
+                    {activeTab === 'email' && (
+                        <form onSubmit={handleEmailRegister} className="space-y-5">
+                            <div>
+                                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+                                    Full Name
+                                </label>
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                        <User className="h-5 w-5 text-gray-400" />
+                                    </div>
+                                    <input
+                                        id="name"
+                                        name="name"
+                                        type="text"
+                                        autoComplete="name"
+                                        required
+                                        value={registerForm.name}
+                                        onChange={handleRegisterChange}
+                                        className="block w-full pl-12 pr-4 py-3 border border-gray-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all duration-200 bg-gray-50 focus:bg-white"
+                                        placeholder="Enter your full name"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                                    Email Address
+                                </label>
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                        <Mail className="h-5 w-5 text-gray-400" />
+                                    </div>
+                                    <input
+                                        id="email"
+                                        name="email"
+                                        type="email"
+                                        autoComplete="email"
+                                        required
+                                        value={registerForm.email}
+                                        onChange={handleRegisterChange}
+                                        className="block w-full pl-12 pr-4 py-3 border border-gray-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all duration-200 bg-gray-50 focus:bg-white"
+                                        placeholder="Enter your email address"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+                                    Phone Number (Optional)
+                                </label>
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                        <Phone className="h-5 w-5 text-gray-400" />
+                                    </div>
+                                    <input
+                                        id="phone"
+                                        name="phone"
+                                        type="tel"
+                                        autoComplete="tel"
+                                        value={registerForm.phone}
+                                        onChange={handleRegisterChange}
+                                        className="block w-full pl-12 pr-4 py-3 border border-gray-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all duration-200 bg-gray-50 focus:bg-white"
+                                        placeholder="Enter your phone number"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                                    Password
+                                </label>
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                        <Lock className="h-5 w-5 text-gray-400" />
+                                    </div>
+                                    <input
+                                        id="password"
+                                        name="password"
+                                        type={showPassword ? 'text' : 'password'}
+                                        autoComplete="new-password"
+                                        required
+                                        value={registerForm.password}
+                                        onChange={handleRegisterChange}
+                                        className="block w-full pl-12 pr-12 py-3 border border-gray-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all duration-200 bg-gray-50 focus:bg-white"
+                                        placeholder="Create a password"
+                                    />
+                                    <button
+                                        type="button"
+                                        className="absolute inset-y-0 right-0 pr-4 flex items-center"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                    >
+                                        {showPassword ? (
+                                            <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                                        ) : (
+                                            <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 mb-2">
+                                    Confirm Password
+                                </label>
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                        <Lock className="h-5 w-5 text-gray-400" />
+                                    </div>
+                                    <input
+                                        id="confirm-password"
+                                        name="confirmPassword"
+                                        type={showConfirmPassword ? 'text' : 'password'}
+                                        autoComplete="new-password"
+                                        required
+                                        value={registerForm.confirmPassword}
+                                        onChange={handleRegisterChange}
+                                        className="block w-full pl-12 pr-12 py-3 border border-gray-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all duration-200 bg-gray-50 focus:bg-white"
+                                        placeholder="Confirm your password"
+                                    />
+                                    <button
+                                        type="button"
+                                        className="absolute inset-y-0 right-0 pr-4 flex items-center"
+                                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                    >
+                                        {showConfirmPassword ? (
+                                            <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                                        ) : (
+                                            <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center">
+                                <input
+                                    id="terms"
+                                    name="terms"
+                                    type="checkbox"
+                                    required
+                                    className="h-4 w-4 text-pink-600 focus:ring-pink-500 border-gray-300 rounded"
+                                />
+                                <label htmlFor="terms" className="ml-2 block text-sm text-gray-700">
+                                    I agree to the{' '}
+                                    <Link href="/terms" className="text-pink-600 hover:text-pink-500">
+                                        Terms of Service
+                                    </Link>{' '}
+                                    and{' '}
+                                    <Link href="/privacy" className="text-pink-600 hover:text-pink-500">
+                                        Privacy Policy
+                                    </Link>
+                                </label>
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl"
+                            >
+                                {loading ? (
+                                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                                ) : (
+                                    <>
+                                        Create Account
+                                        <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                                    </>
+                                )}
+                            </button>
+                        </form>
+                    )}
+
+                    {/* Social Registration */}
+                    {activeTab === 'social' && (
+                        <div className="space-y-5">
+                            <div className="text-center">
+                                <p className="text-gray-600 mb-4">Sign up with your social account</p>
+                            </div>
+                            <SocialLogin onSocialLogin={handleSocialLogin} />
+                        </div>
+                    )}
 
                     {/* Login Link */}
                     <div className="text-center mt-6">
@@ -282,20 +320,6 @@ export default function RegisterPage() {
                             Already have an account? Sign in
                         </Link>
                     </div>
-
-                    <div className="relative my-6">
-                        <div className="absolute inset-0 flex items-center">
-                            <div className="w-full border-t border-gray-400" />
-                        </div>
-                        <div className="relative flex justify-center text-sm">
-                            <span className="px-4 bg-white text-gray-500">
-                                Or continue with
-                            </span>
-                        </div>
-                    </div>
-
-                    <SocialLogin onSocialLogin={handleSocialLogin} />
-                    {/* Divider */}
 
 
 

@@ -1,14 +1,89 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Minus, Plus, Trash2, ShoppingBag } from 'lucide-react';
 import { useAppContext } from '@/context/AppContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { productAPI } from '@/services/api';
     
 export default function CartModal({ isOpen, onClose }) {
     const { cart, cartTotal, updateCartItem, removeFromCart, cartLoading } = useAppContext();
     const router = useRouter();
+    
+    // State for stock validation
+    const [stockData, setStockData] = useState({});
+    const [stockLoading, setStockLoading] = useState(false);
+
+    // Check stock availability when cart changes or modal opens
+    useEffect(() => {
+        if (cart.length > 0) {
+            checkStockAvailability();
+        } else {
+            setStockData({});
+        }
+    }, [cart]);
+
+    // Check stock when modal opens (even if cart hasn't changed)
+    useEffect(() => {
+        if (isOpen && cart.length > 0) {
+            checkStockAvailability();
+        }
+    }, [isOpen]);
+
+    // Real-time stock checking function
+    const checkStockAvailability = async () => {
+        try {
+            setStockLoading(true);
+            
+            // Prepare cart items for API call
+            const cartItems = cart.map(item => ({
+                id: item.id,
+                productId: item.productId,
+                sku: item.sku,
+                quantity: item.quantity
+            }));
+
+            const response = await productAPI.checkStockAvailability(cartItems);
+            
+            if (response.success) {
+                // Create a map of stock data for quick lookup
+                const stockMap = {};
+                response.data.stockCheckResults.forEach(result => {
+                    stockMap[result.cartItemId] = {
+                        isAvailable: result.isAvailable,
+                        availableStock: result.availableStock,
+                        reason: result.reason
+                    };
+                });
+                setStockData(stockMap);
+            }
+        } catch (error) {
+            console.error('Error checking stock:', error);
+            // Fallback to local stock data if API fails
+            const fallbackStockData = {};
+            cart.forEach(item => {
+                fallbackStockData[item.id] = {
+                    isAvailable: (item.stockQuantity || 0) >= item.quantity,
+                    availableStock: item.stockQuantity || 0,
+                    reason: 'Local check'
+                };
+            });
+            setStockData(fallbackStockData);
+        } finally {
+            setStockLoading(false);
+        }
+    };
+
+    // Check if item is out of stock using real-time data
+    const isOutOfStock = (item) => {
+        const stockInfo = stockData[item.id];
+        if (stockInfo) {
+            return !stockInfo.isAvailable;
+        }
+        // Fallback to local check if no real-time data
+        return (item.stockQuantity || 0) < item.quantity;
+    };
 
     // Body scroll lock when modal is open
     useEffect(() => {
@@ -77,14 +152,35 @@ export default function CartModal({ isOpen, onClose }) {
                     <div className="flex items-center gap-2">
                         <ShoppingBag className="w-6 h-6 text-[#EF3D6A]" />
                         <h2 className="text-lg font-semibold text-gray-800">Shopping Cart</h2>
+                        {stockLoading && (
+                            <div className="flex items-center gap-1 text-xs text-gray-500">
+                                <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                                <span>Checking stock...</span>
+                            </div>
+                        )}
                     </div>
                     <button
                         onClick={onClose}
                         className="p-2 hover:bg-gray-100 rounded-full transition-colors duration-200 hover:scale-110"
+                        aria-label="Close cart"
                     >
                         <X className="w-5 h-5 text-gray-600" />
                     </button>
                 </div>
+
+                {/* Out of Stock Warning Banner */}
+                {cart.some(item => isOutOfStock(item)) && (
+                    <div className="bg-red-50 border-b border-red-200 p-3 flex-shrink-0">
+                        <div className="flex items-center gap-2 text-red-700">
+                            <div className="w-4 h-4 rounded-full bg-red-500 flex items-center justify-center">
+                                <span className="text-white text-xs font-bold">!</span>
+                            </div>
+                            <span className="text-sm font-medium">
+                                Some items are out of stock
+                            </span>
+                        </div>
+                    </div>
+                )}
 
                 {/* Cart Items - Scrollable */}
                 <div className="flex-1 overflow-y-auto p-4">
@@ -118,10 +214,12 @@ export default function CartModal({ isOpen, onClose }) {
                         </div>
                     ) : (
                         <div className="space-y-3">
-                            {cart.map((item, index) => (
+                            {cart.map((item, index) => {
+                                const outOfStock = isOutOfStock(item);
+                                return (
                                 <div 
                                     key={item.id} 
-                                    className={`flex gap-3 p-2 bg-gray-50 rounded-lg transition-all duration-300 ease-out ${isOpen ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'}`}
+                                    className={`flex gap-3 p-2 rounded-lg transition-all duration-300 ease-out ${outOfStock ? 'bg-red-50 border border-red-200' : 'bg-gray-50'} ${isOpen ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'}`}
                                     style={{ transitionDelay: `${index * 50}ms` }}
                                 >
                                     {/* Product Image */}
@@ -138,6 +236,16 @@ export default function CartModal({ isOpen, onClose }) {
                                         <h3 className="font-medium text-gray-800 text-sm mb-1 truncate">
                                             {item.name}
                                         </h3>
+                                        
+                                        {/* Out of Stock Message */}
+                                        {outOfStock && (
+                                            <div className="text-xs text-red-600 font-medium mb-1">
+                                                {stockData[item.id]?.reason === 'Insufficient stock' 
+                                                    ? `Only ${stockData[item.id]?.availableStock || 0} available`
+                                                    : 'Out of Stock'
+                                                }
+                                            </div>
+                                        )}
 
                                         {/* Variant Info with Color Circle */}
                                         <div className="flex items-center gap-2 mb-1">
@@ -172,21 +280,27 @@ export default function CartModal({ isOpen, onClose }) {
                                                 {item.total}৳
                                             </p>
                                             <div className="flex items-center justify-between">
-                                                <div className="flex items-center border border-[#EF3D6A] rounded-md p-1">
-                                                    <button
-                                                        onClick={() => updateCartItem(item.id, item.quantity - 1)}
-                                                        className="p-1 cursor-pointer transition-colors hover:bg-[#EF3D6A] hover:text-white rounded"
-                                                    >
-                                                        <Minus className="w-3 h-3" />
-                                                    </button>
-                                                    <span className="px-2 text-sm font-medium text-[#EF3D6A]">{item.quantity}</span>
-                                                    <button
-                                                        onClick={() => updateCartItem(item.id, item.quantity + 1)}
-                                                        className="p-1 cursor-pointer transition-colors hover:bg-[#EF3D6A] hover:text-white rounded"
-                                                    >
-                                                        <Plus className="w-3 h-3" />
-                                                    </button>
-                                                </div>
+                                                {outOfStock ? (
+                                                    <div className="text-xs text-red-600 font-medium">
+                                                        Remove from cart
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex items-center border border-[#EF3D6A] rounded-md p-1">
+                                                        <button
+                                                            onClick={() => updateCartItem(item.id, item.quantity - 1)}
+                                                            className="p-1 cursor-pointer transition-colors hover:bg-[#EF3D6A] hover:text-white rounded"
+                                                        >
+                                                            <Minus className="w-3 h-3" />
+                                                        </button>
+                                                        <span className="px-2 text-sm font-medium text-[#EF3D6A]">{item.quantity}</span>
+                                                        <button
+                                                            onClick={() => updateCartItem(item.id, item.quantity + 1)}
+                                                            className="p-1 cursor-pointer transition-colors hover:bg-[#EF3D6A] hover:text-white rounded"
+                                                        >
+                                                            <Plus className="w-3 h-3" />
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
 
@@ -199,12 +313,14 @@ export default function CartModal({ isOpen, onClose }) {
                                         <button
                                             onClick={() => removeFromCart(item.id)}
                                             className="p-2 h-fit text-[#EF3D6A] hover:bg-[#EF3D6A] hover:text-white rounded-full transition-colors cursor-pointer"
+                                            aria-label={`Remove ${item.title} from cart`}
                                         >
                                             <Trash2 className="w-4 h-4" />
                                         </button>
                                     </div>
                                 </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>
@@ -219,14 +335,26 @@ export default function CartModal({ isOpen, onClose }) {
                     </div>
                 ) : cart.length > 0 && (
                     <div className={`border-t border-gray-200 p-4 flex-shrink-0 transition-all duration-300 ease-out ${isOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-                        <Link 
-                            href="/checkout"
-                            onClick={onClose}
-                            className="w-full bg-[#EF3D6A] text-white py-3 px-4 rounded-lg font-semibold hover:bg-[#D63447] transition-all duration-200 flex items-center justify-between cursor-pointer hover:scale-[1.02] hover:shadow-lg"
-                        >
-                            <span>Proceed To Checkout</span>
-                            <span>{cartTotal} ৳</span>
-                        </Link>
+                        {/* Check if any items are out of stock */}
+                        {cart.some(item => isOutOfStock(item)) ? (
+                            <div className="w-full bg-gray-300 text-gray-500 py-3 px-4 rounded-lg font-semibold flex items-center justify-between cursor-not-allowed">
+                                <span>Remove out of stock items to checkout</span>
+                                <span>{cartTotal} ৳</span>
+                            </div>
+                        ) : stockLoading ? (
+                            <div className="w-full bg-gray-300 text-gray-500 py-3 px-4 rounded-lg font-semibold flex items-center justify-center cursor-not-allowed">
+                                <span>Checking stock availability...</span>
+                            </div>
+                        ) : (
+                            <Link 
+                                href="/checkout"
+                                onClick={onClose}
+                                className="w-full bg-[#EF3D6A] text-white py-3 px-4 rounded-lg font-semibold hover:bg-[#D63447] transition-all duration-200 flex items-center justify-between cursor-pointer hover:scale-[1.02] hover:shadow-lg"
+                            >
+                                <span>Proceed To Checkout</span>
+                                <span>{cartTotal} ৳</span>
+                            </Link>
+                        )}
                     </div>
                 )}
             </div>

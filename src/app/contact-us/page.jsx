@@ -11,7 +11,6 @@ import {
     MessageSquare
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import Header from '@/components/Header/Header'
 import Footer from '@/components/Footer/Footer'
 
 export default function ContactUsPage() {
@@ -58,7 +57,6 @@ export default function ContactUsPage() {
 
     return (
         <div className="min-h-screen bg-gray-50">
-            <Header />
 
             {/* Main Content */}
             <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto px-4 py-12">

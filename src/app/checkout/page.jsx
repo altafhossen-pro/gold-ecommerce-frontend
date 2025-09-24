@@ -1,23 +1,155 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, ArrowRight, MessageCircle, Minus, Plus, Trash2, Check } from 'lucide-react';
-import Header from '@/components/Header/Header';
+import { ArrowLeft, ArrowRight, MessageCircle, Minus, Plus, Trash2, Check, AlertTriangle } from 'lucide-react';
 import { useAppContext } from '@/context/AppContext';
-import { orderAPI } from '@/services/api';
+import { orderAPI, productAPI, loyaltyAPI, couponAPI } from '@/services/api';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
+import { getCookie } from 'cookies-next';
+import LoginRequiredModal from '@/components/Common/LoginRequiredModal';
 
 export default function Checkout() {
     const { cart, cartTotal, updateCartItem, removeFromCart, cartLoading, user, clearCart } = useAppContext();
     const router = useRouter();
+    // Login required modal state
+    const [showLoginModal, setShowLoginModal] = useState(false);
+    const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+    // Check authentication status
+    useEffect(() => {
+        const token = getCookie('token');
+        
+        // If we have a token but user data is still loading
+        if (token && !user) {
+            setIsCheckingAuth(true);
+            setShowLoginModal(false);
+        }
+        // If no token, show modal immediately
+        else if (!token) {
+            setIsCheckingAuth(false);
+            setShowLoginModal(true);
+        }
+        // If user is loaded and has email, hide modal
+        else if (user && user.email) {
+            setIsCheckingAuth(false);
+            setShowLoginModal(false);
+        }
+    }, [user]);
+
+    // Timeout for authentication check
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (isCheckingAuth) {
+                setIsCheckingAuth(false);
+                setShowLoginModal(true);
+            }
+        }, 5000); // 5 second timeout
+
+        return () => clearTimeout(timer);
+    }, [isCheckingAuth]);
 
     // Show warning if cart is empty but don't redirect
     useEffect(() => {
-        if (cart.length === 0 && !cartLoading  ) {
-            toast.error('Your cart is empty. Please add items to proceed.');
-        }
+        // if (cart.length === 0 && !cartLoading  ) {
+        //     toast.error('Your cart is empty. Please add items to proceed.');
+        // }
     }, [cart.length, cartLoading]);
+
+    // Check stock availability when cart changes
+    useEffect(() => {
+        if (cart.length > 0) {
+            checkStockAvailability();
+        } else {
+            setStockData({});
+            setOutOfStockItems([]);
+        }
+    }, [cart]);
+
+    // Fetch loyalty data when user is available
+    useEffect(() => {
+        if (user && user._id) {
+            fetchLoyaltyData();
+        }
+    }, [user]);
+
+    // Real-time stock checking function
+    const checkStockAvailability = async () => {
+        try {
+            setStockLoading(true);
+            
+            // Prepare cart items for API call
+            const cartItems = cart.map(item => ({
+                id: item.id,
+                productId: item.productId,
+                sku: item.sku,
+                quantity: item.quantity
+            }));
+
+            const response = await productAPI.checkStockAvailability(cartItems);
+            
+            if (response.success) {
+                // Create a map of stock data for quick lookup
+                const stockMap = {};
+                const outOfStock = [];
+                
+                response.data.stockCheckResults.forEach(result => {
+                    stockMap[result.cartItemId] = {
+                        isAvailable: result.isAvailable,
+                        availableStock: result.availableStock,
+                        reason: result.reason
+                    };
+                    
+                    if (!result.isAvailable) {
+                        outOfStock.push(result);
+                    }
+                });
+                
+                setStockData(stockMap);
+                setOutOfStockItems(outOfStock);
+            }
+        } catch (error) {
+            // Fallback to local stock data if API fails
+            const fallbackStockData = {};
+            const fallbackOutOfStock = [];
+            
+            cart.forEach(item => {
+                const isAvailable = (item.stockQuantity || 0) >= item.quantity;
+                fallbackStockData[item.id] = {
+                    isAvailable,
+                    availableStock: item.stockQuantity || 0,
+                    reason: 'Local check'
+                };
+                
+                if (!isAvailable) {
+                    fallbackOutOfStock.push({
+                        cartItemId: item.id,
+                        productId: item.productId,
+                        reason: 'Insufficient stock'
+                    });
+                }
+            });
+            
+            setStockData(fallbackStockData);
+            setOutOfStockItems(fallbackOutOfStock);
+        } finally {
+            setStockLoading(false);
+        }
+    };
+
+    // Fetch user's loyalty data
+    const fetchLoyaltyData = async () => {
+        try {
+            const token = getCookie('token');
+            if (!token) return;
+
+            const response = await loyaltyAPI.getLoyalty(user._id, token);
+            if (response.success) {
+                setLoyaltyData(response.data);
+            }
+        } catch (error) {
+        }
+    };
     
     const [formData, setFormData] = useState({
         fullName: '',
@@ -28,11 +160,28 @@ export default function Checkout() {
     });
 
     const [paymentMethod, setPaymentMethod] = useState('cash');
-    const [couponCode, setCouponCode] = useState('');
     const [manualPaymentData, setManualPaymentData] = useState({
         phoneNumber: '',
         transactionId: ''
     });
+
+    // Loyalty points state
+    const [loyaltyData, setLoyaltyData] = useState(null);
+    const [useLoyaltyPoints, setUseLoyaltyPoints] = useState(false);
+    const [loyaltyDiscount, setLoyaltyDiscount] = useState(0);
+    const [loyaltyLoading, setLoyaltyLoading] = useState(false);
+
+    // Coupon state
+    const [couponCode, setCouponCode] = useState('');
+    const [appliedCoupon, setAppliedCoupon] = useState(null);
+    const [couponDiscount, setCouponDiscount] = useState(0);
+    const [couponLoading, setCouponLoading] = useState(false);
+    const [couponError, setCouponError] = useState('');
+
+    // Stock validation state
+    const [stockData, setStockData] = useState({});
+    const [stockLoading, setStockLoading] = useState(false);
+    const [outOfStockItems, setOutOfStockItems] = useState([]);
 
     const divisions = [
         'Dhaka',
@@ -47,8 +196,109 @@ export default function Checkout() {
 
     const subtotal = cartTotal;
     const shippingCost = 0;
-    const discount = 0;
-    const totalCost = subtotal + shippingCost - discount;
+    const discount = 0; // General discount (not coupon discount)
+    const totalCost = useLoyaltyPoints ? 0 : (subtotal + shippingCost - discount - loyaltyDiscount - couponDiscount);
+
+    // Calculate coins needed for the order
+    const calculateCoinsNeeded = () => {
+        if (!loyaltyData) return 0;
+        return Math.ceil(subtotal / loyaltyData.coinValue);
+    };
+
+    const coinsNeeded = calculateCoinsNeeded();
+    const remainingCoins = loyaltyData ? (loyaltyData.coins - coinsNeeded) : 0;
+
+    // Calculate if loyalty points can cover the entire order
+    const calculateLoyaltyRedemption = () => {
+        if (!loyaltyData || !useLoyaltyPoints) {
+            setLoyaltyDiscount(0);
+            return;
+        }
+
+        // Check if user has enough coins to cover the entire order
+        if (loyaltyData.coins >= coinsNeeded) {
+            // User can pay with loyalty points only
+            setLoyaltyDiscount(subtotal);
+        } else {
+            toast.error(`Insufficient coins. You need ${coinsNeeded} coins but have ${loyaltyData.coins} coins.`);
+            setUseLoyaltyPoints(false);
+            setLoyaltyDiscount(0);
+        }
+    };
+
+    // Calculate loyalty redemption when useLoyaltyPoints changes
+    useEffect(() => {
+        if (useLoyaltyPoints && loyaltyData) {
+            calculateLoyaltyRedemption();
+            // Remove coupon when loyalty points are used
+            if (appliedCoupon) {
+                removeCoupon();
+                toast.info('Coupon removed because loyalty points are being used');
+            }
+        } else {
+            setLoyaltyDiscount(0);
+        }
+    }, [useLoyaltyPoints, loyaltyData, subtotal]);
+
+    // Coupon functions
+    const applyCoupon = async () => {
+
+
+        if (!couponCode.trim()) {
+            setCouponError('Please enter a coupon code');
+            return;
+        }
+
+        // Check if loyalty points are being used
+        if (useLoyaltyPoints) {
+            setCouponError('Coupon cannot be applied when using loyalty points');
+            return;
+        }
+
+        try {
+            setCouponLoading(true);
+            setCouponError('');
+            
+            const response = await couponAPI.validateCoupon(couponCode.trim(), subtotal);
+            
+            if (response && response.success) {
+                const coupon = response.data.coupon;
+                const discountAmount = response.data.discountAmount;
+                const discountPercentage = coupon.discountType === 'percentage' 
+                    ? `${coupon.discountValue}%` 
+                    : 'Fixed amount';
+                
+                setAppliedCoupon(coupon);
+                setCouponDiscount(discountAmount);
+                
+                // Show detailed success message
+                toast.success(
+                    `Coupon applied! ${discountPercentage} discount (৳${discountAmount}) applied. You save ৳${discountAmount}!`
+                );
+            } else {
+                const errorMessage = response?.message || 'Invalid coupon code';
+                setCouponError(errorMessage);
+                setAppliedCoupon(null);
+                setCouponDiscount(0);
+                toast.error(errorMessage);
+            }
+        } catch (error) {
+            const errorMessage = error.message || 'Failed to apply coupon. Please try again.';
+            setCouponError(errorMessage);
+            setAppliedCoupon(null);
+            setCouponDiscount(0);
+            toast.error(errorMessage);
+        } finally {
+            setCouponLoading(false);
+        }
+    };
+
+    const removeCoupon = () => {
+        setCouponCode('');
+        setAppliedCoupon(null);
+        setCouponDiscount(0);
+        setCouponError('');
+    };
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -73,11 +323,7 @@ export default function Checkout() {
     };
 
     const handleApplyCoupon = () => {
-        if (couponCode.trim()) {
-            toast.success('Coupon applied successfully!');
-        } else {
-            toast.error('Please enter a coupon code');
-        }
+        applyCoupon();
     };
 
     const handleManualPaymentChange = (e) => {
@@ -100,6 +346,12 @@ export default function Checkout() {
             return;
         }
 
+        // Check for out of stock items
+        if (outOfStockItems.length > 0) {
+            toast.error('Some items in your cart are out of stock. Please remove them to continue.');
+            return;
+        }
+
         // Validate manual payment data if selected
         if (paymentMethod === 'manual') {
             if (!manualPaymentData.phoneNumber || !manualPaymentData.transactionId) {
@@ -112,9 +364,11 @@ export default function Checkout() {
         switch (paymentMethod) {
             case 'cash':
                 try {
+                    // Calculate total from cart items
+                    const calculatedTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                    
                     // Prepare order data for Cash on Delivery
                     const orderData = {
-                        user: user?._id || undefined, // Add user ID or undefined for guest
                         items: cart.map(item => ({
                             product: item.productId,
                             variantSku: item.sku,
@@ -122,7 +376,7 @@ export default function Checkout() {
                             image: item.image,
                             price: item.price,
                             quantity: item.quantity,
-                            subtotal: item.total,
+                            subtotal: item.price * item.quantity,
                             // Add variant information for admin
                             variant: {
                                 size: item.size,
@@ -153,26 +407,40 @@ export default function Checkout() {
                         },
                         paymentMethod: 'cod',
                         paymentStatus: 'pending',
-                        total: totalCost,
+                        total: useLoyaltyPoints ? 0 : calculatedTotal, // If using loyalty points, total is 0
                         discount: discount,
+                        loyaltyDiscount: useLoyaltyPoints ? calculatedTotal : loyaltyDiscount,
+                        loyaltyPointsUsed: useLoyaltyPoints ? coinsNeeded : 0,
                         shippingCost: shippingCost,
                         orderNotes: formData.orderNotes,
-                        coupon: couponCode || undefined
+                        coupon: appliedCoupon ? appliedCoupon.code : undefined,
+                        couponDiscount: couponDiscount
                     };
 
-                    // Create order
-                    const response = await orderAPI.createOrder(orderData);
+                    
+                    // Create order with authentication
+                    const response = await orderAPI.createOrder(orderData, getCookie('token'));
                     
                     if (response.success) {
                         toast.success('Order placed successfully! Cash on delivery');
-                        // Clear cart and redirect to order confirmation
+                        // Clear cart and redirect to order confirmation with order details
                         clearCart();
-                        router.push('/order-confirmation');
+                        const order = response.data;
+                        const params = new URLSearchParams({
+                            orderId: order.orderId,
+                            status: order.status,
+                            total: order.total,
+                            createdAt: order.createdAt,
+                            ...(order.couponDiscount > 0 && { couponDiscount: order.couponDiscount }),
+                            ...(order.loyaltyDiscount > 0 && { loyaltyDiscount: order.loyaltyDiscount }),
+                            ...(order.discount > 0 && { discount: order.discount }),
+                            ...(order.coupon && { coupon: order.coupon })
+                        });
+                        router.push(`/order-confirmation?${params.toString()}`);
                     } else {
                         toast.error('Failed to place order. Please try again.');
                     }
                 } catch (error) {
-                    console.error('Error creating order:', error);
                     toast.error('Failed to place order. Please try again.');
                 }
                 break;
@@ -192,9 +460,21 @@ export default function Checkout() {
 
 
 
+    // Show loading state while checking authentication
+    if (isCheckingAuth) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="w-16 h-16 border-4 border-pink-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <h2 className="text-xl font-semibold text-gray-900 mb-2">Checking Authentication</h2>
+                    <p className="text-gray-600">Please wait while we verify your login status...</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-gray-50">
-            <Header />
             {/* Sub Navigation */}
             
             {/* Main Content */}
@@ -395,6 +675,115 @@ export default function Checkout() {
                             )}
                         </div>
 
+
+                        {/* Loyalty Points Section */}
+                        {loyaltyData && loyaltyData.coins > 0 && (
+                            <div className="bg-white border border-gray-300 shadow rounded-lg p-6">
+                                <h2 className="text-lg font-semibold text-gray-900 mb-6">03. Loyalty Points</h2>
+                                
+                                {appliedCoupon && (
+                                    <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                        <div className="flex items-center space-x-2">
+                                            <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                                            <span className="text-sm text-yellow-800">
+                                                Using loyalty points will remove your applied coupon ({appliedCoupon.code})
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
+                                
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between p-4 bg-pink-50 border border-pink-200 rounded-lg">
+                                        <div>
+                                            <h3 className="font-semibold text-pink-800">Available Coins</h3>
+                                            <p className="text-sm text-pink-600">{loyaltyData.coins} coins (৳{loyaltyData.totalValue})</p>
+                                        </div>
+                                        <div className="text-2xl">🪙</div>
+                                    </div>
+
+                                    {/* Check if user can pay with loyalty points */}
+                                    {loyaltyData.coins >= coinsNeeded ? (
+                                        <div className="space-y-3">
+                                            <div className="flex items-center space-x-3">
+                                                <input
+                                                    type="checkbox"
+                                                    id="useLoyaltyPoints"
+                                                    checked={useLoyaltyPoints}
+                                                    onChange={(e) => setUseLoyaltyPoints(e.target.checked)}
+                                                    className="w-4 h-4 text-pink-500"
+                                                />
+                                                <label htmlFor="useLoyaltyPoints" className="text-sm font-medium text-gray-700">
+                                                    Pay with {coinsNeeded} coins (৳{subtotal})
+                                                </label>
+                                            </div>
+                                            
+                                            
+                                            {useLoyaltyPoints && loyaltyData && (
+                                                <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                                                    <div className="space-y-2">
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-sm font-medium text-green-800">Coins to Use:</span>
+                                                            <span className="font-semibold text-green-800">{coinsNeeded} coins</span>
+                                                        </div>
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-sm font-medium text-green-800">Order Total:</span>
+                                                            <span className="font-semibold text-green-800">৳{subtotal}</span>
+                                                        </div>
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-sm font-medium text-green-800">Remaining Coins:</span>
+                                                            <span className="font-semibold text-green-800">{remainingCoins} coins</span>
+                                                        </div>
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-sm font-medium text-green-800">Final Payment:</span>
+                                                            <span className="font-semibold text-green-800">৳{totalCost} (Paid with coins)</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                            <div className="text-sm text-yellow-800">
+                                                <p className="font-medium">Insufficient coins</p>
+                                                <p>You need {coinsNeeded} coins to pay for this order (৳{subtotal}), but you have {loyaltyData.coins} coins.</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Out of Stock Warning */}
+                        {outOfStockItems.length > 0 && (
+                            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                                <div className="flex items-start gap-3">
+                                    <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
+                                    <div>
+                                        <h3 className="font-semibold text-red-800 mb-2">Out of Stock Items</h3>
+                                        <p className="text-sm text-red-700 mb-3">
+                                            Some items in your cart are no longer available. Please remove them to continue with your order.
+                                        </p>
+                                        <div className="space-y-1">
+                                            {outOfStockItems.map((item, index) => {
+                                                const cartItem = cart.find(c => c.id === item.cartItemId);
+                                                return (
+                                                    <div key={index} className="text-sm text-red-600 flex items-center justify-between">
+                                                        <span>• {cartItem?.name || 'Unknown item'}</span>
+                                                        <button
+                                                            onClick={() => removeFromCart(item.cartItemId)}
+                                                            className="text-red-500 hover:text-red-700 underline"
+                                                        >
+                                                            Remove
+                                                        </button>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Action Buttons */}
                         <div className="flex gap-4">
                             <button 
@@ -406,15 +795,17 @@ export default function Checkout() {
                             </button>
                             <button 
                                 onClick={handleConfirmOrder}
-                                disabled={cartLoading || cart.length === 0}
+                                disabled={cartLoading || cart.length === 0 || outOfStockItems.length > 0 || stockLoading}
                                 className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded font-semibold ${
-                                    cartLoading || cart.length === 0 
+                                    cartLoading || cart.length === 0 || outOfStockItems.length > 0 || stockLoading
                                         ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
                                         : 'bg-pink-500 text-white hover:bg-pink-600'
                                 }`}
                             >
-                                {cartLoading ? 'Loading...' :
+                                {stockLoading ? 'Checking Stock...' :
+                                 cartLoading ? 'Loading...' :
                                  cart.length === 0 ? 'Cart Empty' :
+                                 outOfStockItems.length > 0 ? 'Remove Out of Stock Items' :
                                  paymentMethod === 'cash' ? 'Confirm Order' : 
                                  paymentMethod === 'bkash' ? 'Process to Bkash Payment' : 
                                  'Confirm Manual Payment'}
@@ -459,8 +850,12 @@ export default function Checkout() {
                                     </button>
                                 </div>
                             ) : (
-                                cart.map((item) => (
-                                    <div key={item.id} className="flex items-center space-x-4 p-3 border border-gray-200 rounded">
+                                cart.map((item) => {
+                                    const isOutOfStock = stockData[item.id] && !stockData[item.id].isAvailable;
+                                    return (
+                                    <div key={item.id} className={`flex items-center space-x-4 p-3 border rounded ${
+                                        isOutOfStock ? 'border-red-200 bg-red-50' : 'border-gray-200'
+                                    }`}>
                                         {/* Product Image */}
                                         <div className="w-12 h-12 rounded overflow-hidden flex-shrink-0">
                                             <img 
@@ -472,6 +867,14 @@ export default function Checkout() {
 
                                         <div className="flex-1 min-w-0">
                                             <h3 className="font-medium text-gray-900 text-sm truncate">{item.name}</h3>
+                                            {isOutOfStock && (
+                                                <div className="text-xs text-red-600 font-medium mb-1">
+                                                    {stockData[item.id]?.reason === 'Insufficient stock' 
+                                                        ? `Only ${stockData[item.id]?.availableStock || 0} available`
+                                                        : 'Out of Stock'
+                                                    }
+                                                </div>
+                                            )}
                                             {item.size && (
                                                 <p className="text-xs text-gray-600">Size: {item.size}</p>
                                             )}
@@ -494,21 +897,27 @@ export default function Checkout() {
                                         </div>
 
                                         {/* Quantity Controls */}
-                                        <div className="flex items-center space-x-2">
-                                            <button
-                                                onClick={() => handleQuantityChange(item.id, -1)}
-                                                className="w-6 h-6 flex items-center justify-center border border-gray-300 rounded text-sm hover:bg-gray-50"
-                                            >
-                                                <Minus className="w-3 h-3" />
-                                            </button>
-                                            <span className="w-8 text-center text-sm">{item.quantity}</span>
-                                            <button
-                                                onClick={() => handleQuantityChange(item.id, 1)}
-                                                className="w-6 h-6 flex items-center justify-center border border-gray-300 rounded text-sm hover:bg-gray-50"
-                                            >
-                                                <Plus className="w-3 h-3" />
-                                            </button>
-                                        </div>
+                                        {isOutOfStock ? (
+                                            <div className="text-xs text-red-600 font-medium">
+                                                Remove from cart
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center space-x-2">
+                                                <button
+                                                    onClick={() => handleQuantityChange(item.id, -1)}
+                                                    className="w-6 h-6 flex items-center justify-center border border-gray-300 rounded text-sm hover:bg-gray-50"
+                                                >
+                                                    <Minus className="w-3 h-3" />
+                                                </button>
+                                                <span className="w-8 text-center text-sm">{item.quantity}</span>
+                                                <button
+                                                    onClick={() => handleQuantityChange(item.id, 1)}
+                                                    className="w-6 h-6 flex items-center justify-center border border-gray-300 rounded text-sm hover:bg-gray-50"
+                                                >
+                                                    <Plus className="w-3 h-3" />
+                                                </button>
+                                            </div>
+                                        )}
 
                                         {/* Total Price */}
                                         <div className="text-right">
@@ -518,33 +927,95 @@ export default function Checkout() {
                                         {/* Remove Button */}
                                         <button
                                             onClick={() => handleRemoveItem(item.id)}
-                                            className="text-pink-500 hover:text-pink-700 p-1"
+                                            className={`p-1 ${
+                                                isOutOfStock 
+                                                    ? 'text-red-500 hover:text-red-700' 
+                                                    : 'text-pink-500 hover:text-pink-700'
+                                            }`}
                                         >
                                             <Trash2 className="w-4 h-4" />
                                         </button>
                                     </div>
-                                ))
+                                    );
+                                })
                             )}
                         </div>
 
                         {/* Coupon Code */}
                         <div className="mt-6">
                             <label className="block text-sm font-medium text-gray-700 mb-2">ENTER YOUR COUPON CODE</label>
+                            
+                            {useLoyaltyPoints && (
+                                <div className="mb-3 p-2 bg-yellow-50 border border-yellow-200 rounded">
+                                    <div className="flex items-center space-x-2">
+                                        <AlertTriangle className="h-3 w-3 text-yellow-600" />
+                                        <span className="text-xs text-yellow-800">
+                                            Coupon cannot be used when paying with loyalty points
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+                            
                             <div className="flex gap-2">
                                 <input
                                     type="text"
                                     value={couponCode}
-                                    onChange={(e) => setCouponCode(e.target.value)}
+                                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                                     placeholder="ENTER YOUR COUPON CODE"
-                                    className="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-pink-500 focus:border-pink-500 text-sm"
+                                    disabled={useLoyaltyPoints}
+                                    className="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-pink-500 focus:border-pink-500 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                    onKeyPress={(e) => e.key === 'Enter' && !useLoyaltyPoints && handleApplyCoupon()}
                                 />
                                 <button
                                     onClick={handleApplyCoupon}
-                                    className="px-4 py-2 bg-pink-500 text-white rounded hover:bg-pink-600 text-sm font-medium"
+                                    disabled={couponLoading || !couponCode.trim() || useLoyaltyPoints}
+                                    className="px-4 py-2 bg-pink-500 text-white rounded hover:bg-pink-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center"
                                 >
-                                    Apply
+                                    {couponLoading ? (
+                                        <>
+                                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1"></div>
+                                            Applying...
+                                        </>
+                                    ) : (
+                                        'Apply'
+                                    )}
                                 </button>
                             </div>
+                            
+                            {couponError && (
+                                <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded">
+                                    <div className="flex items-center space-x-2">
+                                        <AlertTriangle className="h-3 w-3 text-red-600" />
+                                        <span className="text-xs text-red-800">{couponError}</span>
+                                    </div>
+                                </div>
+                            )}
+                            
+                            {appliedCoupon && (
+                                <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center space-x-2">
+                                            <Check className="h-3 w-3 text-green-600" />
+                                            <span className="text-xs font-medium text-green-800">
+                                                {appliedCoupon.code} Applied
+                                            </span>
+                                        </div>
+                                        <button
+                                            onClick={removeCoupon}
+                                            disabled={useLoyaltyPoints}
+                                            className="text-xs text-green-600 hover:text-green-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            Remove
+                                        </button>
+                                    </div>
+                                    <div className="mt-1 text-xs text-green-600">
+                                        <span className="font-medium">Discount:</span> {appliedCoupon.discountType === 'percentage' 
+                                            ? `${appliedCoupon.discountValue}% off`
+                                            : `৳${appliedCoupon.discountValue} off`
+                                        } | <span className="font-medium">You Save:</span> ৳{couponDiscount}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* Cost Breakdown */}
@@ -581,6 +1052,32 @@ export default function Checkout() {
                                     <span className="text-gray-600">Discount</span>
                                     <span className="text-orange-500">{discount} ৳</span>
                                 </div>
+                                
+                                {/* Coupon Discount */}
+                                {appliedCoupon && (
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-600">Coupon Discount ({appliedCoupon.code})</span>
+                                        <span className="text-blue-600">-৳{couponDiscount}</span>
+                                    </div>
+                                )}
+                                
+                                {/* Loyalty Points Breakdown */}
+                                {useLoyaltyPoints && loyaltyData && (
+                                    <>
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-600">Coins Used</span>
+                                            <span className="text-pink-600">{coinsNeeded} coins</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-600">Remaining Coins</span>
+                                            <span className="text-pink-600">{remainingCoins} coins</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-600">Loyalty Discount</span>
+                                            <span className="text-green-600">-৳{subtotal}</span>
+                                        </div>
+                                    </>
+                                )}
 
                                 {/* Total Cost */}
                                 <div className="flex justify-between text-base font-bold text-gray-900 pt-2 border-t border-gray-200">
@@ -592,6 +1089,12 @@ export default function Checkout() {
                     </div>
                 </div>
             </div>
+
+            {/* Login Required Modal */}
+            <LoginRequiredModal 
+                isOpen={showLoginModal}
+                onClose={() => setShowLoginModal(false)}
+            />
         </div>
     );
 }

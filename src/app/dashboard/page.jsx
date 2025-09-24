@@ -1,6 +1,7 @@
 'use client'
 
 import { useAppContext } from '@/context/AppContext'
+import dynamic from 'next/dynamic'
 import { 
     ShoppingCart, 
     Heart, 
@@ -14,7 +15,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 
-export default function CustomerDashboard() {
+const CustomerDashboardContent = () => {
     const { user, cartCount, wishlistCount } = useAppContext()
 
     // Mock data - replace with real data from API
@@ -247,3 +248,15 @@ export default function CustomerDashboard() {
         </div>
     )
 }
+
+export default dynamic(() => Promise.resolve(CustomerDashboardContent), {
+    ssr: false,
+    loading: () => (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+            <div className="text-center">
+                <div className="h-12 w-12 border-4 border-pink-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-gray-600">Loading dashboard...</p>
+            </div>
+        </div>
+    )
+})

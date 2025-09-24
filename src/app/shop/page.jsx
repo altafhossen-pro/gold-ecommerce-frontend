@@ -11,7 +11,6 @@ import { useAppContext } from '@/context/AppContext';
 import { ChevronDown, ChevronUp, Filter, X, Flame, TrendingUp, Clock, BarChart3 } from 'lucide-react';
 import Pagination from '@/components/Common/Pagination';
 import toast from 'react-hot-toast';
-import Header from '@/components/Header/Header';
 import Footer from '@/components/Footer/Footer';
 
 function ShopPageContent() {
@@ -49,6 +48,8 @@ function ShopPageContent() {
 
     // Cart state
     const [cart, setCart] = useState([]);
+
+    // No URL update functionality - exactly like search page
 
     // Sorting options
     const sortingOptions = [
@@ -130,17 +131,23 @@ function ShopPageContent() {
                 // Use best-selling API with pagination
                 response = await productAPI.getBestsellingProducts(itemsPerPage, currentPage);
             } else {
-                // Use regular search API with sorting and pagination
+                // Use regular search API with sorting and pagination - EXACTLY like search page
+                const minPrice = priceRange.min ? parseFloat(priceRange.min) : null;
+                const maxPrice = priceRange.max ? parseFloat(priceRange.max) : null;
+
                 const filters = {
                     page: currentPage,
                     limit: itemsPerPage,
                     category: selectedCategories.join(','),
                     braceletSize: selectedBraceletSizes.join(','),
                     ringSize: selectedRingSizes.join(','),
-                    ...(priceRange.min && { minPrice: priceRange.min }),
-                    ...(priceRange.max && { maxPrice: priceRange.max }),
-                    sort: sortBy === 'price-low' ? 'priceRange.min' : sortBy === 'price-high' ? '-priceRange.max' : '-createdAt'
+                    ...(minPrice !== null && { minPrice: minPrice.toString() }),
+                    ...(maxPrice !== null && { maxPrice: maxPrice.toString() }),
+                    sort: sortBy === 'price-low' ? 'price' : sortBy === 'price-high' ? '-price' : '-createdAt'
                 };
+
+                // Debug log to see what parameters are being sent
+                console.log('Shop filters being sent:', filters);
 
                 response = await productAPI.searchProducts('', filters);
             }
@@ -194,7 +201,7 @@ function ShopPageContent() {
         }
     }, [wishlist]);
 
-    // Handle URL parameter changes
+    // Handle URL parameter changes - only for sort like search page
     useEffect(() => {
         if (sortParam && sortParam !== sortBy) {
             setSortBy(sortParam);
@@ -222,19 +229,23 @@ function ShopPageContent() {
     };
 
     const handleBraceletSizeChange = (size) => {
-        setSelectedBraceletSizes(prev =>
-            prev.includes(size)
+        setSelectedBraceletSizes(prev => {
+            const newSizes = prev.includes(size)
                 ? prev.filter(s => s !== size)
-                : [...prev, size]
-        );
+                : [...prev, size];
+            console.log('Bracelet sizes changed:', newSizes);
+            return newSizes;
+        });
     };
 
     const handleRingSizeChange = (size) => {
-        setSelectedRingSizes(prev =>
-            prev.includes(size)
+        setSelectedRingSizes(prev => {
+            const newSizes = prev.includes(size)
                 ? prev.filter(s => s !== size)
-                : [...prev, size]
-        );
+                : [...prev, size];
+            console.log('Ring sizes changed:', newSizes);
+            return newSizes;
+        });
     };
 
     const handlePriceRangeChange = (type, value) => {
@@ -252,11 +263,6 @@ function ShopPageContent() {
         setSortBy('popular'); // Reset to popular sorting
         setCurrentPage(1); // Reset to first page
         
-        // Clear URL parameters
-        const url = new URL(window.location);
-        url.searchParams.delete('sort');
-        window.history.replaceState({}, '', url);
-        
         // Fetch all available sizes when filters are cleared
         fetchAvailableSizes([]);
     };
@@ -265,15 +271,6 @@ function ShopPageContent() {
     const handleSortChange = (newSortBy) => {
         setSortBy(newSortBy);
         setCurrentPage(1); // Reset to first page when sorting changes
-        
-        // Update URL with sorting parameter
-        const url = new URL(window.location);
-        if (newSortBy === 'popular') {
-            url.searchParams.delete('sort');
-        } else {
-            url.searchParams.set('sort', newSortBy);
-        }
-        window.history.replaceState({}, '', url);
     };
 
     // Handle page change
@@ -310,7 +307,6 @@ function ShopPageContent() {
 
     return (
         <div className="min-h-screen bg-gray-50">
-            <Header />
             <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto px-4 py-4">
                 {/* Mobile Filter Toggle Button */}
                 <div className="lg:hidden mb-6">
@@ -387,7 +383,7 @@ function ShopPageContent() {
 
                 <div className="flex flex-col lg:flex-row gap-8">
                     {/* Left Sidebar - Filters */}
-                    <div className={`lg:w-80 ${showFilters ? 'block' : 'hidden lg:block'}`}>
+                    <div className={`lg:w-72 ${showFilters ? 'block' : 'hidden lg:block'}`}>
                         <div className="bg-white rounded-lg shadow-sm p-6 space-y-6">
                             {/* Main Category Filter */}
                             <div>
@@ -597,7 +593,6 @@ export default function ShopPage() {
     return (
         <Suspense fallback={
             <div className="min-h-screen bg-gray-50">
-                <Header />
                 <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto px-4 py-4">
                     <div className="flex justify-center items-center py-12">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500"></div>

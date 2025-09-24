@@ -72,7 +72,7 @@ export default function CategorySlider() {
         const fetchCategories = async () => {
             try {
                 setLoading(true);
-                const data = await categoryAPI.getHomepageCategories(10);
+                const data = await categoryAPI.getMainCategories();
                 
                 if (data.success) {
                     setCategories(data.data);
@@ -149,12 +149,18 @@ export default function CategorySlider() {
                     
                     {/* Navigation Buttons */}
                     <div className="flex gap-2">
-                        <button className="category-prev-btn w-10 h-10 rounded-lg border border-pink-300 text-pink-500 hover:bg-pink-50 transition-colors flex items-center justify-center">
+                        <button 
+                            className="category-prev-btn w-10 h-10 rounded-lg border border-pink-300 text-pink-500 hover:bg-pink-50 transition-colors flex items-center justify-center"
+                            aria-label="Previous categories"
+                        >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                             </svg>
                         </button>
-                        <button className="category-next-btn w-10 h-10 rounded-lg border border-pink-300 text-pink-500 hover:bg-pink-50 transition-colors flex items-center justify-center">
+                        <button 
+                            className="category-next-btn w-10 h-10 rounded-lg border border-pink-300 text-pink-500 hover:bg-pink-50 transition-colors flex items-center justify-center"
+                            aria-label="Next categories"
+                        >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                             </svg>

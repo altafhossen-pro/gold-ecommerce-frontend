@@ -20,7 +20,6 @@ const apiCall = async (endpoint, options = {}) => {
         const data = await response.json();
         return data;
     } catch (error) {
-        console.error('API Error:', error);
         throw error;
     }
 };
@@ -31,6 +30,14 @@ export const productAPI = {
     getProducts: (params = {}) => {
         const queryString = new URLSearchParams(params).toString();
         return apiCall(`/product?${queryString}`);
+    },
+
+    // Check stock availability for cart items
+    checkStockAvailability: (cartItems) => {
+        return apiCall('/product/check-stock', {
+            method: 'POST',
+            body: JSON.stringify({ cartItems }),
+        });
     },
 
     // Get featured products
@@ -172,6 +179,38 @@ export const categoryAPI = {
         return apiCall(`/category/${id}`, {
             method: 'DELETE',
         });
+    },
+};
+
+// OTP API functions
+export const otpAPI = {
+    // Send OTP to phone number
+    sendOTP: (phone, type = 'login') => {
+        return apiCall('/otp/send', {
+            method: 'POST',
+            body: JSON.stringify({ phone, type }),
+        });
+    },
+
+    // Verify OTP and login
+    verifyOTP: (phone, otp) => {
+        return apiCall('/otp/verify', {
+            method: 'POST',
+            body: JSON.stringify({ phone, otp }),
+        });
+    },
+
+    // Resend OTP
+    resendOTP: (phone, type = 'login') => {
+        return apiCall('/otp/resend', {
+            method: 'POST',
+            body: JSON.stringify({ phone, type }),
+        });
+    },
+
+    // Get OTP status (for debugging)
+    getOTPStatus: (phone) => {
+        return apiCall(`/otp/status?phone=${phone}`);
     },
 };
 
@@ -394,16 +433,25 @@ export const orderAPI = {
     },
 
     // Create new order
-    createOrder: (orderData) => {
+    createOrder: (orderData, token) => {
         return apiCall('/order', {
             method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
             body: JSON.stringify(orderData),
         });
     },
 
     // Get admin orders (for admin dashboard)
-    getAdminOrders: () => {
-        return apiCall('/order');
+    getAdminOrders: (token, queryParams = '') => {
+        const url = queryParams ? `/order?${queryParams}` : '/order';
+        return apiCall(url, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
     },
 
     // Get admin order details
@@ -417,6 +465,11 @@ export const orderAPI = {
             method: 'PATCH',
             body: JSON.stringify({ status }),
         });
+    },
+
+    // Track order by order ID
+    trackOrder: (orderId) => {
+        return apiCall(`/order/track/${orderId}`);
     },
 };
 
@@ -583,6 +636,270 @@ export const testimonialAPI = {
     },
 };
 
+// Analytics API functions
+export const analyticsAPI = {
+    // Get dashboard statistics
+    getDashboardStats: (period = '30d', token) => {
+        return apiCall(`/admin/analytics/dashboard?period=${period}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+
+    // Get sales analytics
+    getSalesAnalytics: (params = {}, token) => {
+        const queryString = new URLSearchParams(params).toString();
+        return apiCall(`/admin/analytics/sales?${queryString}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+
+    // Get product analytics
+    getProductAnalytics: (params = {}, token) => {
+        const queryString = new URLSearchParams(params).toString();
+        return apiCall(`/admin/analytics/products?${queryString}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+
+    // Get customer analytics
+    getCustomerAnalytics: (token) => {
+        return apiCall('/admin/analytics/customers', {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+};
+
+// Menu API functions
+export const menuAPI = {
+    // Get header menus
+    getHeaderMenus: () => {
+        return apiCall('/menu/header');
+    },
+
+    // Get footer menus
+    getFooterMenus: (section = null) => {
+        const query = section ? `?section=${section}` : '';
+        return apiCall(`/menu/footer${query}`);
+    },
+
+    // Admin: Create header menu
+    createHeaderMenu: (menuData, token) => {
+        return apiCall('/menu/header', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(menuData),
+        });
+    },
+
+    // Admin: Update header menu
+    updateHeaderMenu: (id, menuData, token) => {
+        return apiCall(`/menu/header/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(menuData),
+        });
+    },
+
+    // Admin: Delete header menu
+    deleteHeaderMenu: (id, token) => {
+        return apiCall(`/menu/header/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+
+    // Admin: Create footer menu
+    createFooterMenu: (menuData, token) => {
+        return apiCall('/menu/footer', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(menuData),
+        });
+    },
+
+    // Admin: Update footer menu
+    updateFooterMenu: (id, menuData, token) => {
+        return apiCall(`/menu/footer/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(menuData),
+        });
+    },
+
+    // Admin: Delete footer menu
+    deleteFooterMenu: (id, token) => {
+        return apiCall(`/menu/footer/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+
+    // Admin: Update menu order
+    updateMenuOrder: (menus, token) => {
+        return apiCall('/menu/order', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({ menus }),
+        });
+    },
+};
+
+// Hero Banner API
+export const heroBannerAPI = {
+    // Get active hero banners
+    getHeroBanners: () => {
+        return apiCall('/hero-banner');
+    },
+
+    // Admin: Get all hero banners
+    getAllHeroBanners: (token) => {
+        return apiCall('/hero-banner/admin', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+
+    // Admin: Create hero banner
+    createHeroBanner: (bannerData, token) => {
+        return apiCall('/hero-banner', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(bannerData),
+        });
+    },
+
+    // Admin: Update hero banner
+    updateHeroBanner: (id, bannerData, token) => {
+        return apiCall(`/hero-banner/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(bannerData),
+        });
+    },
+
+    // Admin: Delete hero banner
+    deleteHeroBanner: (id, token) => {
+        return apiCall(`/hero-banner/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+
+    // Admin: Update banner order
+    updateBannerOrder: (banners, token) => {
+        return apiCall('/hero-banner/order/update', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({ banners }),
+        });
+    },
+};
+
+// Hero Product API
+export const heroProductAPI = {
+    // Get active hero products
+    getHeroProducts: () => {
+        return apiCall('/hero-product');
+    },
+
+    // Admin: Get all hero products
+    getAllHeroProducts: (token) => {
+        return apiCall('/hero-product/admin', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+
+    // Admin: Create hero product
+    createHeroProduct: (productData, token) => {
+        return apiCall('/hero-product', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(productData),
+        });
+    },
+
+    // Admin: Update hero product
+    updateHeroProduct: (id, productData, token) => {
+        return apiCall(`/hero-product/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(productData),
+        });
+    },
+
+    // Admin: Delete hero product
+    deleteHeroProduct: (id, token) => {
+        return apiCall(`/hero-product/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+
+    // Admin: Update product order
+    updateProductOrder: (products, token) => {
+        return apiCall('/hero-product/order/update', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({ products }),
+        });
+    },
+};
+
 // Offer Banner API
 export const offerBannerAPI = {
     // Get active offer banners
@@ -590,43 +907,64 @@ export const offerBannerAPI = {
         return apiCall('/offer-banner/active');
     },
 
+    // Get active banner (frontend)
+    getActiveOfferBanner: () => {
+        return apiCall('/offer-banner/active');
+    },
+
     // Get all banners (admin)
-    getAllBanners: (params = {}) => {
+    getAllOfferBanners: (params = {}, token) => {
         const queryString = new URLSearchParams(params).toString();
-        return apiCall(`/offer-banner?${queryString}`);
+        return apiCall(`/offer-banner?${queryString}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
     },
 
     // Get banner by ID
-    getBannerById: (id) => {
+    getOfferBannerById: (id) => {
         return apiCall(`/offer-banner/${id}`);
     },
 
     // Create banner
-    createBanner: (data) => {
+    createOfferBanner: (data, token) => {
         return apiCall('/offer-banner', {
             method: 'POST',
             body: JSON.stringify(data),
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
         });
     },
 
     // Update banner
-    updateBanner: (id, data) => {
+    updateOfferBanner: (id, data, token) => {
         return apiCall(`/offer-banner/${id}`, {
             method: 'PUT',
             body: JSON.stringify(data),
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
         });
     },
 
     // Delete banner
-    deleteBanner: (id) => {
+    deleteOfferBanner: (id, token) => {
         return apiCall(`/offer-banner/${id}`, {
             method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
         });
     },
 
     // Toggle banner status
     toggleBannerStatus: (id) => {
-        return apiCall(`/offer-banner/${id}/toggle-status`, {
+        return apiCall(`/offer-banner/${id}/toggle`, {
             method: 'PATCH',
         });
     },
@@ -639,10 +977,188 @@ export const offerBannerAPI = {
     },
 };
 
+// Loyalty API functions
+export const loyaltyAPI = {
+    // Get user loyalty data
+    getLoyalty: (userId, token) => {
+        return apiCall(`/loyalty?userId=${userId}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+
+    // Get loyalty history
+    getLoyaltyHistory: (userId, token, limit = 10) => {
+        return apiCall(`/loyalty/history?userId=${userId}&limit=${limit}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+
+    // Redeem coins for checkout
+    redeemCoinsForCheckout: (coinsToRedeem, orderTotal, token) => {
+        return apiCall('/loyalty/redeem-coins', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ coinsToRedeem, orderTotal }),
+        });
+    },
+
+    // Admin: Earn points/coins
+    earnPoints: (userId, points, coins, order, description, token) => {
+        return apiCall('/loyalty/earn', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ userId, points, coins, order, description }),
+        });
+    },
+
+    // Admin: Redeem points/coins
+    redeemPoints: (userId, points, coins, order, description, token) => {
+        return apiCall('/loyalty/redeem', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ userId, points, coins, order, description }),
+        });
+    },
+
+    // Admin: Adjust points/coins
+    adjustPoints: (userId, points, coins, description, token) => {
+        return apiCall('/loyalty/adjust', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ userId, points, coins, description }),
+        });
+    },
+};
+
+// Settings API functions
+export const settingsAPI = {
+    // Get current settings
+    getSettings: () => {
+        return apiCall('/settings');
+    },
+
+    // Update settings (Admin only)
+    updateSettings: (settingsData, token) => {
+        return apiCall('/settings', {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(settingsData),
+        });
+    },
+
+    // Reset settings to default (Admin only)
+    resetSettings: (token) => {
+        return apiCall('/settings/reset', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+};
+
+// Coupon API functions
+export const couponAPI = {
+    // Get all coupons (Admin only)
+    getAllCoupons: (params = {}, token) => {
+        const queryString = new URLSearchParams(params).toString();
+        return apiCall(`/coupon?${queryString}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+
+    // Get single coupon by ID (Admin only)
+    getCouponById: (id, token) => {
+        return apiCall(`/coupon/${id}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+
+    // Validate coupon code (Public)
+    validateCoupon: (code, orderAmount) => {
+        return apiCall('/coupon/validate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ code, orderAmount }),
+        });
+    },
+
+    // Create new coupon (Admin only)
+    createCoupon: (couponData, token) => {
+        return apiCall('/coupon', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(couponData),
+        });
+    },
+
+    // Update coupon (Admin only)
+    updateCoupon: (id, couponData, token) => {
+        return apiCall(`/coupon/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(couponData),
+        });
+    },
+
+    // Delete coupon (Admin only)
+    deleteCoupon: (id, token) => {
+        return apiCall(`/coupon/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+
+    // Toggle coupon status (Admin only)
+    toggleCouponStatus: (id, token) => {
+        return apiCall(`/coupon/${id}/toggle-status`, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+};
+
 export default {
     productAPI,
     categoryAPI,
     userAPI,
+    otpAPI,
+    analyticsAPI,
     cartAPI,
     wishlistAPI,
     orderAPI,
@@ -650,5 +1166,11 @@ export default {
     reviewAPI,
     testimonialAPI,
     offerBannerAPI,
+    menuAPI,
+    heroBannerAPI,
+    heroProductAPI,
+    loyaltyAPI,
+    settingsAPI,
+    couponAPI,
     transformProductData,
 };

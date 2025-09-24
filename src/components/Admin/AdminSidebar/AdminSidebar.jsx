@@ -15,7 +15,11 @@ import {
     Truck,
     Heart,
     MessageSquare,
-    Star
+    Star,
+    Image,
+    Grid3X3,
+    Megaphone,
+    Ticket
 } from 'lucide-react'
 
 const navigation = [
@@ -24,6 +28,10 @@ const navigation = [
     { name: 'Orders', href: '/admin/dashboard/orders', icon: ShoppingCart },
     { name: 'Customers', href: '/admin/dashboard/customers', icon: Users },
     { name: 'Categories', href: '/admin/dashboard/categories', icon: Tag },
+    { name: 'Coupons', href: '/admin/dashboard/coupons', icon: Ticket },
+    { name: 'Hero Banners', href: '/admin/dashboard/hero-banner', icon: Image },
+    { name: 'Hero Products', href: '/admin/dashboard/hero-products', icon: Grid3X3 },
+    { name: 'Offer Banners', href: '/admin/dashboard/offer-banner', icon: Megaphone },
     { name: 'Testimonials', href: '/admin/dashboard/testimonials', icon: Star },
     { name: 'Inventory', href: '/admin/dashboard/inventory', icon: Store },
     { name: 'Reviews', href: '/admin/dashboard/reviews', icon: MessageSquare },

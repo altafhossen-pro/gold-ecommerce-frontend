@@ -9,11 +9,11 @@ import { Navigation, Pagination } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/navigation';
 import 'swiper/css/pagination';
-import toast from 'react-hot-toast';
 import { productAPI, transformProductData } from '@/services/api';
 import { useAppContext } from '@/context/AppContext';
 import { useRouter } from 'next/navigation';
 import { addProductToWishlist } from '@/utils/wishlistUtils';
+import ProductNotFound from '@/components/Common/ProductNotFound';
 
 
 
@@ -82,11 +82,11 @@ export default function ProductDetails({ productSlug }) {
                     setSelectedColor(""); // No color by default
                 }
             } else {
-                toast.error('Product not found');
+                setProduct(null);
             }
         } catch (error) {
             console.error('Error fetching product:', error);
-            toast.error('Error fetching product');
+            setProduct(null);
         } finally {
             setLoading(false);
         }
@@ -320,14 +320,7 @@ export default function ProductDetails({ productSlug }) {
     }
 
     if (!product) {
-        return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="text-center">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-2">Product Not Found</h2>
-                    <p className="text-gray-600">The product you're looking for doesn't exist.</p>
-                </div>
-            </div>
-        );
+        return <ProductNotFound />;
     }
 
     return (
@@ -361,7 +354,7 @@ export default function ProductDetails({ productSlug }) {
                             <Swiper
                                 modules={[Navigation, Pagination]}
                                 spaceBetween={12}
-                                slidesPerView={Math.min(4, totalImages)}
+                                slidesPerView={4}
                                 loop={totalImages > 4}
                                 navigation={{
                                     nextEl: '.swiper-button-next',
@@ -410,12 +403,18 @@ export default function ProductDetails({ productSlug }) {
                                 totalImages > 4 && (
                                     <>
                                         <div className='!h-full !m-0 ' style={{ display: "ruby-text" }}>
-                                            <button className="swiper-button-prev absolute left-0 top-1/2 transform -translate-y-1/2 z-10 w-4  flex items-center justify-center  transition-colors ">
+                                            <button 
+                                                className="swiper-button-prev absolute left-0 top-1/2 transform -translate-y-1/2 z-10 w-4  flex items-center justify-center  transition-colors"
+                                                aria-label="Previous image"
+                                            >
                                                 <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                                                 </svg>
                                             </button>
-                                            <button className="swiper-button-next absolute right-0 top-1/2 transform -translate-y-1/2 z-10 w-4  flex items-center justify-center  transition-colors">
+                                            <button 
+                                                className="swiper-button-next absolute right-0 top-1/2 transform -translate-y-1/2 z-10 w-4  flex items-center justify-center  transition-colors"
+                                                aria-label="Next image"
+                                            >
                                                 <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                                 </svg>
@@ -562,6 +561,7 @@ export default function ProductDetails({ productSlug }) {
                                     ? 'bg-pink-500 text-white border-pink-500'
                                     : 'border-gray-300 text-gray-600 hover:border-pink-300 hover:text-pink-500'
                                     }`}
+                                aria-label={isWishlisted ? `Remove ${product?.title} from wishlist` : `Add ${product?.title} to wishlist`}
                             >
                                 <Heart className={`w-5 h-5 ${isWishlisted ? 'fill-current' : ''}`} />
                             </button>
@@ -569,19 +569,43 @@ export default function ProductDetails({ productSlug }) {
 
                         {/* Action Buttons */}
                         <div className="flex gap-3 flex-wrap">
-                            <button
-                                onClick={handleAddToCart}
-                                className="flex-1 bg-white text-[#EF3D6A] py-3 px-1 lg:px-6 rounded cursor-pointer font-semibold border-[1.5px] border-[#EF3D6A] hover:bg-pink-50 transition-colors flex items-center justify-center gap-2"
-                            >
-                                <ShoppingCart className="w-5 h-5" />
-                                Add to cart
-                            </button>
-                            <button
-                                onClick={handleBuyNow}
-                                className="flex-1 rounded bg-[#EF3D6A] text-white py-3 px-1 lg:px-6 cursor-pointer font-semibold hover:bg-[#C1274F] transition-colors"
-                            >
-                                Buy Now
-                            </button>
+                            {/* Check if variant is out of stock */}
+                            {selectedVariant && selectedVariant.stockQuantity <= 0 ? (
+                                <button
+                                    disabled
+                                    className="flex-1 bg-gray-300 text-gray-500 py-3 px-1 lg:px-6 rounded cursor-not-allowed font-semibold border-[1.5px] border-gray-300 flex items-center justify-center gap-2"
+                                >
+                                    <ShoppingCart className="w-5 h-5" />
+                                    Out of Stock
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={handleAddToCart}
+                                    className="flex-1 bg-white text-[#EF3D6A] py-3 px-1 lg:px-6 rounded cursor-pointer font-semibold border-[1.5px] border-[#EF3D6A] hover:bg-pink-50 transition-colors flex items-center justify-center gap-2"
+                                    aria-label={`Add ${product?.title} to cart`}
+                                >
+                                    <ShoppingCart className="w-5 h-5" />
+                                    Add to cart
+                                </button>
+                            )}
+                            
+                            {/* Check if variant is out of stock for Buy Now */}
+                            {selectedVariant && selectedVariant.stockQuantity <= 0 ? (
+                                <button
+                                    disabled
+                                    className="flex-1 rounded bg-gray-300 text-gray-500 py-3 px-1 lg:px-6 cursor-not-allowed font-semibold"
+                                >
+                                    Out of Stock
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={handleBuyNow}
+                                    className="flex-1 rounded bg-[#EF3D6A] text-white py-3 px-1 lg:px-6 cursor-pointer font-semibold hover:bg-[#C1274F] transition-colors"
+                                    aria-label={`Buy ${product?.title} now`}
+                                >
+                                    Buy Now
+                                </button>
+                            )}
                         </div>
                         <div className='border-b border-[#E7E7E7]'>
 

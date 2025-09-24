@@ -7,25 +7,7 @@ import Link from 'next/link'
 
 export default function OfferBanner() {
     const [banner, setBanner] = useState(null)
-
-    // Fake data for single offer banner - will be replaced with API call
-    const fakeBanner = {
-        id: 1,
-        title: "50% Discount",
-        subtitle: "Only for the first order",
-        promoCode: "PINKFAST50",
-        description: "Use promo code",
-        image: "/images/offer-banner.png",
-        backgroundColor: "#fce7f3",
-        textColor: "#000000",
-        promoCodeColor: "#ec4899",
-        isActive: true,
-        isRedirect: true,
-        redirectUrl: "http://forpink.com",
-        startDate: "2024-01-01",
-        endDate: "2024-12-31",
-        priority: 1
-    }
+    const [loading, setLoading] = useState(true)
 
     useEffect(() => {
         fetchBanner()
@@ -33,23 +15,41 @@ export default function OfferBanner() {
 
     const fetchBanner = async () => {
         try {
-            // Try to fetch from API first
-            const response = await offerBannerAPI.getActiveBanners()
-            if (response.success && response.data.length > 0) {
-                // Get the first active banner (highest priority)
-                setBanner(response.data[0])
-            } else {
-                // Fallback to fake data if API fails or no data
-                setBanner(fakeBanner)
+            setLoading(true)
+            const response = await offerBannerAPI.getActiveOfferBanner()
+            if (response.success && response.data) {
+                setBanner(response.data)
             }
         } catch (error) {
             console.error('Error fetching banner:', error)
-            // Fallback to fake data on error
-            setBanner(fakeBanner)
+        } finally {
+            setLoading(false)
         }
     }
 
 
+
+    if (loading) {
+        return (
+            <section className="px-4 bg-white">
+                <div className="2xl:max-w-7xl xl:max-w-6xl lg:xl:2xl:max-w-7xl xl:max-w-6xl max-w-xl xl:2xl:max-w-7xl xl:max-w-6xl mx-auto px-4 sm:px-6 lg:px-0">
+                    <div className="relative overflow-hidden">
+                        <div className="flex flex-col lg:flex-row items-center min-h-[400px] bg-gray-100 rounded-lg">
+                            <div className="w-full lg:w-1/2 relative h-[300px] lg:h-[400px] bg-gray-200 animate-pulse"></div>
+                            <div className="w-full lg:w-1/2 p-6 lg:p-12">
+                                <div className="max-w-md mx-auto lg:mx-0 space-y-4">
+                                    <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
+                                    <div className="h-8 bg-gray-200 rounded animate-pulse"></div>
+                                    <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
+                                    <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        )
+    }
 
     if (!banner) {
         return null
@@ -69,103 +69,84 @@ export default function OfferBanner() {
 
 
 
-                {
-                    banner?.redirectUrl && banner?.isRedirect ?
-                        <Link href={banner.redirectUrl} >
-                            <div className="relative overflow-hidden ">
-                                <div
-                                    className="flex flex-col lg:flex-row items-center min-h-[400px]"
-                                    style={{ backgroundColor: banner.backgroundColor }}
-                                >
-                                    {/* Left Side - Image */}
-                                    <div className="w-full lg:w-1/2 relative h-[300px] lg:h-[400px]">
-                                        <Image
-                                            src={banner.image}
-                                            alt={banner.title}
-                                            fill
-                                            className="object-cover"
-                                            sizes="(max-width: 1024px) 100vw, 50vw"
-                                            priority
-                                        />
-                                    </div>
-
-                                    {/* Right Side - Content */}
-                                    <div className="w-full lg:w-1/2 p-6 lg:p-12">
-                                        <div className="max-w-md mx-auto lg:mx-0">
-                                            <p className="text-sm lg:text-base mb-2" style={{ color: banner.promoCodeColor }}>
-                                                {banner.subtitle}
-                                            </p>
-
-                                            <h3 className="text-2xl lg:text-4xl font-bold mb-4" style={{ color: banner.textColor }}>
-                                                {banner.title}
-                                            </h3>
-
-                                            <p className="text-base lg:text-lg mb-6" style={{ color: banner.textColor }}>
-                                                {banner.description}
-                                            </p>
-
-                                            <div className="py-4">
-                                                <p
-                                                    className="text-xl lg:text-2xl font-bold"
-                                                    style={{ color: banner.promoCodeColor }}
-                                                >
-                                                    {banner.promoCode}
-                                                </p>
-                                            </div>
-
-                                        </div>
-                                    </div>
-                                </div>
+                {/* Check if it's promo code type - no link needed */}
+                {banner.type === 'promo' ? (
+                    <div className="relative overflow-hidden rounded-lg">
+                        <div className="flex flex-col lg:flex-row items-center min-h-[400px] bg-gradient-to-r from-pink-50 to-purple-50">
+                            {/* Left Side - Image */}
+                            <div className="w-full lg:w-1/2 relative h-[300px] lg:h-[400px]">
+                                <Image
+                                    src={banner.image}
+                                    alt={banner.title}
+                                    fill
+                                    className="object-cover"
+                                    sizes="(max-width: 1024px) 100vw, 50vw"
+                                    priority
+                                />
                             </div>
-                        </Link> :
-                        <div>
-                            <div className="relative overflow-hidden ">
-                                <div
-                                    className="flex flex-col lg:flex-row items-center min-h-[400px]"
-                                    style={{ backgroundColor: banner.backgroundColor }}
-                                >
-                                    {/* Left Side - Image */}
-                                    <div className="w-full lg:w-1/2 relative h-[300px] lg:h-[400px]">
-                                        <Image
-                                            src={banner.image}
-                                            alt={banner.title}
-                                            fill
-                                            className="object-cover"
-                                            sizes="(max-width: 1024px) 100vw, 50vw"
-                                            priority
-                                        />
-                                    </div>
 
-                                    {/* Right Side - Content */}
-                                    <div className="w-full lg:w-1/2 p-6 lg:p-12">
-                                        <div className="max-w-md mx-auto lg:mx-0">
-                                            <p className="text-sm lg:text-base mb-2" style={{ color: banner.promoCodeColor }}>
-                                                {banner.subtitle}
-                                            </p>
+                            {/* Right Side - Content */}
+                            <div className="w-full lg:w-1/2 p-6 lg:p-12">
+                                <div className="max-w-md mx-auto lg:mx-0">
+                                    <p className="text-sm lg:text-base mb-2 text-pink-600">
+                                        {banner.subtitle}
+                                    </p>
 
-                                            <h3 className="text-2xl lg:text-4xl font-bold mb-4" style={{ color: banner.textColor }}>
-                                                {banner.title}
-                                            </h3>
+                                    <h3 className="text-2xl lg:text-4xl font-bold mb-4 text-gray-900">
+                                        {banner.title}
+                                    </h3>
 
-                                            <p className="text-base lg:text-lg mb-6" style={{ color: banner.textColor }}>
-                                                {banner.description}
-                                            </p>
-
-                                            <div className="py-4">
-                                                <p
-                                                    className="text-xl lg:text-2xl font-bold"
-                                                    style={{ color: banner.promoCodeColor }}
-                                                >
-                                                    {banner.promoCode}
-                                                </p>
-                                            </div>
-
+                                    {/* Promo Code */}
+                                    <div className="py-4">
+                                        <p className="text-base text-gray-600 mb-2">Use promo code</p>
+                                        <div className="inline-block px-0 py-2 rounded-lg text-xl lg:text-3xl font-bold text-pink-600">
+                                            {banner.discountText || `${banner.discountPercentage}% OFF`}
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                }
+                    </div>
+                ) : (
+                    /* Offer type - with link */
+                    <Link href={banner.buttonLink || '#'}>
+                        <div className="relative overflow-hidden rounded-lg">
+                            <div className="flex flex-col lg:flex-row items-center min-h-[400px] bg-gradient-to-r from-pink-50 to-purple-50">
+                                {/* Left Side - Image */}
+                                <div className="w-full lg:w-1/2 relative h-[300px] lg:h-[400px]">
+                                    <Image
+                                        src={banner.image}
+                                        alt={banner.title}
+                                        fill
+                                        className="object-cover"
+                                        sizes="(max-width: 1024px) 100vw, 50vw"
+                                        priority
+                                    />
+                                </div>
+
+                                {/* Right Side - Content */}
+                                <div className="w-full lg:w-1/2 p-6 lg:p-12">
+                                    <div className="max-w-md mx-auto lg:mx-0">
+                                        <p className="text-sm lg:text-base mb-2 text-pink-600">
+                                            {banner.subtitle}
+                                        </p>
+
+                                        <h3 className="text-2xl lg:text-4xl font-bold mb-4 text-gray-900">
+                                            {banner.title}
+                                        </h3>
+
+                                        {/* Button */}
+                                        <div className="mt-6">
+                                            <div className="inline-block px-8 py-3 rounded-lg text-lg font-semibold bg-pink-500 text-white transition-all hover:opacity-90">
+                                                {banner.buttonText}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </Link>
+                )}
 
 
             </div>

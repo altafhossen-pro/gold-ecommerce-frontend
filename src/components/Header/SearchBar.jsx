@@ -119,6 +119,8 @@ export default function SearchBar({ isMobile = false, onSearchSubmit, className 
           <button 
             type="submit"
             className="bg-pink-500 text-white rounded-full p-2 ml-2 hover:bg-pink-600 transition-colors cursor-pointer"
+            aria-label="Search products"
+            title="Search products"
           >
             <Search className="w-4 h-4" />
           </button>

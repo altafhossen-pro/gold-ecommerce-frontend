@@ -20,13 +20,15 @@ import {
     FileText,
     Menu,
     X,
-    LogOut
+    LogOut,
+    Coins
 } from 'lucide-react'
 import AppContext from '@/context/AppContext'
 
 const navigation = [
     { name: 'Overview', href: '/dashboard', icon: LayoutDashboard },
     { name: 'My Orders', href: '/dashboard/my-orders', icon: ShoppingCart },
+    { name: 'Loyalty Points', href: '/dashboard/loyalty', icon: Coins },
     { name: 'My Reviews', href: '/dashboard/my-reviews', icon: Star },
     { name: 'Wishlist', href: '/dashboard/wishlist', icon: Heart },
     { name: 'Profile', href: '/dashboard/profile', icon: User }
@@ -92,7 +94,10 @@ export default function CustomerSidebar() {
                 {/* Navigation - Scrollable */}
                 <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
                     {navigation.map((item) => {
-                        const isActive = pathname === item.href
+                        // Special handling for orders page to stay active on order details
+                        const isActive = item.href === '/dashboard/my-orders' 
+                            ? pathname.startsWith(item.href)
+                            : pathname === item.href
                         return (
                             <Link
                                 key={item.name}
@@ -128,7 +133,7 @@ export default function CustomerSidebar() {
             {/* Mobile Overlay */}
             {isMobileOpen && (
                 <div 
-                    className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
+                    className="md:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-30"
                     onClick={() => setIsMobileOpen(false)}
                 />
             )}
