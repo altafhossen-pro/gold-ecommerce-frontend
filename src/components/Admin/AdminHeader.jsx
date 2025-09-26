@@ -14,10 +14,9 @@ import {
     Settings
 } from 'lucide-react'
 
-export default function AdminHeader() {
+export default function AdminHeader({ onMobileMenuToggle }) {
     const [isSearchFocused, setIsSearchFocused] = useState(false)
     const [isProfileOpen, setIsProfileOpen] = useState(false)
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
     
     const { user, logout } = useAppContext()
     const router = useRouter()
@@ -53,13 +52,9 @@ export default function AdminHeader() {
                     {/* Mobile Menu Button */}
                     <button
                         className="md:hidden p-2 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100"
-                        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                        onClick={onMobileMenuToggle}
                     >
-                        {isMobileMenuOpen ? (
-                            <X className="h-6 w-6" />
-                        ) : (
-                            <Menu className="h-6 w-6" />
-                        )}
+                        <Menu className="h-6 w-6" />
                     </button>
 
                     {/* Search Bar */}
@@ -145,11 +140,6 @@ export default function AdminHeader() {
                 </div>
             </div>
 
-            {/* Mobile Overlay */}
-            {isMobileMenuOpen && (
-                <div className="md:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
-                    onClick={() => setIsMobileMenuOpen(false)} />
-            )}
         </header>
     )
 }

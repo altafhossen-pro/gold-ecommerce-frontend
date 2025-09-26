@@ -150,9 +150,7 @@ export default function EditTestimonialPage() {
             setLoading(true)
             const token = getCookie('token')
             
-            console.log('Updating testimonial data:', formData)
             const response = await testimonialAPI.updateTestimonial(testimonialId, formData,token)
-            console.log('Testimonial update response:', response)
             
             if (response.success) {
                 toast.success('Testimonial updated successfully!')

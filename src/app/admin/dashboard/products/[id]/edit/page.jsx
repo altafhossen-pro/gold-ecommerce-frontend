@@ -8,6 +8,7 @@ import ImageUpload from '@/components/Common/ImageUpload'
 import GalleryImageUpload from '@/components/Common/GalleryImageUpload'
 import toast from 'react-hot-toast'
 import { productAPI, categoryAPI } from '@/services/api'
+import { getCookie } from 'cookies-next'
 
 export default function EditProductPage() {
     const router = useRouter()
@@ -249,10 +250,11 @@ export default function EditProductPage() {
 
     const handleSubmit = async (e) => {
         e.preventDefault()
-        setLoading(true)
+        setLoading(true);
+        const token = getCookie('token')
 
         try {
-            const data = await productAPI.updateProduct(productId, formData)
+            const data = await productAPI.updateProduct(productId, formData,token)
 
             if (data.success) {
                 toast.success('Product updated successfully!')

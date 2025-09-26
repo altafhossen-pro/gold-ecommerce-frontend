@@ -19,13 +19,15 @@ import {
     Image,
     Grid3X3,
     Megaphone,
-    Ticket
+    Ticket,
+    PlusCircle
 } from 'lucide-react'
 
 const navigation = [
     { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
     { name: 'Products', href: '/admin/dashboard/products', icon: Package },
     { name: 'Orders', href: '/admin/dashboard/orders', icon: ShoppingCart },
+    { name: 'Manual Orders', href: '/admin/dashboard/manual-orders', icon: PlusCircle },
     { name: 'Customers', href: '/admin/dashboard/customers', icon: Users },
     { name: 'Categories', href: '/admin/dashboard/categories', icon: Tag },
     { name: 'Coupons', href: '/admin/dashboard/coupons', icon: Ticket },
@@ -34,12 +36,12 @@ const navigation = [
     { name: 'Offer Banners', href: '/admin/dashboard/offer-banner', icon: Megaphone },
     { name: 'Testimonials', href: '/admin/dashboard/testimonials', icon: Star },
     { name: 'Inventory', href: '/admin/dashboard/inventory', icon: Store },
-    { name: 'Reviews', href: '/admin/dashboard/reviews', icon: MessageSquare },
-    { name: 'Analytics', href: '/admin/dashboard/analytics', icon: BarChart3 },
+    // { name: 'Reviews', href: '/admin/dashboard/reviews', icon: MessageSquare },
+    // { name: 'Analytics', href: '/admin/dashboard/analytics', icon: BarChart3 },
     { name: 'Settings', href: '/admin/dashboard/settings', icon: Settings },
 ]
 
-export default function AdminSidebar() {
+export default function AdminSidebar({ onMobileMenuClose }) {
     const pathname = usePathname()
 
     return (
@@ -60,6 +62,7 @@ export default function AdminSidebar() {
                         <Link
                             key={item.name}
                             href={item.href}
+                            onClick={onMobileMenuClose}
                             className={`group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${isActive
                                     ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-600'
                                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'

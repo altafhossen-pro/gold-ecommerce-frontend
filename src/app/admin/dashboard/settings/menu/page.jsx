@@ -153,8 +153,6 @@ export default function MenuSettings() {
                 delete menuData.description;
             }
             
-            // Debug log to see what data is being sent
-            console.log('Menu data being sent:', menuData);
             
             if (activeTab === 'header') {
                 if (editingMenu) {

@@ -29,7 +29,6 @@ const SocialLogin = ({ onSocialLogin }) => {
         if (onSocialLogin) {
             onSocialLogin(provider);
         } else {
-            console.log(`${provider} login clicked`);
         }
     };
 

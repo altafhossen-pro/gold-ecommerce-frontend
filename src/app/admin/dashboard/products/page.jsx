@@ -79,10 +79,10 @@ export default function AdminProductsPage() {
             if (prices.length > 0) {
                 const min = Math.min(...prices)
                 const max = Math.max(...prices)
-                return min === max ? `$${min}` : `$${min} - $${max}`
+                return min === max ? `৳${min}` : `৳${min} - ৳${max}`
             }
         }
-        return product.basePrice ? `$${product.basePrice}` : 'N/A'
+        return product.basePrice ? `৳${product.basePrice}` : 'N/A'
     }
 
     if (loading) {

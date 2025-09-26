@@ -204,8 +204,29 @@ export default function AdminOrdersPage() {
         setNewStatus('');
     };
 
+    // Get valid status transitions based on current status
+    const getValidStatusTransitions = (currentStatus) => {
+        const validTransitions = {
+            'pending': ['confirmed', 'cancelled'],
+            'confirmed': ['processing', 'cancelled'],
+            'processing': ['shipped', 'cancelled'],
+            'shipped': ['delivered', 'returned'],
+            'delivered': ['returned'],
+            'cancelled': [], // No transitions from cancelled
+            'returned': [] // No transitions from returned
+        };
+        return validTransitions[currentStatus] || [];
+    };
+
     const handleStatusUpdate = async () => {
         if (!selectedOrder || !newStatus) return;
+
+        // Validate status transition
+        const validTransitions = getValidStatusTransitions(selectedOrder.status);
+        if (!validTransitions.includes(newStatus)) {
+            toast.error(`Cannot change status from ${selectedOrder.status} to ${newStatus}`);
+            return;
+        }
 
         try {
             setUpdatingStatus(true);
@@ -592,13 +613,20 @@ export default function AdminOrdersPage() {
                                 onChange={(e) => setNewStatus(e.target.value)}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                             >
-                                <option value="pending">Pending</option>
-                                <option value="confirmed">Confirmed</option>
-                                <option value="processing">Processing</option>
-                                <option value="shipped">Shipped</option>
-                                <option value="delivered">Delivered</option>
-                                <option value="cancelled">Cancelled</option>
+                                <option value={selectedOrder.status}>
+                                    {selectedOrder.status.charAt(0).toUpperCase() + selectedOrder.status.slice(1)} (Current)
+                                </option>
+                                {getValidStatusTransitions(selectedOrder.status).map(status => (
+                                    <option key={status} value={status}>
+                                        {status.charAt(0).toUpperCase() + status.slice(1)}
+                                    </option>
+                                ))}
                             </select>
+                            {getValidStatusTransitions(selectedOrder.status).length === 0 && (
+                                <p className="text-xs text-gray-500 mt-1">
+                                    No status changes allowed from {selectedOrder.status}
+                                </p>
+                            )}
                         </div>
 
                         <div className="flex justify-end space-x-3">

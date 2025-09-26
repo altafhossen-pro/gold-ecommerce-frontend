@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import { Upload, X, Image as ImageIcon } from 'lucide-react'
 import { uploadAPI } from '@/services/api'
+import { toast } from 'react-hot-toast'
 
 export default function ImageUpload({ 
     onImageUpload, 
@@ -24,6 +25,7 @@ export default function ImageUpload({
         // Validate file type
         if (!file.type.startsWith('image/')) {
             setError('Please select an image file')
+            toast.error('Please select an image file')
             return
         }
 
@@ -31,11 +33,15 @@ export default function ImageUpload({
         const fileSizeMB = file.size / (1024 * 1024)
         if (fileSizeMB > maxSize) {
             setError(`File size must be less than ${maxSize}MB`)
+            toast.error(`File size must be less than ${maxSize}MB`)
             return
         }
 
         setError('')
         setUploading(true)
+
+        // Show loading toast
+        const loadingToast = toast.loading('Uploading image...')
 
         try {
             const formData = new FormData()
@@ -45,12 +51,15 @@ export default function ImageUpload({
 
             if (data.success) {
                 onImageUpload(data.data.url)
+                toast.success('Image uploaded successfully!', { id: loadingToast })
             } else {
                 setError(data.message || 'Upload failed')
+                toast.error(data.message || 'Upload failed', { id: loadingToast })
             }
         } catch (error) {
             console.error('Upload error:', error)
             setError('Upload failed. Please try again.')
+            toast.error('Upload failed. Please try again.', { id: loadingToast })
         } finally {
             setUploading(false)
         }
@@ -114,50 +123,48 @@ export default function ImageUpload({
             )}
 
             {/* Upload Area */}
-            {!currentImage && (
-                <div
-                    className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-                        dragActive
-                            ? 'border-blue-400 bg-blue-50'
-                            : 'border-gray-300 hover:border-gray-400'
-                    }`}
-                    onDragEnter={handleDrag}
-                    onDragLeave={handleDrag}
-                    onDragOver={handleDrag}
-                    onDrop={handleDrop}
-                >
-                    <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept={accept}
-                        onChange={handleFileInput}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                        disabled={uploading}
-                    />
-                    
-                    <div className="space-y-2">
-                        {uploading ? (
-                            <div className="flex items-center justify-center">
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                                <span className="ml-2 text-sm text-gray-600">Uploading...</span>
+            <div
+                className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                    dragActive
+                        ? 'border-blue-400 bg-blue-50'
+                        : 'border-gray-300 hover:border-gray-400'
+                } ${currentImage ? 'hidden' : ''}`}
+                onDragEnter={handleDrag}
+                onDragLeave={handleDrag}
+                onDragOver={handleDrag}
+                onDrop={handleDrop}
+            >
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept={accept}
+                    onChange={handleFileInput}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    disabled={uploading}
+                />
+                
+                <div className="space-y-2">
+                    {uploading ? (
+                        <div className="flex items-center justify-center">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                            <span className="ml-2 text-sm text-gray-600">Uploading...</span>
+                        </div>
+                    ) : (
+                        <>
+                            <ImageIcon className="mx-auto h-12 w-12 text-gray-400" />
+                            <div className="text-sm text-gray-600">
+                                <span className="font-medium text-blue-600 hover:text-blue-500">
+                                    Click to upload
+                                </span>{' '}
+                                or drag and drop
                             </div>
-                        ) : (
-                            <>
-                                <ImageIcon className="mx-auto h-12 w-12 text-gray-400" />
-                                <div className="text-sm text-gray-600">
-                                    <span className="font-medium text-blue-600 hover:text-blue-500">
-                                        Click to upload
-                                    </span>{' '}
-                                    or drag and drop
-                                </div>
-                                <p className="text-xs text-gray-500">
-                                    PNG, JPG, GIF up to {maxSize}MB
-                                </p>
-                            </>
-                        )}
-                    </div>
+                            <p className="text-xs text-gray-500">
+                                PNG, JPG, GIF up to {maxSize}MB
+                            </p>
+                        </>
+                    )}
                 </div>
-            )}
+            </div>
 
             {/* Error Message */}
             {error && (
@@ -166,15 +173,20 @@ export default function ImageUpload({
 
             {/* Upload Button (when current image exists) */}
             {currentImage && (
-                <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploading}
-                    className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-                >
-                    <Upload className="h-4 w-4 mr-2" />
-                    {uploading ? 'Uploading...' : 'Change Image'}
-                </button>
+                <div className="space-y-2">
+                    <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploading}
+                        className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                    >
+                        <Upload className="h-4 w-4 mr-2" />
+                        {uploading ? 'Uploading...' : 'Change Image'}
+                    </button>
+                    <p className="text-xs text-gray-500">
+                        Click to select a new image or drag and drop
+                    </p>
+                </div>
             )}
         </div>
     )

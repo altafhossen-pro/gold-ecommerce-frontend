@@ -38,13 +38,6 @@ const SimilarProducts = ({ currentProductId, currentProductCategory }) => {
           featuredImage: product.featuredImage // Keep original image
         }));
         setSimilarProducts(transformedProducts || []);
-        
-        // Log the source for debugging
-        console.log('Similar products fetched:', {
-          source: response.meta?.source,
-          totalFound: response.meta?.totalFound,
-          categoryName: response.meta?.categoryName
-        });
       }
     } catch (error) {
       console.error('Error fetching similar products:', error);

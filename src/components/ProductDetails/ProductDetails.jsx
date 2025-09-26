@@ -40,7 +40,6 @@ export default function ProductDetails({ productSlug }) {
     useEffect(() => {
         if (product && wishlist) {
             const isInWishlist = wishlist.some(item => item.productId === product._id);
-            console.log('Wishlist check:', { productId: product._id, wishlist, isInWishlist });
             setIsWishlisted(isInWishlist);
         }
     }, [product, wishlist]);
@@ -249,7 +248,6 @@ export default function ProductDetails({ productSlug }) {
                 price: product.variants?.[0]?.currentPrice || product.basePrice || 0,
                 category: product.category?.name || product.category || 'Other'
             };
-            console.log('Adding to wishlist:', productForWishlist);
             addProductToWishlist(productForWishlist, addToWishlist);
             setIsWishlisted(true);
         }

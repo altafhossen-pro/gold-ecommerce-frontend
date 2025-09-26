@@ -28,7 +28,6 @@ export default function ProductDetailsPage() {
             if (data.success) {
                 setProduct(data.data)
             } else {
-                console.log('Failed to fetch product: ' + data.message)
                 router.push('/admin/dashboard/products')
             }
         } catch (error) {

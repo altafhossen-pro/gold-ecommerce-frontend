@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Eye, EyeOff, ArrowUp, ArrowDown, X, Search, Check } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, EyeOff, ArrowUp, ArrowDown, X, Search, Check, Upload, Link } from 'lucide-react';
 import { productAPI, heroProductAPI } from '@/services/api';
 import DeleteConfirmationModal from '@/components/Common/DeleteConfirmationModal';
+import ImageUpload from '@/components/Common/ImageUpload';
 import { toast } from 'react-hot-toast';
 import { getCookie } from 'cookies-next';
 
@@ -21,6 +22,7 @@ export default function HeroProductsManagement() {
     const [showProductDropdown, setShowProductDropdown] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [errors, setErrors] = useState({});
+    const [imageUploadMode, setImageUploadMode] = useState('upload'); // 'url' or 'upload'
 
     // Form data
     const [formData, setFormData] = useState({
@@ -364,6 +366,20 @@ export default function HeroProductsManagement() {
         }
     };
 
+    const handleImageUpload = (imageUrl) => {
+        setFormData(prev => ({
+            ...prev,
+            customImage: imageUrl
+        }));
+    };
+
+    const handleImageRemove = () => {
+        setFormData(prev => ({
+            ...prev,
+            customImage: ''
+        }));
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
@@ -606,16 +622,65 @@ export default function HeroProductsManagement() {
 
                                 <div className="md:col-span-2">
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Custom Image URL (Optional)
+                                        Custom Image (Optional)
                                     </label>
-                                    <input
-                                        type="url"
-                                        name="customImage"
-                                        value={formData.customImage}
-                                        onChange={handleInputChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500"
-                                        placeholder="https://example.com/custom-image.jpg"
-                                    />
+                                    
+                                    {/* Upload Mode Toggle */}
+                                    <div className="flex space-x-2 mb-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => setImageUploadMode('url')}
+                                            className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                                                imageUploadMode === 'url'
+                                                    ? 'bg-pink-100 text-pink-700 border border-pink-300'
+                                                    : 'bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200'
+                                            }`}
+                                        >
+                                            <Link className="w-4 h-4 mr-2" />
+                                            Manual URL
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setImageUploadMode('upload')}
+                                            className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                                                imageUploadMode === 'upload'
+                                                    ? 'bg-pink-100 text-pink-700 border border-pink-300'
+                                                    : 'bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200'
+                                            }`}
+                                        >
+                                            <Upload className="w-4 h-4 mr-2" />
+                                            File Upload
+                                        </button>
+                                    </div>
+
+                                    {/* URL Input Mode */}
+                                    {imageUploadMode === 'url' && (
+                                        <div>
+                                            <input
+                                                type="url"
+                                                name="customImage"
+                                                value={formData.customImage}
+                                                onChange={handleInputChange}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500"
+                                                placeholder="https://example.com/custom-image.jpg"
+                                            />
+                                        </div>
+                                    )}
+
+                                    {/* File Upload Mode */}
+                                    {imageUploadMode === 'upload' && (
+                                        <div>
+                                            <ImageUpload
+                                                onImageUpload={handleImageUpload}
+                                                onImageRemove={handleImageRemove}
+                                                currentImage={formData.customImage}
+                                                label="Upload Custom Image"
+                                                maxSize={5}
+                                                className="w-full"
+                                            />
+                                        </div>
+                                    )}
+
                                     <p className="text-xs text-gray-500 mt-1">
                                         Leave empty to use product's default image. <span className="text-pink-600 font-medium">Recommended: 16:9 aspect ratio (e.g., 1920x1080px)</span>
                                     </p>

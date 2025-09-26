@@ -590,7 +590,7 @@ export default function Checkout() {
                                     </span>
                                 </label>
 
-                                <label className="flex items-center space-x-3 cursor-pointer">
+                                {/* <label className="flex items-center space-x-3 cursor-pointer">
                                     <input
                                         type="radio"
                                         name="paymentMethod"
@@ -618,7 +618,7 @@ export default function Checkout() {
                                         <span className="w-6 h-6 bg-gray-200 rounded flex items-center justify-center">💰</span>
                                         Manual Payment
                                     </span>
-                                </label>
+                                </label> */}
                             </div>
 
                             {/* Payment Instructions */}

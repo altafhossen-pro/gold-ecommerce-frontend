@@ -141,9 +141,7 @@ export default function CreateTestimonialPage() {
             setLoading(true)
             const token = getCookie('token')
             
-            console.log('Submitting testimonial data:', formData)
             const response = await testimonialAPI.createTestimonial(formData,token)
-            console.log('Testimonial creation response:', response)
             
             if (response.success) {
                 toast.success('Testimonial created successfully!')

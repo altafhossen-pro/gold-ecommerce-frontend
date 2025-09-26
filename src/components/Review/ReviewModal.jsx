@@ -52,7 +52,6 @@ export default function ReviewModal({ isOpen, onClose, product, onReviewSubmitte
                     })
                     
                     uploadedImageUrls = await Promise.all(uploadPromises)
-                    console.log('Uploaded image URLs:', uploadedImageUrls)
                 } catch (error) {
                     console.error('Error uploading images:', error)
                     toast.error('Failed to upload images')

@@ -104,10 +104,14 @@ export const productAPI = {
     },
 
     // Admin: Update product
-    updateProduct: (id, productData) => {
+    updateProduct: (id, productData,token) => {
         return apiCall(`/product/${id}`, {
-            method: 'PUT',
+            method: 'PATCH',
             body: JSON.stringify(productData),
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
         });
     },
 
@@ -257,6 +261,16 @@ export const userAPI = {
         });
     },
 
+    // Search users (admin)
+    searchUsers: (query, token) => {
+        return apiCall(`/admin/user/search?q=${encodeURIComponent(query)}`, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+
     // Change password
     changePassword: (passwordData) => {
         return apiCall('/user/change-password', {
@@ -280,7 +294,7 @@ export const userAPI = {
                 queryParams.append(key,  params[key]);
             }
         });
-        return apiCall(`/user/admin/users?${queryParams.toString()}`, {
+        return apiCall(`/admin/user?${queryParams.toString()}`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -290,7 +304,7 @@ export const userAPI = {
 
     // Admin - Get single user by ID
     getUserById: (userId, token) => {
-        return apiCall(`/user/admin/users/${userId}`, {
+        return apiCall(`/admin/user/${userId}`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -300,7 +314,7 @@ export const userAPI = {
 
     // Admin - Update user by ID
     updateUserById: (userId, userData, token) => {
-        return apiCall(`/user/admin/users/${userId}`, {
+        return apiCall(`/admin/user/${userId}`, {
             method: 'PATCH',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -310,7 +324,7 @@ export const userAPI = {
         });
     },
     AdminUserupdateProfile: (userId, userData, token) => {
-        return apiCall(`/user/admin/users/${userId}`, {
+        return apiCall(`/admin/user/${userId}`, {
             method: 'PATCH',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -322,7 +336,7 @@ export const userAPI = {
 
     // Admin - Soft delete user
     deleteUser: (userId, token) => {
-        return apiCall(`/user/admin/users/${userId}`, {
+        return apiCall(`/admin/user/${userId}`, {
             method: 'DELETE',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -435,6 +449,18 @@ export const orderAPI = {
     // Create new order
     createOrder: (orderData, token) => {
         return apiCall('/order', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(orderData),
+        });
+    },
+
+    // Create manual order (admin)
+    createManualOrder: (orderData, token) => {
+        return apiCall('/order/manual', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1153,6 +1179,94 @@ export const couponAPI = {
     },
 };
 
+// Inventory API functions
+export const inventoryAPI = {
+    // Get inventory overview
+    getInventory: (params = {}, token) => {
+        const queryString = new URLSearchParams(params).toString();
+        return apiCall(`/inventory?${queryString}`,
+            {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+            }
+        );
+    },
+
+    // Get low stock products
+    getLowStockProducts: (threshold = 5, token) => {
+        return apiCall(`/inventory/low-stock?threshold=${threshold}`,
+            {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+            }
+        );
+    },
+
+    // Update stock for a product
+    updateStock: (stockData, token) => {
+        return apiCall('/inventory/update-stock', {
+            method: 'POST',
+            body: JSON.stringify(stockData),
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+    },
+
+    // Bulk update stock
+    bulkUpdateStock: (updates, token) => {
+        return apiCall('/inventory/bulk-update-stock', {
+            method: 'POST',
+            body: JSON.stringify(updates),
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+    },
+
+    // Get stock history for a product
+    getStockHistory: (productId, params = {}, token) => {
+        const queryString = new URLSearchParams(params).toString();
+        return apiCall(`/inventory/stock-history/${productId}?${queryString}`,
+            {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            }
+        );
+    },
+
+    // Get stock summary/analytics
+    getStockSummary: (productId, params = {}, token) => {
+        const queryString = new URLSearchParams(params).toString();
+        return apiCall(`/inventory/stock-summary/${productId}?${queryString}`,
+            {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+            }
+        );
+    },
+
+    // Get overall stock analytics
+    getStockAnalytics: (params = {}, token) => {
+        const queryString = new URLSearchParams(params).toString();
+        return apiCall(`/inventory/analytics?${queryString}`,
+            {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+            }
+        );
+    },
+};
+
 export default {
     productAPI,
     categoryAPI,
@@ -1172,5 +1286,6 @@ export default {
     loyaltyAPI,
     settingsAPI,
     couponAPI,
+    inventoryAPI,
     transformProductData,
 };

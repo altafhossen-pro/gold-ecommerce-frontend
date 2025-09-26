@@ -146,8 +146,6 @@ function ShopPageContent() {
                     sort: sortBy === 'price-low' ? 'price' : sortBy === 'price-high' ? '-price' : '-createdAt'
                 };
 
-                // Debug log to see what parameters are being sent
-                console.log('Shop filters being sent:', filters);
 
                 response = await productAPI.searchProducts('', filters);
             }
@@ -233,7 +231,6 @@ function ShopPageContent() {
             const newSizes = prev.includes(size)
                 ? prev.filter(s => s !== size)
                 : [...prev, size];
-            console.log('Bracelet sizes changed:', newSizes);
             return newSizes;
         });
     };
@@ -243,7 +240,6 @@ function ShopPageContent() {
             const newSizes = prev.includes(size)
                 ? prev.filter(s => s !== size)
                 : [...prev, size];
-            console.log('Ring sizes changed:', newSizes);
             return newSizes;
         });
     };

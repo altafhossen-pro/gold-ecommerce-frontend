@@ -109,8 +109,6 @@ export default function OfferBannerPage() {
                 submitData.discountText = formData.discountText;
             }
 
-            console.log('Form Data:', formData); // Debug log
-            console.log('Submit Data:', submitData); // Debug log
 
             if (editingBanner) {
                 const response = await offerBannerAPI.updateOfferBanner(editingBanner._id, submitData, token);

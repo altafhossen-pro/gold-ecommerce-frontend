@@ -2,13 +2,14 @@
 
 import { useAppContext } from '@/context/AppContext'
 import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import AdminHeader from "@/components/Admin/AdminHeader";
 import AdminSidebar from "@/components/Admin/AdminSidebar/AdminSidebar";
 
 export default function RootLayout({ children }) {
     const { user, isAuthenticated, loading } = useAppContext()
     const router = useRouter();
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     useEffect(() => {
         // Wait for loading to complete
@@ -43,19 +44,34 @@ export default function RootLayout({ children }) {
 
     return (
         <div className="flex h-screen bg-gray-50">
-            {/* Sidebar - Fixed height with scroll */}
+            {/* Desktop Sidebar - Fixed height with scroll */}
             <div className="hidden md:flex md:w-64 md:flex-col h-screen">
                 <AdminSidebar />
             </div>
 
+            {/* Mobile Sidebar - Overlay */}
+            {isMobileMenuOpen && (
+                <>
+                    {/* Backdrop */}
+                    <div 
+                        className="md:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                    />
+                    {/* Mobile Sidebar */}
+                    <div className="md:hidden fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-200 shadow-lg z-50">
+                        <AdminSidebar onMobileMenuClose={() => setIsMobileMenuOpen(false)} />
+                    </div>
+                </>
+            )}
+
             {/* Main Content Area - Fixed height */}
             <div className="flex flex-col flex-1 h-screen overflow-hidden">
                 {/* Header - Fixed height */}
-                <AdminHeader />
+                <AdminHeader onMobileMenuToggle={() => setIsMobileMenuOpen(!isMobileMenuOpen)} />
 
                 {/* Main Content - Scrollable within remaining height */}
                 <main className="flex-1 overflow-y-auto bg-gray-50 p-6">
-                    <div className="2xl:max-w-7xl xl:max-w-6xl lg:xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl xl:2xl:max-w-7xl xl:max-w-6xl mx-auto">
+                    <div className="max-w-7xl mx-auto">
                         {children}
                     </div>
                 </main>
