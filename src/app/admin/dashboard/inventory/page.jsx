@@ -15,7 +15,7 @@ import {
     Edit3
 } from 'lucide-react';
 import { inventoryAPI } from '@/services/api';
-import StockHistoryModal from '@/components/admin/StockHistoryModal';
+import StockHistoryModal from '@/components/Admin/StockHistoryModal';
 import { getCookie } from 'cookies-next';
 import VariantStockCard from '@/components/Admin/VariantStockCard';
 import MainProductStockForm from '@/components/Admin/MainProductStockForm';
