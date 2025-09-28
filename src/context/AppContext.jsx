@@ -83,7 +83,18 @@ export const AppProvider = ({ children }) => {
             colorHexCode: selectedVariant?.hexCode || null, // Can be null if no color
             sku: selectedVariant?.sku || product.slug,
             stockQuantity: selectedVariant?.stockQuantity || product.totalStock || 0,
-            stockStatus: selectedVariant?.stockStatus || 'in_stock'
+            stockStatus: selectedVariant?.stockStatus || 'in_stock',
+            // Add proper variant data for stock checking
+            variantData: selectedVariant ? {
+                size: selectedVariant.size,
+                color: selectedVariant.color,
+                hexCode: selectedVariant.hexCode,
+                sku: selectedVariant.sku,
+                stockQuantity: selectedVariant.stockQuantity,
+                stockStatus: selectedVariant.stockStatus,
+                currentPrice: selectedVariant.currentPrice,
+                originalPrice: selectedVariant.originalPrice
+            } : null
         }
 
         const existingItemIndex = cart.findIndex(item => item.variantKey === variantKey);
@@ -100,6 +111,79 @@ export const AppProvider = ({ children }) => {
             setCart([...cart, cartItem]);
             toast.success('Added to cart successfully!');
         }
+        
+        // Auto-open cart modal after adding to cart
+        setIsCartOpen(true);
+    }
+
+    // Batch add multiple items to cart
+    const addMultipleToCart = (items) => {
+        if (!items || items.length === 0) return;
+        
+        const newCartItems = [];
+        const updatedCart = [...cart];
+        
+        items.forEach(({ product, selectedVariant, quantity = 1 }) => {
+            const variantKey = selectedVariant ? 
+                `${product._id}-${selectedVariant.size}-${selectedVariant.color || 'no-color'}` : 
+                product._id;
+            
+            const cartItem = {
+                id: Date.now() + Math.random(), // Unique cart item ID
+                productId: product._id,
+                productInfo: {
+                    _id: product._id,
+                    title: product.title,
+                    slug: product.slug,
+                    featuredImage: product.featuredImage,
+                    category: product.category
+                },
+                variantKey: variantKey,
+                name: product.title,
+                variant: selectedVariant ? 
+                    `Size: ${selectedVariant.size}${selectedVariant.color ? `, Color: ${selectedVariant.color}` : ''}` : 
+                    'Default',
+                price: selectedVariant?.currentPrice || product.basePrice || 0,
+                originalPrice: selectedVariant?.originalPrice || null,
+                image: product.featuredImage || '/images/placeholder.png',
+                quantity,
+                total: (selectedVariant?.currentPrice || product.basePrice || 0) * quantity,
+                size: selectedVariant?.size || null,
+                color: selectedVariant?.color || null,
+                colorHexCode: selectedVariant?.hexCode || null,
+                sku: selectedVariant?.sku || product.slug,
+                stockQuantity: selectedVariant?.stockQuantity || product.totalStock || 0,
+                stockStatus: selectedVariant?.stockStatus || 'in_stock',
+                // Add proper variant data for stock checking
+                variantData: selectedVariant ? {
+                    size: selectedVariant.size,
+                    color: selectedVariant.color,
+                    hexCode: selectedVariant.hexCode,
+                    sku: selectedVariant.sku,
+                    stockQuantity: selectedVariant.stockQuantity,
+                    stockStatus: selectedVariant.stockStatus,
+                    currentPrice: selectedVariant.currentPrice,
+                    originalPrice: selectedVariant.originalPrice
+                } : null
+            };
+
+            const existingItemIndex = updatedCart.findIndex(item => item.variantKey === variantKey);
+            
+            if (existingItemIndex !== -1) {
+                // Update quantity if same variant exists
+                updatedCart[existingItemIndex].quantity += quantity;
+                updatedCart[existingItemIndex].total = updatedCart[existingItemIndex].price * updatedCart[existingItemIndex].quantity;
+            } else {
+                // Add new item
+                newCartItems.push(cartItem);
+            }
+        });
+        
+        // Update cart with all new items at once
+        setCart([...updatedCart, ...newCartItems]);
+        
+        // Show success message
+        toast.success(`${items.length} product(s) added to cart`);
         
         // Auto-open cart modal after adding to cart
         setIsCartOpen(true);
@@ -420,6 +504,7 @@ export const AppProvider = ({ children }) => {
         updateUser,
         fetchUserProfile,
         addToCart,
+        addMultipleToCart,
         removeFromCart,
         updateCartItem,
         clearCart,

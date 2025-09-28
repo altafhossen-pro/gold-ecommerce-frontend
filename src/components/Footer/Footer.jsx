@@ -57,8 +57,8 @@ export default function Footer() {
             quickLinks: response.data.quickLinks || fallbackFooterData.quickLinks,
             utilities: response.data.utilities || fallbackFooterData.utilities,
             contact: response.data.contact || fallbackFooterData.contact,
-            socialMedia: response.data.socialMedia && response.data.socialMedia.length > 0 
-              ? response.data.socialMedia 
+            socialMedia: response.data.socialMedia && response.data.socialMedia.length > 0
+              ? response.data.socialMedia
               : fallbackFooterData.socialMedia
           };
 
@@ -165,8 +165,8 @@ export default function Footer() {
                       href={link.href}
                       target={link.target || '_self'}
                       className={`text-sm transition-colors duration-300 hover:text-pink-400 ${link.isActive
-                          ? 'text-pink-400 underline'
-                          : 'text-gray-300'
+                        ? 'text-pink-400 underline'
+                        : 'text-gray-300'
                         }`}
                     >
                       {link.name}
@@ -342,7 +342,7 @@ export default function Footer() {
         <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto px-4 py-6">
           <div className="text-center">
             <p className="text-gray-300 text-sm">
-              ©2025 Forpink. All rights reserved.
+              ©2025 Forpink. All rights reserved. Developed by <a href="https://altaf-hossen.netlify.app?utm_source=forpink_website" target="_blank" rel="noopener noreferrer" className="text-pink-400 hover:text-pink-500 transition-colors duration-300">ALTAF</a>
             </p>
           </div>
         </div>

@@ -1267,6 +1267,155 @@ export const inventoryAPI = {
     },
 };
 
+// Upsell API functions
+export const upsellAPI = {
+    // Get all upsells with pagination
+    getAllUpsells: (params = '', token) => {
+        return apiCall(`/upsell?${params}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+    },
+
+    // Get single upsell by ID
+    getUpsellById: (id, token) => {
+        return apiCall(`/upsell/${id}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+    },
+
+    // Create new upsell
+    createUpsell: (upsellData, token) => {
+        return apiCall('/upsell', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(upsellData),
+        });
+    },
+
+    // Update upsell
+    updateUpsell: (id, upsellData, token) => {
+        return apiCall(`/upsell/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(upsellData),
+        });
+    },
+
+    // Delete upsell
+    deleteUpsell: (id, token) => {
+        return apiCall(`/upsell/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+    },
+
+    // Add linked product to upsell
+    addLinkedProduct: (upsellId, productId, order = 0, token) => {
+        return apiCall(`/upsell/${upsellId}/linked-products`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ productId, order }),
+        });
+    },
+
+    // Remove linked product from upsell
+    removeLinkedProduct: (upsellId, productId, token) => {
+        return apiCall(`/upsell/${upsellId}/linked-products`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ productId }),
+        });
+    },
+
+    // Update linked product order
+    updateLinkedProductOrder: (upsellId, productId, order, token) => {
+        return apiCall(`/upsell/${upsellId}/linked-products/order`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ productId, order }),
+        });
+    },
+
+    // Toggle linked product status
+    toggleLinkedProductStatus: (upsellId, productId, token) => {
+        return apiCall(`/upsell/${upsellId}/linked-products/toggle`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ productId }),
+        });
+    },
+
+    // Get upsells by main product
+    getUpsellsByMainProduct: (productId, token) => {
+        return apiCall(`/upsell/main-product/${productId}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+    },
+
+    // Get upsells by linked product
+    getUpsellsByLinkedProduct: (productId, token) => {
+        return apiCall(`/upsell/linked-product/${productId}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+    },
+
+    // Search products for linking
+    searchProductsForLinking: (query, excludeId, token) => {
+        const params = new URLSearchParams();
+        if (query) params.append('query', query);
+        if (excludeId) params.append('excludeId', excludeId);
+        
+        return apiCall(`/upsell/search/products?${params.toString()}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+    },
+
+    // Get upsells by main product (Public - no auth required)
+    getUpsellsByMainProductPublic: (productId) => {
+        return apiCall(`/upsell/public/main-product/${productId}`, {
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+    },
+};
+
 export default {
     productAPI,
     categoryAPI,
@@ -1287,5 +1436,6 @@ export default {
     settingsAPI,
     couponAPI,
     inventoryAPI,
+    upsellAPI,
     transformProductData,
 };

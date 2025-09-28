@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Star, Heart, Minus, Plus, ShoppingCart } from 'lucide-react';
 import CountdownTimer from '@/components/Common/CountdownTimer';
+import UpsellProducts from './UpsellProducts';
 import SimilarProducts from './SimilarProducts';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Pagination } from 'swiper/modules';
@@ -755,36 +756,17 @@ export default function ProductDetails({ productSlug }) {
                                         </svg>
                                         Delivery Information
                                     </h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="bg-green-50 p-3 rounded-lg">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                </svg>
-                                                <span className="text-sm font-medium text-green-800">Free Delivery</span>
-                                            </div>
-                                            <p className="text-xs text-green-700">On orders above ৳1000</p>
-                                        </div>
-                                        <div className="bg-blue-50 p-3 rounded-lg">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                                </svg>
-                                                <span className="text-sm font-medium text-blue-800">Fast Delivery</span>
-                                            </div>
-                                            <p className="text-xs text-blue-700">2-3 business days</p>
-                                        </div>
-                                    </div>
-                                    <div className="text-sm text-gray-600 space-y-1">
-                                        <p>• Delivery within {product.shippingInfo?.handlingTime || 2}-{product.shippingInfo?.handlingTime ? product.shippingInfo.handlingTime + 1 : 3} business days</p>
-                                        <p>• Free delivery on orders above ৳1000</p>
-                                        <p>• Standard delivery charge: ৳60</p>
-                                        <p>• Express delivery available at extra cost</p>
+                                    <div className="text-sm text-gray-600 space-y-2">
+                                        <p>• <strong>Delivery Time:</strong> 3-5 business days from order confirmation</p>
+                                        <p>• <strong>Delivery Charge:</strong> Must be paid upfront with order</p>
+                                        <p>• <strong>Free Delivery:</strong> Available for select products (admin will notify during order confirmation)</p>
+                                        <p>• <strong>Tracking:</strong> You will receive tracking information via SMS/Email</p>
+                                        <p>• <strong>Delivery Areas:</strong> We deliver across Bangladesh</p>
                                         {product.shippingInfo?.weight && (
-                                            <p>• Product weight: {product.shippingInfo.weight}g</p>
+                                            <p>• <strong>Product Weight:</strong> {product.shippingInfo.weight}g</p>
                                         )}
                                         {product.shippingInfo?.dimensions && (
-                                            <p>• Dimensions: {product.shippingInfo.dimensions.length}cm × {product.shippingInfo.dimensions.width}cm × {product.shippingInfo.dimensions.height}cm</p>
+                                            <p>• <strong>Dimensions:</strong> {product.shippingInfo.dimensions.length}cm × {product.shippingInfo.dimensions.width}cm × {product.shippingInfo.dimensions.height}cm</p>
                                         )}
                                     </div>
                                 </div>
@@ -806,16 +788,18 @@ export default function ProductDetails({ productSlug }) {
                                         </div>
                                         <p className="text-xs text-orange-700">Easy return and exchange process</p>
                                     </div>
-                                    <div className="text-sm text-gray-600 space-y-1">
+                                    <div className="text-sm text-gray-600 space-y-2">
                                         {product.returnPolicy ? (
                                             <div dangerouslySetInnerHTML={{ __html: product.returnPolicy.replace(/\n/g, '<br/>') }} />
                                         ) : (
                                             <>
-                                                <p>• 7 days return policy from delivery date</p>
-                                                <p>• Product must be unused and in original packaging</p>
-                                                <p>• Free return shipping for defective items</p>
-                                                <p>• Exchange available for size/color issues</p>
-                                                <p>• Refund processed within 3-5 business days</p>
+                                                <p>• <strong>Return Period:</strong> 7 days from delivery date</p>
+                                                <p>• <strong>Condition:</strong> Product must be unused and in original packaging</p>
+                                                <p>• <strong>Processing Time:</strong> 3-5 working days for refund processing</p>
+                                                <p>• <strong>Return Shipping:</strong> Customer responsible for return shipping costs</p>
+                                                <p>• <strong>Refund Method:</strong> Refund will be processed to original payment method</p>
+                                                <p>• <strong>Exchange:</strong> Available for size/color issues within return period</p>
+                                                <p>• <strong>Defective Items:</strong> Free return shipping for defective or damaged products</p>
                                             </>
                                         )}
                                     </div>
@@ -826,6 +810,11 @@ export default function ProductDetails({ productSlug }) {
                 </div>
 
 
+
+                {/* Upsell Products */}
+                <UpsellProducts
+                    currentProductId={product?._id}
+                />
 
                 {/* Similar Products */}
                 <SimilarProducts

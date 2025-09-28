@@ -20,12 +20,14 @@ import {
     Grid3X3,
     Megaphone,
     Ticket,
-    PlusCircle
+    PlusCircle,
+    Link2
 } from 'lucide-react'
 
 const navigation = [
     { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
     { name: 'Products', href: '/admin/dashboard/products', icon: Package },
+    { name: 'Upsells', href: '/admin/dashboard/upsells', icon: Link2 },
     { name: 'Orders', href: '/admin/dashboard/orders', icon: ShoppingCart },
     { name: 'Manual Orders', href: '/admin/dashboard/manual-orders', icon: PlusCircle },
     { name: 'Customers', href: '/admin/dashboard/customers', icon: Users },
