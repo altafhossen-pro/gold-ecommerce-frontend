@@ -161,9 +161,9 @@ function HeroSlider({ sliderData, loading }) {
 function ProductImageGrid({ productImages, loading }) {
     if (loading) {
         return (
-            <div className="h-full flex flex-col gap-2 sm:gap-4">
+            <div className="min-h-[383.99px] flex flex-col gap-2 sm:gap-4">
                 <div className="relative group overflow-hidden rounded-xl shadow-lg animate-pulse bg-gray-200 h-48"></div>
-                <div className="flex gap-2 sm:gap-4 h-24 sm:h-32 md:h-36">
+                <div className="flex gap-2 sm:gap-4 h-24 sm:h-32 md:h-42">
                     <div className="flex-1 relative group overflow-hidden rounded-xl shadow-lg animate-pulse bg-gray-200"></div>
                     <div className="flex-1 relative group overflow-hidden rounded-xl shadow-lg animate-pulse bg-gray-200"></div>
                 </div>
@@ -203,7 +203,7 @@ function ProductImageGrid({ productImages, loading }) {
                     <img
                         src={largeImage.customImage || largeImage.productId?.featuredImage || largeImage.productId?.images?.[0] || "/images/placeholder.png"}
                         alt={largeImage.productId?.title || largeImage.productId?.name || "Featured Product"}
-                        className="w-full aspect-[16/9] object-cover group-hover:scale-105 transition-transform duration-500"
+                        className="w-full aspect-[16/9] object-cover group-hover:scale-105 transition-transform duration-500 h-48"
                     />
                     {/* Badge */}
                     {largeImage.badge?.text && (
@@ -215,7 +215,7 @@ function ProductImageGrid({ productImages, loading }) {
             )}
 
             {/* Bottom Two Small Images */}
-            <div className="flex gap-2 sm:gap-4 h-24 sm:h-32 md:h-36">
+            <div className="flex gap-2 sm:gap-4 h-24 sm:h-32 md:h-44">
                 {smallImages.map((product) => (
                     <Link
                         key={product._id}
@@ -225,7 +225,7 @@ function ProductImageGrid({ productImages, loading }) {
                         <img
                             src={product.customImage || product.productId?.featuredImage || product.productId?.images?.[0] || "/images/placeholder.png"}
                             alt={product.productId?.title || product.productId?.name || "Product"}
-                            className="w-full h-full aspect-[16/9] object-cover group-hover:scale-105 transition-transform duration-500"
+                            className="w-full h-full aspect-[16/9] object-cover group-hover:scale-105 transition-transform duration-500 "
                         />
 
                         {/* Overlay */}
@@ -299,7 +299,7 @@ export default function HeroSection() {
             <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto">
                 <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
                     {/* Left Slider - Full width on mobile, 64% on desktop */}
-                    <div className="w-full lg:w-[64%] h-64 sm:h-80 md:h-96 ">
+                    <div className="w-full lg:w-[64%]  min-h-[383.99px] ">
                         <HeroSlider sliderData={sliderData} loading={loading} />
                     </div>
 
