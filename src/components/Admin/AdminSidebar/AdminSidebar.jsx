@@ -59,7 +59,29 @@ export default function AdminSidebar({ onMobileMenuClose }) {
             {/* Navigation - Scrollable */}
             <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto min-h-0 ">
                 {navigation.map((item) => {
-                    const isActive = pathname === item.href
+                    // Check if current path matches the item href or is a sub-route
+                    let isActive = pathname === item.href
+                    
+                    // Special handling for customers - check if we're on any customer-related page
+                    if (item.href === '/admin/dashboard/customers') {
+                        isActive = pathname.startsWith('/admin/dashboard/customers')
+                    }
+                    
+                    // Special handling for products - check if we're on any product-related page
+                    if (item.href === '/admin/dashboard/products') {
+                        isActive = pathname.startsWith('/admin/dashboard/products')
+                    }
+                    
+                    // Special handling for orders - check if we're on any order-related page
+                    if (item.href === '/admin/dashboard/orders') {
+                        isActive = pathname.startsWith('/admin/dashboard/orders')
+                    }
+                    
+                    // Special handling for categories - check if we're on any category-related page
+                    if (item.href === '/admin/dashboard/categories') {
+                        isActive = pathname.startsWith('/admin/dashboard/categories')
+                    }
+                    
                     return (
                         <Link
                             key={item.name}

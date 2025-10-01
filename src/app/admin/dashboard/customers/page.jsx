@@ -324,21 +324,21 @@ export default function AdminCustomersPage() {
                                             <div className="flex items-center justify-end space-x-2">
                                                 <button
                                                     onClick={() => router.push(`/admin/dashboard/customers/${user._id}`)}
-                                                    className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
+                                                    className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 cursor-pointer"
                                                     title="View Details"
                                                 >
                                                     <Eye className="h-4 w-4" />
                                                 </button>
                                                 <button
                                                     onClick={() => router.push(`/admin/dashboard/customers/${user._id}/edit`)}
-                                                    className="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-50"
+                                                    className="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-50 cursor-pointer"
                                                     title="Edit User"
                                                 >
                                                     <Edit className="h-4 w-4" />
                                                 </button>
                                                 <button
                                                     onClick={() => handleDeleteUser(user._id, user.name)}
-                                                    className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
+                                                    className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 cursor-pointer"
                                                     title="Delete User"
                                                     disabled={user.status === 'deleted'}
                                                 >

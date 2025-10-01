@@ -78,6 +78,8 @@ const LoyaltyPageContent = () => {
                 return <TrendingUp className="h-5 w-5 text-green-600" />
             case 'redeem':
                 return <Gift className="h-5 w-5 text-pink-600" />
+            case 'topup':
+                return <TrendingUp className="h-5 w-5 text-green-600" />
             case 'adjust':
                 return <Star className="h-5 w-5 text-blue-600" />
             default:
@@ -91,11 +93,33 @@ const LoyaltyPageContent = () => {
                 return 'text-green-600 bg-green-50 border-green-200'
             case 'redeem':
                 return 'text-pink-600 bg-pink-50 border-pink-200'
+            case 'topup':
+                return 'text-green-600 bg-green-50 border-green-200'
             case 'adjust':
                 return 'text-blue-600 bg-blue-50 border-blue-200'
             default:
                 return 'text-gray-600 bg-gray-50 border-gray-200'
         }
+    }
+
+    const formatTransactionDescription = (description) => {
+        if (!description) return 'No description available'
+        
+        // Replace underscores with spaces and capitalize
+        let formatted = description.replace(/_/g, ' ')
+        
+        // Capitalize first letter of each word
+        formatted = formatted.replace(/\b\w/g, l => l.toUpperCase())
+        
+        // Handle specific cases
+        if (formatted.includes('Order Delivered Cod')) {
+            formatted = formatted.replace('Order Delivered Cod', 'Order Delivered (COD)')
+        }
+        if (formatted.includes('Order Delivered Online')) {
+            formatted = formatted.replace('Order Delivered Online', 'Order Delivered (Online)')
+        }
+        
+        return formatted
     }
 
     if (loading) {
@@ -288,10 +312,11 @@ const LoyaltyPageContent = () => {
                                                         <h4 className="font-medium capitalize">
                                                             {transaction.type === 'earn' ? 'Coins Earned' : 
                                                              transaction.type === 'redeem' ? 'Coins Redeemed' : 
+                                                             transaction.type === 'topup' ? 'Coins Top Up' :
                                                              'Coins Adjusted'}
                                                         </h4>
                                                         <p className="text-sm opacity-75">
-                                                            {transaction.description || 'No description available'}
+                                                            {formatTransactionDescription(transaction.description)}
                                                         </p>
                                                         {transaction.order && (
                                                             <p className="text-xs opacity-60">
@@ -304,9 +329,13 @@ const LoyaltyPageContent = () => {
                                                     <p className={`font-semibold ${
                                                         transaction.type === 'earn' ? 'text-green-600' : 
                                                         transaction.type === 'redeem' ? 'text-pink-600' : 
+                                                        transaction.type === 'topup' ? 'text-green-600' :
                                                         'text-blue-600'
                                                     }`}>
-                                                        {transaction.type === 'earn' ? '+' : transaction.type === 'redeem' ? '-' : '±'}{transaction.coins} coins
+                                                        {transaction.type === 'earn' ? '+' : 
+                                                         transaction.type === 'redeem' ? '-' : 
+                                                         transaction.type === 'topup' ? '+' :
+                                                         '±'}{transaction.coins} coins
                                                     </p>
                                                     <p className="text-xs opacity-60">
                                                         {formatDate(transaction.createdAt)}

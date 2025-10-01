@@ -18,6 +18,7 @@ import {
 import toast from 'react-hot-toast'
 import { userAPI } from '@/services/api'
 import { getCookie } from 'cookies-next'
+import LoyaltyPointsSection from '@/components/Admin/LoyaltyPointsSection'
 
 export default function EditCustomerPage() {
     const router = useRouter()
@@ -210,14 +211,7 @@ export default function EditCustomerPage() {
                         <div>
                             <h1 className="text-2xl font-bold text-gray-900">Edit Customer</h1>
                             <p className="text-sm text-gray-500">Update customer information and settings</p>
-                            {customer && (
-                                <div className="flex items-center mt-2">
-                                    <Star className="h-4 w-4 text-yellow-400 mr-1" />
-                                    <span className="text-sm font-medium text-yellow-600">
-                                        {customer.loyaltyPoints || 0} Loyalty Points
-                                    </span>
-                                </div>
-                            )}
+                            
                         </div>
                     </div>
                 </div>
@@ -369,6 +363,14 @@ export default function EditCustomerPage() {
                     </div>
                 </div>
             </form>
+
+            {/* Loyalty Points Section */}
+            {customer && (
+                <LoyaltyPointsSection 
+                    userId={customerId} 
+                    customerName={customer.name} 
+                />
+            )}
 
             {/* Role Change Confirmation Modal */}
             {showRoleConfirmModal && (
