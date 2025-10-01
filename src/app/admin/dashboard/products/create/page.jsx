@@ -198,14 +198,31 @@ export default function CreateProductPage() {
             const data = await productAPI.createProduct(formData)
 
             if (data.success) {
-                toast.success('Product created successfully!')
+                toast.success('🎉 Product created successfully!', {
+                    duration: 4000
+                })
                 router.push('/admin/dashboard/products')
             } else {
-                toast.error('Failed to create product: ' + data.message)
+                toast.error(data.message || 'Failed to create product', {
+                    duration: 6000,
+                    style: {
+                        background: '#EF4444',
+                        color: '#fff',
+                        fontWeight: '500',
+                        maxWidth: '500px',
+                    },
+                })
             }
         } catch (error) {
             console.error('Error creating product:', error)
-            toast.error('Error creating product')
+            toast.error('❌ Something went wrong while creating the product. Please try again.', {
+                duration: 5000,
+                style: {
+                    background: '#EF4444',
+                    color: '#fff',
+                    fontWeight: '500',
+                },
+            })
         } finally {
             setLoading(false)
         }
