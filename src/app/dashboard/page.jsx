@@ -2,10 +2,10 @@
 
 import { useAppContext } from '@/context/AppContext'
 import dynamic from 'next/dynamic'
+import { useState, useEffect } from 'react'
 import { 
     ShoppingCart, 
     Heart, 
-    Star, 
     Package, 
     TrendingUp,
     Clock,
@@ -14,90 +14,126 @@ import {
     User
 } from 'lucide-react'
 import Link from 'next/link'
+import { getCookie } from 'cookies-next'
+import { orderAPI } from '@/services/api'
+import toast from 'react-hot-toast'
 
 const CustomerDashboardContent = () => {
     const { user, cartCount, wishlistCount } = useAppContext()
+    const [loading, setLoading] = useState(true)
+    const [dashboardData, setDashboardData] = useState({
+        totalOrders: 0,
+        totalSpent: 0,
+        recentOrders: []
+    })
 
-    // Mock data - replace with real data from API
+    useEffect(() => {
+        if (user && user._id) {
+            fetchDashboardData()
+        }
+    }, [user])
+
+    const fetchDashboardData = async () => {
+        try {
+            setLoading(true)
+            const token = getCookie('token')
+            if (!token) {
+                toast.error('Please login to view dashboard')
+                return
+            }
+
+            // Fetch user orders
+            const ordersResponse = await orderAPI.getUserOrders(token)
+            if (ordersResponse.success) {
+                const orders = ordersResponse.data || []
+                const totalSpent = orders.reduce((sum, order) => sum + (order.total || 0), 0)
+                
+                setDashboardData({
+                    totalOrders: orders.length,
+                    totalSpent: totalSpent,
+                    recentOrders: orders.slice(0, 5) // Latest 5 orders
+                })
+            }
+        } catch (error) {
+            console.error('Error fetching dashboard data:', error)
+            toast.error('Failed to load dashboard data')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const getStatusColor = (status) => {
+        switch (status?.toLowerCase()) {
+            case 'delivered':
+                return { color: 'text-green-600', bg: 'bg-green-100' }
+            case 'shipped':
+            case 'in transit':
+                return { color: 'text-blue-600', bg: 'bg-blue-100' }
+            case 'processing':
+            case 'pending':
+                return { color: 'text-yellow-600', bg: 'bg-yellow-100' }
+            case 'cancelled':
+                return { color: 'text-red-600', bg: 'bg-red-100' }
+            default:
+                return { color: 'text-gray-600', bg: 'bg-gray-100' }
+        }
+    }
+
+    const formatDate = (dateString) => {
+        return new Date(dateString).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        })
+    }
+
+    const formatCurrency = (amount) => {
+        return `৳${amount?.toLocaleString() || '0'}`
+    }
+
     const stats = [
         {
             name: 'Total Orders',
-            value: '12',
-            change: '+2.5%',
-            changeType: 'positive',
+            value: dashboardData.totalOrders.toString(),
             icon: ShoppingCart,
             color: 'bg-blue-500'
         },
         {
             name: 'Wishlist Items',
             value: wishlistCount.toString(),
-            change: '+1.2%',
-            changeType: 'positive',
             icon: Heart,
             color: 'bg-pink-500'
         },
         {
-            name: 'Reviews Given',
-            value: '8',
-            change: '+0.8%',
-            changeType: 'positive',
-            icon: Star,
-            color: 'bg-yellow-500'
-        },
-        {
             name: 'Total Spent',
-            value: '৳15,420',
-            change: '+12.3%',
-            changeType: 'positive',
+            value: formatCurrency(dashboardData.totalSpent),
             icon: TrendingUp,
             color: 'bg-green-500'
         }
     ]
 
-    const recentOrders = [
-        {
-            id: '#ORD-001',
-            product: 'Gold Diamond Ring',
-            date: '2024-01-15',
-            status: 'Delivered',
-            amount: '৳8,500',
-            statusColor: 'text-green-600',
-            statusBg: 'bg-green-100'
-        },
-        {
-            id: '#ORD-002',
-            product: 'Silver Bracelet',
-            date: '2024-01-12',
-            status: 'In Transit',
-            amount: '৳3,200',
-            statusColor: 'text-blue-600',
-            statusBg: 'bg-blue-100'
-        },
-        {
-            id: '#ORD-003',
-            product: 'Pearl Necklace',
-            date: '2024-01-10',
-            status: 'Processing',
-            amount: '৳5,800',
-            statusColor: 'text-yellow-600',
-            statusBg: 'bg-yellow-100'
-        }
-    ]
-
-    const recentReviews = [
-        {
-            product: 'Gold Diamond Ring',
-            rating: 5,
-            comment: 'Excellent quality and beautiful design!',
-            date: '2024-01-14'
-        },
-        {
-            product: 'Silver Bracelet',
-            rating: 4,
-            comment: 'Very nice product, fast delivery.',
-            date: '2024-01-12'
-        }
-    ]
+    if (loading) {
+        return (
+            <div className="space-y-6">
+                <div className="bg-white rounded-lg shadow-sm p-6">
+                    <div className="animate-pulse">
+                        <div className="h-8 bg-gray-200 rounded w-1/3 mb-2"></div>
+                        <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[1, 2, 3].map((i) => (
+                        <div key={i} className="bg-white rounded-lg shadow-sm p-6">
+                            <div className="animate-pulse">
+                                <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
+                                <div className="h-8 bg-gray-200 rounded w-1/3"></div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        )
+    }
 
     return (
         <div className="space-y-6">
@@ -112,7 +148,7 @@ const CustomerDashboardContent = () => {
             </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {stats.map((stat) => (
                     <div key={stat.name} className="bg-white rounded-lg shadow-sm p-6">
                         <div className="flex items-center justify-between">
@@ -124,86 +160,63 @@ const CustomerDashboardContent = () => {
                                 <stat.icon className="h-6 w-6 text-white" />
                             </div>
                         </div>
-                        <div className="mt-4">
-                            <span className={`text-sm font-medium ${
-                                stat.changeType === 'positive' ? 'text-green-600' : 'text-red-600'
-                            }`}>
-                                {stat.change}
-                            </span>
-                            <span className="text-sm text-gray-600 ml-1">from last month</span>
-                        </div>
                     </div>
                 ))}
             </div>
 
-            {/* Recent Orders & Reviews */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Recent Orders */}
-                <div className="bg-white rounded-lg shadow-sm p-6">
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg font-semibold text-gray-900">Recent Orders</h2>
-                        <Link 
-                            href="/dashboard/my-orders"
-                            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                        >
-                            View all
-                        </Link>
-                    </div>
-                    <div className="space-y-4">
-                        {recentOrders.map((order) => (
-                            <div key={order.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                <div className="flex-1">
-                                    <div className="flex items-center space-x-3">
-                                        <Package className="h-5 w-5 text-gray-400" />
-                                        <div>
-                                            <p className="text-sm font-medium text-gray-900">{order.product}</p>
-                                            <p className="text-xs text-gray-500">{order.id} • {order.date}</p>
+            {/* Recent Orders */}
+            <div className="bg-white rounded-lg shadow-sm p-6">
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-semibold text-gray-900">Recent Orders</h2>
+                    <Link 
+                        href="/dashboard/my-orders"
+                        className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                        View all
+                    </Link>
+                </div>
+                <div className="space-y-4">
+                    {dashboardData.recentOrders.length === 0 ? (
+                        <div className="text-center py-8">
+                            <Package className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                            <p className="text-gray-500">No orders yet</p>
+                            <Link 
+                                href="/shop"
+                                className="text-blue-600 hover:text-blue-700 font-medium"
+                            >
+                                Start shopping
+                            </Link>
+                        </div>
+                    ) : (
+                        dashboardData.recentOrders.map((order) => {
+                            const statusColors = getStatusColor(order.status)
+                            return (
+                                <div key={order._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                    <div className="flex-1">
+                                        <div className="flex items-center space-x-3">
+                                            <Package className="h-5 w-5 text-gray-400" />
+                                            <div>
+                                                <p className="text-sm font-medium text-gray-900">
+                                                    Order #{order.orderNumber || order._id.slice(-8)}
+                                                </p>
+                                                <p className="text-xs text-gray-500">
+                                                    {formatDate(order.createdAt)}
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-sm font-medium text-gray-900">{order.amount}</p>
-                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${order.statusBg} ${order.statusColor}`}>
-                                        {order.status}
-                                    </span>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Recent Reviews */}
-                <div className="bg-white rounded-lg shadow-sm p-6">
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg font-semibold text-gray-900">Recent Reviews</h2>
-                        <Link 
-                            href="/dashboard/my-reviews"
-                            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                        >
-                            View all
-                        </Link>
-                    </div>
-                    <div className="space-y-4">
-                        {recentReviews.map((review, index) => (
-                            <div key={index} className="p-3 bg-gray-50 rounded-lg">
-                                <div className="flex items-center justify-between mb-2">
-                                    <p className="text-sm font-medium text-gray-900">{review.product}</p>
-                                    <div className="flex items-center space-x-1">
-                                        {[...Array(5)].map((_, i) => (
-                                            <Star 
-                                                key={i} 
-                                                className={`h-4 w-4 ${
-                                                    i < review.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
-                                                }`} 
-                                            />
-                                        ))}
+                                    <div className="text-right">
+                                        <p className="text-sm font-medium text-gray-900">
+                                            {formatCurrency(order.total)}
+                                        </p>
+                                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${statusColors.bg} ${statusColors.color}`}>
+                                            {order.status}
+                                        </span>
                                     </div>
                                 </div>
-                                <p className="text-sm text-gray-600 mb-2">{review.comment}</p>
-                                <p className="text-xs text-gray-500">{review.date}</p>
-                            </div>
-                        ))}
-                    </div>
+                            )
+                        })
+                    )}
                 </div>
             </div>
 
