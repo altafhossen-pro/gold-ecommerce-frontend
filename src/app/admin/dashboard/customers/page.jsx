@@ -144,13 +144,6 @@ export default function AdminCustomersPage() {
         setCurrentPage(1)
     }
 
-    if (loading && users.length === 0) {
-        return (
-            <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            </div>
-        )
-    }
 
     return (
         <div className="space-y-6">
@@ -183,7 +176,7 @@ export default function AdminCustomersPage() {
                                 placeholder="Search by name, email, or phone..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-text"
                             />
                         </div>
                     </form>
@@ -196,7 +189,7 @@ export default function AdminCustomersPage() {
                                 setStatusFilter(e.target.value)
                                 handleFilterChange()
                             }}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
                         >
                             <option value="">All Status</option>
                             <option value="active">Active</option>
@@ -214,7 +207,7 @@ export default function AdminCustomersPage() {
                                 setRoleFilter(e.target.value)
                                 handleFilterChange()
                             }}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
                         >
                             <option value="">All Roles</option>
                             <option value="customer">Customer</option>
@@ -227,8 +220,13 @@ export default function AdminCustomersPage() {
 
             {/* Users Table */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
+                {loading ? (
+                    <div className="flex items-center justify-center h-64">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                    </div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -352,6 +350,7 @@ export default function AdminCustomersPage() {
                         </tbody>
                     </table>
                 </div>
+                )}
             </div>
 
             {/* Pagination */}
@@ -361,14 +360,14 @@ export default function AdminCustomersPage() {
                         <button
                             onClick={() => handlePageChange(currentPage - 1)}
                             disabled={currentPage === 1}
-                            className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                         >
                             Previous
                         </button>
                         <button
                             onClick={() => handlePageChange(currentPage + 1)}
                             disabled={currentPage === totalPages}
-                            className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                         >
                             Next
                         </button>
@@ -393,7 +392,7 @@ export default function AdminCustomersPage() {
                             <select
                                 value={itemsPerPage}
                                 onChange={(e) => handleItemsPerPageChange(parseInt(e.target.value))}
-                                className="px-3 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                className="px-3 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
                             >
                                 <option value={5}>5 per page</option>
                                 <option value={10}>10 per page</option>
@@ -404,7 +403,7 @@ export default function AdminCustomersPage() {
                                 <button
                                     onClick={() => handlePageChange(currentPage - 1)}
                                     disabled={currentPage === 1}
-                                    className="relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                                 >
                                     <ChevronLeft className="h-5 w-5" />
                                 </button>
@@ -414,7 +413,7 @@ export default function AdminCustomersPage() {
                                         <button
                                             key={page}
                                             onClick={() => handlePageChange(page)}
-                                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium cursor-pointer ${
                                                 currentPage === page
                                                     ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
                                                     : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
@@ -427,7 +426,7 @@ export default function AdminCustomersPage() {
                                 <button
                                     onClick={() => handlePageChange(currentPage + 1)}
                                     disabled={currentPage === totalPages}
-                                    className="relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                                 >
                                     <ChevronRight className="h-5 w-5" />
                                 </button>
