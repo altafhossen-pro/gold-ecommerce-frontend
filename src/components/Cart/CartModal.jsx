@@ -6,6 +6,7 @@ import { useAppContext } from '@/context/AppContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { productAPI } from '@/services/api';
+import toast from 'react-hot-toast';
     
 export default function CartModal({ isOpen, onClose }) {
     const { cart, cartTotal, updateCartItem, removeFromCart, cartLoading, deliveryChargeSettings } = useAppContext();
@@ -83,6 +84,28 @@ export default function CartModal({ isOpen, onClose }) {
         }
         // Fallback to local check if no real-time data
         return (item.stockQuantity || 0) < item.quantity;
+    };
+
+    // Handle quantity change with stock validation
+    const handleQuantityChange = (itemId, change) => {
+        const currentItem = cart.find(item => item.id === itemId);
+        if (currentItem) {
+            const newQuantity = currentItem.quantity + change;
+            
+            // Check minimum quantity
+            if (newQuantity < 1) {
+                return;
+            }
+            
+            // Check maximum available stock
+            const availableStock = stockData[itemId]?.availableStock || currentItem.stockQuantity || 0;
+            if (newQuantity > availableStock) {
+                toast.error(`Only ${availableStock} items available in stock`);
+                return;
+            }
+            
+            updateCartItem(itemId, newQuantity);
+        }
     };
 
     // Body scroll lock when modal is open
@@ -287,15 +310,20 @@ export default function CartModal({ isOpen, onClose }) {
                                                 ) : (
                                                     <div className="flex items-center border border-[#EF3D6A] rounded-md p-1">
                                                         <button
-                                                            onClick={() => updateCartItem(item.id, item.quantity - 1)}
+                                                            onClick={() => handleQuantityChange(item.id, -1)}
                                                             className="p-1 cursor-pointer transition-colors hover:bg-[#EF3D6A] hover:text-white rounded"
                                                         >
                                                             <Minus className="w-3 h-3" />
                                                         </button>
                                                         <span className="px-2 text-sm font-medium text-[#EF3D6A]">{item.quantity}</span>
                                                         <button
-                                                            onClick={() => updateCartItem(item.id, item.quantity + 1)}
-                                                            className="p-1 cursor-pointer transition-colors hover:bg-[#EF3D6A] hover:text-white rounded"
+                                                            onClick={() => handleQuantityChange(item.id, 1)}
+                                                            disabled={item.quantity >= (stockData[item.id]?.availableStock || item.stockQuantity || 0)}
+                                                            className={`p-1 transition-colors rounded ${
+                                                                item.quantity >= (stockData[item.id]?.availableStock || item.stockQuantity || 0)
+                                                                    ? 'opacity-50 cursor-not-allowed'
+                                                                    : 'cursor-pointer hover:bg-[#EF3D6A] hover:text-white'
+                                                            }`}
                                                         >
                                                             <Plus className="w-3 h-3" />
                                                         </button>

@@ -13,7 +13,9 @@ import {
     Lock,
     Eye,
     EyeOff,
-    CheckCircle
+    CheckCircle,
+    Camera,
+    Upload
 } from 'lucide-react'
 import { useAppContext } from '@/context/AppContext'
 import { userAPI } from '@/services/api'
@@ -29,6 +31,9 @@ export default function ProfilePage() {
     const [showCurrentPassword, setShowCurrentPassword] = useState(false)
     const [showNewPassword, setShowNewPassword] = useState(false)
     const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+    const [isUploadingPicture, setIsUploadingPicture] = useState(false)
+    const [selectedFile, setSelectedFile] = useState(null)
+    const [previewUrl, setPreviewUrl] = useState(null)
     
     const [formData, setFormData] = useState({
         name: '',
@@ -231,6 +236,71 @@ export default function ProfilePage() {
         setShowConfirmPassword(false)
     }
 
+    // Profile picture functions
+    const handleFileSelect = (e) => {
+        const file = e.target.files[0]
+        if (file) {
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                toast.error('Please select an image file')
+                return
+            }
+            
+            // Validate file size (5MB max)
+            if (file.size > 5 * 1024 * 1024) {
+                toast.error('File size must be less than 5MB')
+                return
+            }
+            
+            setSelectedFile(file)
+            const url = URL.createObjectURL(file)
+            setPreviewUrl(url)
+        }
+    }
+
+    const handleUploadPicture = async () => {
+        if (!selectedFile) {
+            toast.error('Please select a file first')
+            return
+        }
+
+        try {
+            setIsUploadingPicture(true)
+            const token = getCookie('token')
+            const formData = new FormData()
+            formData.append('image', selectedFile)
+
+            const response = await userAPI.uploadProfilePicture(formData, token)
+            
+            if (response.success) {
+                // Update user context with new avatar
+                updateUser({ ...user, avatar: response.data.avatar })
+                toast.success('Profile picture uploaded successfully!')
+                setSelectedFile(null)
+                setPreviewUrl(null)
+                // Clear file input
+                const fileInput = document.getElementById('profile-picture-input')
+                if (fileInput) fileInput.value = ''
+            } else {
+                toast.error(response.message || 'Failed to upload profile picture')
+            }
+        } catch (error) {
+            console.error('Error uploading profile picture:', error)
+            toast.error('Failed to upload profile picture')
+        } finally {
+            setIsUploadingPicture(false)
+        }
+    }
+
+
+    const cancelPictureUpload = () => {
+        setSelectedFile(null)
+        setPreviewUrl(null)
+        // Clear file input
+        const fileInput = document.getElementById('profile-picture-input')
+        if (fileInput) fileInput.value = ''
+    }
+
     if (!user) {
         return (
             <div className="space-y-6">
@@ -260,6 +330,112 @@ export default function ProfilePage() {
                             Edit Profile
                         </button>
                     )}
+                </div>
+            </div>
+
+            {/* Profile Picture Section */}
+            <div className="bg-white rounded-lg shadow-sm p-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-6">Profile Picture</h2>
+                
+                <div className="flex items-center space-x-6">
+                    {/* Current Profile Picture */}
+                    <div className="flex-shrink-0">
+                        <div className="relative">
+                            <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-100 border-2 border-gray-200">
+                                {user.avatar ? (
+                                    <img
+                                        src={user.avatar}
+                                        alt="Profile"
+                                        className="w-full h-full object-cover"
+                                    />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center">
+                                        <User className="w-12 h-12 text-gray-400" />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Upload Controls */}
+                    <div className="flex-1">
+                        <div className="space-y-4">
+                            {/* File Input */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Upload New Picture
+                                </label>
+                                <input
+                                    id="profile-picture-input"
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleFileSelect}
+                                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100 cursor-pointer"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">
+                                    Maximum file size: 5MB. Supported formats: JPG, PNG, GIF
+                                </p>
+                            </div>
+
+                            {/* Preview and Actions */}
+                            {previewUrl && (
+                                <div className="space-y-3">
+                                    <div className="flex items-center space-x-4">
+                                        <div className="w-16 h-16 rounded-lg overflow-hidden border border-gray-200">
+                                            <img
+                                                src={previewUrl}
+                                                alt="Preview"
+                                                className="w-full h-full object-cover"
+                                            />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-900">Preview</p>
+                                            <p className="text-xs text-gray-500">
+                                                {selectedFile?.name} ({(selectedFile?.size / 1024 / 1024).toFixed(2)} MB)
+                                            </p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="flex space-x-3">
+                                        <button
+                                            onClick={handleUploadPicture}
+                                            disabled={isUploadingPicture}
+                                            className="flex items-center px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+                                        >
+                                            {isUploadingPicture ? (
+                                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                                            ) : (
+                                                <Upload className="w-4 h-4 mr-2" />
+                                            )}
+                                            {isUploadingPicture ? 'Uploading...' : 'Upload Picture'}
+                                        </button>
+                                        
+                                        <button
+                                            onClick={cancelPictureUpload}
+                                            disabled={isUploadingPicture}
+                                            className="flex items-center px-4 py-2 text-gray-700 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+                                        >
+                                            <X className="w-4 h-4 mr-2" />
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Upload Button (when no file selected) */}
+                            {!previewUrl && (
+                                <div className="flex items-center space-x-3">
+                                    <label
+                                        htmlFor="profile-picture-input"
+                                        className="flex items-center px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors cursor-pointer"
+                                    >
+                                        <Camera className="w-4 h-4 mr-2" />
+                                        {user.avatar ? 'Update Picture' : 'Choose Picture'}
+                                    </label>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
 

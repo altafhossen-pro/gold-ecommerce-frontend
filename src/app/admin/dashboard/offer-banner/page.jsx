@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Eye, EyeOff, Calendar, Image as ImageIcon, Palette, Link as LinkIcon } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, EyeOff, Calendar, Image as ImageIcon, Palette, Link as LinkIcon, Upload, X } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { getCookie } from 'cookies-next';
-import { offerBannerAPI } from '@/services/api';
+import { offerBannerAPI, uploadAPI } from '@/services/api';
 import DeleteConfirmationModal from '@/components/Common/DeleteConfirmationModal';
 
 export default function OfferBannerPage() {
@@ -15,6 +15,9 @@ export default function OfferBannerPage() {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [bannerToDelete, setBannerToDelete] = useState(null);
     const [deleting, setDeleting] = useState(false);
+    const [uploading, setUploading] = useState(false);
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [imagePreview, setImagePreview] = useState(null);
 
     const [formData, setFormData] = useState({
         title: '',
@@ -61,6 +64,8 @@ export default function OfferBannerPage() {
             discountText: '',
             isActive: false
         });
+        setSelectedFile(null);
+        setImagePreview(null);
         setShowModal(true);
     };
 
@@ -78,11 +83,26 @@ export default function OfferBannerPage() {
             discountText: banner.discountText || '',
             isActive: banner.isActive || false
         });
+        
+        // Set image preview if banner has an image
+        if (banner.image) {
+            setImagePreview(banner.image);
+        } else {
+            setImagePreview(null);
+        }
+        setSelectedFile(null);
         setShowModal(true);
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        // Check if image is required but not uploaded
+        if (!formData.image) {
+            toast.error('Please upload an image for the banner');
+            return;
+        }
+        
         try {
             const token = getCookie('token');
             
@@ -201,6 +221,71 @@ export default function OfferBannerPage() {
                 [name]: type === 'checkbox' ? checked : value
             }));
         }
+    };
+
+    const handleFileSelect = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                toast.error('Please select an image file');
+                return;
+            }
+            
+            // Validate file size (5MB limit)
+            if (file.size > 5 * 1024 * 1024) {
+                toast.error('File size must be less than 5MB');
+                return;
+            }
+            
+            setSelectedFile(file);
+            
+            // Create preview
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                setImagePreview(e.target.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleImageUpload = async () => {
+        if (!selectedFile) {
+            toast.error('Please select an image file');
+            return;
+        }
+
+        try {
+            setUploading(true);
+            const formData = new FormData();
+            formData.append('image', selectedFile);
+
+            const response = await uploadAPI.uploadSingle(formData);
+            
+            if (response.success) {
+                setFormData(prev => ({
+                    ...prev,
+                    image: response.data.url
+                }));
+                toast.success('Image uploaded successfully');
+            } else {
+                toast.error('Failed to upload image');
+            }
+        } catch (error) {
+            console.error('Error uploading image:', error);
+            toast.error('Failed to upload image');
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const removeSelectedFile = () => {
+        setSelectedFile(null);
+        setImagePreview(null);
+        setFormData(prev => ({
+            ...prev,
+            image: ''
+        }));
     };
 
     if (loading) {
@@ -378,17 +463,81 @@ export default function OfferBannerPage() {
 
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            Image URL <span className="text-red-500">*</span>
+                                            Banner Image <span className="text-red-500">*</span>
                                         </label>
-                                        <input
-                                            type="text"
-                                            name="image"
-                                            value={formData.image}
-                                            onChange={handleInputChange}
-                                            required
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-                                            placeholder="Enter image URL"
-                                        />
+                                        
+                                        {/* Image Preview */}
+                                        {imagePreview && (
+                                            <div className="mb-4">
+                                                <div className="relative inline-block">
+                                                    <img
+                                                        src={imagePreview}
+                                                        alt="Banner preview"
+                                                        className="w-full max-w-xs h-32 object-cover rounded-lg border border-gray-300"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={removeSelectedFile}
+                                                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                                                    >
+                                                        <X className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                        
+                                        {/* File Upload */}
+                                        <div className="space-y-3">
+                                            <div className="flex items-center gap-3">
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    onChange={handleFileSelect}
+                                                    className="hidden"
+                                                    id="image-upload"
+                                                />
+                                                <label
+                                                    htmlFor="image-upload"
+                                                    className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                                                >
+                                                    <Upload className="w-4 h-4" />
+                                                    Choose Image
+                                                </label>
+                                                
+                                                {selectedFile && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleImageUpload}
+                                                        disabled={uploading}
+                                                        className="flex items-center gap-2 px-4 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                                    >
+                                                        {uploading ? (
+                                                            <>
+                                                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                                                Uploading...
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Upload className="w-4 h-4" />
+                                                                Upload
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                )}
+                                            </div>
+                                            
+                                            {selectedFile && (
+                                                <p className="text-sm text-gray-600">
+                                                    Selected: {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
+                                                </p>
+                                            )}
+                                            
+                                            {formData.image && !selectedFile && (
+                                                <p className="text-sm text-green-600">
+                                                    ✓ Image uploaded successfully
+                                                </p>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
 

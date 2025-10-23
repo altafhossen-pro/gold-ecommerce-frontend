@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { 
-    Package, 
-    Truck, 
-    CheckCircle, 
-    Clock, 
+import {
+    Package,
+    Truck,
+    CheckCircle,
+    Clock,
     AlertCircle,
     Eye,
     Download,
@@ -25,7 +25,7 @@ export default function MyOrders() {
     const [loading, setLoading] = useState(true)
     const [showFilters, setShowFilters] = useState(false)
     const { token, isAuthenticated } = useAppContext()
-    
+
     // Filter states
     const [filters, setFilters] = useState({
         status: '',
@@ -45,7 +45,7 @@ export default function MyOrders() {
         try {
             setLoading(true)
             const response = await orderAPI.getUserOrders(token)
-            
+
             if (response.success) {
                 setOrders(response.data || [])
             } else {
@@ -76,7 +76,7 @@ export default function MyOrders() {
         }
 
         const statusInfo = statusMap[order.status] || statusMap['pending']
-        
+
         return {
             id: order._id,
             orderId: order.orderId,
@@ -110,13 +110,13 @@ export default function MyOrders() {
         if (filters.status && order.status !== filters.status) {
             return false
         }
-        
+
         // Date range filter
         if (filters.dateRange) {
             const orderDate = new Date(order.date)
             const now = new Date()
             const daysDiff = Math.floor((now - orderDate) / (1000 * 60 * 60 * 24))
-            
+
             switch (filters.dateRange) {
                 case 'today':
                     if (daysDiff !== 0) return false
@@ -132,7 +132,7 @@ export default function MyOrders() {
                     break
             }
         }
-        
+
         // Amount range filter
         if (filters.amountRange) {
             const amount = parseFloat(order.amount.replace('৳', '').replace(',', ''))
@@ -151,12 +151,12 @@ export default function MyOrders() {
                     break
             }
         }
-        
+
         // Search filter (by order ID)
         if (filters.search && !order.orderNumber.toLowerCase().includes(filters.search.toLowerCase())) {
             return false
         }
-        
+
         return true
     })
 
@@ -226,10 +226,10 @@ export default function MyOrders() {
             <div className="bg-white rounded-lg shadow-sm p-6">
                 <div className="flex items-center justify-between">
                     <div>
-                <h1 className="text-2xl font-bold text-gray-900 mb-2">My Orders</h1>
-                <p className="text-gray-600">
-                    Track your orders and view order history
-                </p>
+                        <h1 className="text-2xl font-bold text-gray-900 mb-2">My Orders</h1>
+                        <p className="text-gray-600">
+                            Track your orders and view order history
+                        </p>
                     </div>
                     <button
                         onClick={fetchOrders}
@@ -255,11 +255,10 @@ export default function MyOrders() {
                         <div className="flex items-center space-x-3">
                             <button
                                 onClick={() => setShowFilters(!showFilters)}
-                                className={`inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md ${
-                                    showFilters 
-                                        ? 'bg-blue-50 text-blue-700 border-blue-300' 
+                                className={`inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md ${showFilters
+                                        ? 'bg-blue-50 text-blue-700 border-blue-300'
                                         : 'text-gray-700 bg-white hover:bg-gray-50'
-                                }`}
+                                    }`}
                             >
                                 <Filter className="h-4 w-4 mr-2" />
                                 Filters
@@ -295,7 +294,7 @@ export default function MyOrders() {
                                     type="text"
                                     placeholder="Enter order ID..."
                                     value={filters.search}
-                                    onChange={(e) => setFilters({...filters, search: e.target.value})}
+                                    onChange={(e) => setFilters({ ...filters, search: e.target.value })}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                                 />
                             </div>
@@ -307,7 +306,7 @@ export default function MyOrders() {
                                 </label>
                                 <select
                                     value={filters.status}
-                                    onChange={(e) => setFilters({...filters, status: e.target.value})}
+                                    onChange={(e) => setFilters({ ...filters, status: e.target.value })}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                                 >
                                     <option value="">All Status</option>
@@ -326,7 +325,7 @@ export default function MyOrders() {
                                 </label>
                                 <select
                                     value={filters.dateRange}
-                                    onChange={(e) => setFilters({...filters, dateRange: e.target.value})}
+                                    onChange={(e) => setFilters({ ...filters, dateRange: e.target.value })}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                                 >
                                     <option value="">All Time</option>
@@ -344,7 +343,7 @@ export default function MyOrders() {
                                 </label>
                                 <select
                                     value={filters.amountRange}
-                                    onChange={(e) => setFilters({...filters, amountRange: e.target.value})}
+                                    onChange={(e) => setFilters({ ...filters, amountRange: e.target.value })}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                                 >
                                     <option value="">All Amounts</option>
@@ -362,7 +361,7 @@ export default function MyOrders() {
                                 </label>
                                 <select
                                     value={filters.paymentMethod}
-                                    onChange={(e) => setFilters({...filters, paymentMethod: e.target.value})}
+                                    onChange={(e) => setFilters({ ...filters, paymentMethod: e.target.value })}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                                 >
                                     <option value="">All Methods</option>
@@ -389,7 +388,7 @@ export default function MyOrders() {
                             <Package className="mx-auto h-12 w-12 text-gray-400" />
                             <h3 className="mt-2 text-sm font-medium text-gray-900">No orders found</h3>
                             <p className="mt-1 text-sm text-gray-500">
-                                {hasActiveFilters 
+                                {hasActiveFilters
                                     ? "No orders match your current filters. Try adjusting your search criteria."
                                     : "You haven't placed any orders yet."
                                 }
@@ -445,17 +444,17 @@ export default function MyOrders() {
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="flex items-center">
                                                         <Package className="h-8 w-8 text-gray-400 mr-3" />
-                                            <div>
+                                                        <div>
                                                             <div className="text-sm font-medium text-gray-900">
                                                                 {order.orderNumber}
-                                            </div>
-                                        </div>
-                                        </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="text-sm text-gray-900">
                                                         {order.productCount} {order.productCount === 1 ? 'item' : 'items'}
-                                    </div>
+                                                    </div>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="text-sm text-gray-900">{order.date}</div>
@@ -471,19 +470,15 @@ export default function MyOrders() {
                                                     {order.amount}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                    <div className="flex space-x-2">
+                                                    <div className="flex justify-center space-x-2">
                                                         <Link
                                                             href={`/dashboard/my-orders/${order.orderId}`}
-                                                            className="text-blue-600 hover:text-blue-900"
+                                                            className="bg-pink-500 hover:bg-pink-600 text-white px-2 py-2 rounded-md flex items-center justify-center gap-1"
                                                         >
-                                                            <Eye className="h-4 w-4" />
+                                                            <Eye className="h-4 w-4" /> 
                                                         </Link>
-                                                        {order.status === 'delivered' && (
-                                                            <button className="text-green-600 hover:text-green-900">
-                                                                <Download className="h-4 w-4" />
-                                                </button>
-                                            )}
-                                        </div>
+                                                        
+                                                    </div>
                                                 </td>
                                             </tr>
                                         )

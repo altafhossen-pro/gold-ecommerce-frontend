@@ -343,6 +343,18 @@ export const userAPI = {
             },
         });
     },
+
+    // Upload profile picture
+    uploadProfilePicture: (formData, token) => {
+        return apiCall('/user/profile-picture', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                // Don't set Content-Type for FormData, let browser set it
+            },
+            body: formData,
+        });
+    },
 };
 
 // Cart API functions
@@ -453,6 +465,17 @@ export const orderAPI = {
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(orderData),
+        });
+    },
+
+    // Create guest order (no authentication required)
+    createGuestOrder: (orderData) => {
+        return apiCall('/order/guest', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
             },
             body: JSON.stringify(orderData),
         });

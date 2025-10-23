@@ -3,20 +3,53 @@
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { Search, Package, CheckCircle, Clock, Truck, Home, XCircle } from 'lucide-react';
 import { orderAPI } from '@/services/api';
+import { useSearchParams } from 'next/navigation';
 
 function TrackingPageContent() {
+  const searchParams = useSearchParams();
   const [orderId, setOrderId] = useState('');
   const [loading, setLoading] = useState(false);
   const [orderData, setOrderData] = useState(null);
   const [error, setError] = useState('');
   const inputRef = useRef(null);
 
-  // Auto-focus the input field when component mounts
+  // Auto-fill orderId from URL parameters and auto-focus the input field
   useEffect(() => {
+    const urlOrderId = searchParams.get('orderId');
+    if (urlOrderId) {
+      setOrderId(urlOrderId);
+      // Auto-search when orderId is provided in URL
+      if (urlOrderId.trim()) {
+        handleAutoSearch(urlOrderId);
+      }
+    }
+    
     if (inputRef.current) {
       inputRef.current.focus();
     }
-  }, []);
+  }, [searchParams]);
+
+  const handleAutoSearch = async (orderIdToSearch) => {
+    if (!orderIdToSearch.trim()) return;
+
+    setLoading(true);
+    setError('');
+    setOrderData(null);
+
+    try {
+      const response = await orderAPI.trackOrder(orderIdToSearch);
+      
+      if (response.success) {
+        setOrderData(response.data);
+      } else {
+        setError(response.message || 'Order not found');
+      }
+    } catch (error) {
+      setError('Order not found. Please check your order ID and try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSearch = async (e) => {
     e.preventDefault();

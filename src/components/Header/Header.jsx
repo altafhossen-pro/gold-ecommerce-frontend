@@ -179,12 +179,28 @@ function Header({ isTrackingShow = true }) {
                 {/* User */}
                 {
                   user?.email ? user?.role === 'admin' ? (
-                    <Link href={`/admin/dashboard`} className="p-2 bg-gray-100 hover:bg-gray-200 cursor-pointer rounded-full transition-colors border border-gray-200" aria-label="Admin Dashboard">
-                      <User className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700" />
+                    <Link href={`/admin/dashboard`} className="p-1 bg-gray-100 hover:bg-gray-200 cursor-pointer rounded-full transition-colors border border-gray-200" aria-label="Admin Dashboard">
+                      {user?.avatar ? (
+                        <img
+                          src={user.avatar}
+                          alt="Admin Profile"
+                          className="w-6 h-6 sm:w-7 sm:h-7 rounded-full object-cover"
+                        />
+                      ) : (
+                        <User className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700" />
+                      )}
                     </Link>
                   ) : (
-                    <Link href={`/dashboard`} className="p-2 bg-gray-100 hover:bg-gray-200 cursor-pointer rounded-full transition-colors border border-gray-200" aria-label="User Dashboard">
-                      <User className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700" />
+                    <Link href={`/dashboard`} className="p-1 bg-gray-100 hover:bg-gray-200 cursor-pointer rounded-full transition-colors border border-gray-200" aria-label="User Dashboard">
+                      {user?.avatar ? (
+                        <img
+                          src={user.avatar}
+                          alt="User Profile"
+                          className="w-6 h-6 sm:w-7 sm:h-7 rounded-full object-cover"
+                        />
+                      ) : (
+                        <User className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700" />
+                      )}
                     </Link>
                   ) : (
                     <Link href="/login" className="p-2 hover:bg-gray-100 rounded-full transition-colors" aria-label="Login">
@@ -272,7 +288,7 @@ function Header({ isTrackingShow = true }) {
                 </div>
 
                 {/* Right side - Track your order */}
-                {isTrackingShow && (
+                {1==1 && (
                   <Link href="/tracking" className="flex items-center space-x-2 text-gray-700 hover:text-pink-500 transition-colors">
                     <Truck className="w-4 h-4" />
                     <span className="font-medium">Track your order</span>

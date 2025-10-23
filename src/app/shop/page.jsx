@@ -302,33 +302,34 @@ function ShopPageContent() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            <div className="max-w-screen-2xl mx-auto  py-4">
-                {/* Mobile Filter Toggle Button */}
-                <div className="lg:hidden mb-6">
-                    <button
-                        onClick={() => setShowFilters(!showFilters)}
-                        className="w-full flex items-center justify-center space-x-2 bg-white px-4 py-3 rounded-lg shadow-sm border hover:bg-gray-50 transition-colors"
-                    >
-                        <Filter className="w-4 h-4" />
-                        <span className="text-sm font-medium">
-                            {showFilters ? 'Hide Filters' : 'Show Filters'}
-                        </span>
-                        {showFilters ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    </button>
-                </div>
+        <div>
+            <div className="min-h-screen bg-gray-50 px-4">
+                <div className="max-w-screen-2xl mx-auto    py-4">
+                    {/* Mobile Filter Toggle Button */}
+                    <div className="lg:hidden mb-6">
+                        <button
+                            onClick={() => setShowFilters(!showFilters)}
+                            className="w-full flex items-center justify-center space-x-2 bg-white px-4 py-3 rounded-lg shadow-sm border hover:bg-gray-50 transition-colors"
+                        >
+                            <Filter className="w-4 h-4" />
+                            <span className="text-sm font-medium">
+                                {showFilters ? 'Hide Filters' : 'Show Filters'}
+                            </span>
+                            {showFilters ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        </button>
+                    </div>
 
 
-                <div className="flex flex-col lg:flex-row gap-8">
-                    {/* Left Sidebar - Filters */}
-                    <div className={`lg:w-72 ${showFilters ? 'block' : 'hidden lg:block'}`}>
-                        <div className="bg-white rounded-lg shadow-sm p-6 space-y-6">
-                            {/* Main Category Filter */}
-                            <div>
-                                <div className='flex justify-between items-center mb-3'>
-                                    <h3 className="font-semibold text-gray-900 ">Main Category</h3>
+                    <div className="flex flex-col lg:flex-row gap-8">
+                        {/* Left Sidebar - Filters */}
+                        <div className={`lg:w-72 ${showFilters ? 'block' : 'hidden lg:block'}`}>
+                            <div className="bg-white rounded-lg shadow-sm p-6 space-y-6">
+                                {/* Main Category Filter */}
+                                <div>
+                                    <div className='flex justify-between items-center mb-3'>
+                                        <h3 className="font-semibold text-gray-900 ">Main Category</h3>
 
-                                    {/* {(selectedCategories.length > 0 || selectedBraceletSizes.length > 0 ||
+                                        {/* {(selectedCategories.length > 0 || selectedBraceletSizes.length > 0 ||
                                         selectedRingSizes.length > 0 || priceRange.min || priceRange.max) && (
                                             <button
                                                 onClick={clearAllFilters}
@@ -339,200 +340,201 @@ function ShopPageContent() {
                                             </button>
                                         )} */}
 
+                                    </div>
+                                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                                        {categories.map((category) => (
+                                            <label key={category._id} className="flex items-center space-x-2 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedCategories.includes(category._id)}
+                                                    onChange={() => handleCategoryChange(category._id)}
+                                                    className="rounded border-gray-300 text-pink-500 focus:ring-pink-500"
+                                                />
+                                                <span className="text-sm text-gray-700">{category.name}</span>
+                                            </label>
+                                        ))}
+                                    </div>
                                 </div>
-                                <div className="space-y-2 max-h-48 overflow-y-auto">
-                                    {categories.map((category) => (
-                                        <label key={category._id} className="flex items-center space-x-2 cursor-pointer">
+
+                                {/* Bracelet Size Filter - Only show if category has bracelet products */}
+                                {showBraceletSizeFilter && (
+                                    <div>
+                                        <div className="flex items-center justify-between mb-3">
+                                            <h3 className="font-semibold text-gray-900">Bracelet Size</h3>
+                                            <button
+                                                onClick={() => setShowBraceletSizes(!showBraceletSizes)}
+                                                className="text-blue-500 hover:text-blue-600 text-sm"
+                                            >
+                                                {showBraceletSizes ? 'VIEW LESS' : 'VIEW MORE'}
+                                            </button>
+                                        </div>
+                                        {showBraceletSizes && (
+                                            <div className="space-y-2 max-h-48 overflow-y-auto">
+                                                {availableBraceletSizes.map((size) => (
+                                                    <label key={size} className="flex items-center space-x-2 cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedBraceletSizes.includes(size)}
+                                                            onChange={() => handleBraceletSizeChange(size)}
+                                                            className="rounded border-gray-300 text-pink-500 focus:ring-pink-500"
+                                                        />
+                                                        <span className="text-sm text-gray-700">{size}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Ring Size Filter - Only show if category has ring products */}
+                                {showRingSizeFilter && (
+                                    <div>
+                                        <div className="flex items-center justify-between mb-3">
+                                            <h3 className="font-semibold text-gray-900">Ring Size</h3>
+                                            <button
+                                                onClick={() => setShowRingSizes(!showRingSizes)}
+                                                className="text-blue-500 hover:text-blue-600 text-sm"
+                                            >
+                                                {showRingSizes ? 'VIEW LESS' : 'VIEW MORE'}
+                                            </button>
+                                        </div>
+                                        {showRingSizes && (
+                                            <div className="space-y-2 max-h-48 overflow-y-auto">
+                                                {availableRingSizes.map((size) => (
+                                                    <label key={size} className="flex items-center space-x-2 cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedRingSizes.includes(size)}
+                                                            onChange={() => handleRingSizeChange(size)}
+                                                            className="rounded border-gray-300 text-pink-500 focus:ring-pink-500"
+                                                        />
+                                                        <span className="text-sm text-gray-700">{size}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Price Range Filter */}
+                                <div>
+                                    <h3 className="font-semibold text-gray-900 mb-3">Price</h3>
+                                    <div className="space-y-3">
+                                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-2 items-center">
                                             <input
-                                                type="checkbox"
-                                                checked={selectedCategories.includes(category._id)}
-                                                onChange={() => handleCategoryChange(category._id)}
-                                                className="rounded border-gray-300 text-pink-500 focus:ring-pink-500"
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                placeholder="Min"
+                                                value={priceRange.min}
+                                                onChange={(e) => {
+                                                    const value = e.target.value;
+                                                    if (value === '' || (parseFloat(value) >= 0)) {
+                                                        handlePriceRangeChange('min', value);
+                                                    }
+                                                }}
+                                                className="w-full px-2 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                                             />
-                                            <span className="text-sm text-gray-700">{category.name}</span>
-                                        </label>
+                                            <span className="text-gray-500 text-center text-sm">to</span>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                placeholder="Max"
+                                                value={priceRange.max}
+                                                onChange={(e) => {
+                                                    const value = e.target.value;
+                                                    if (value === '' || (parseFloat(value) >= 0)) {
+                                                        handlePriceRangeChange('max', value);
+                                                    }
+                                                }}
+                                                className="w-full px-2 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                                            />
+                                        </div>
+                                        {(priceRange.min || priceRange.max) && (
+                                            <button
+                                                onClick={() => {
+                                                    setPriceRange({ min: '', max: '' });
+                                                }}
+                                                className="w-full bg-gray-100 text-gray-600 py-2 px-3 rounded-md hover:bg-gray-200 transition-colors text-sm"
+                                            >
+                                                Clear Price Filter
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Right Side - Product Grid */}
+                        <div className="flex-1">
+                            {/* Sorting Bar */}
+                            <div className="mb-6">
+                                <div className="bg-white rounded-lg shadow-sm border border-gray-300 p-4">
+                                    <div className="flex flex-wrap items-center gap-3">
+                                        <span className="text-sm font-medium text-gray-700 mr-2">Sort by:</span>
+                                        {sortingOptions.map((option) => {
+                                            const IconComponent = option.icon;
+                                            const isActive = sortBy === option.value;
+                                            return (
+                                                <button
+                                                    key={option.value}
+                                                    onClick={() => handleSortChange(option.value)}
+                                                    className={`flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 cursor-pointer ${isActive
+                                                        ? `${option.color} text-white shadow-md transform scale-105`
+                                                        : 'text-gray-600 bg-gray-100 hover:bg-gray-200 hover:text-gray-800'
+                                                        }`}
+                                                >
+                                                    <IconComponent className="w-4 h-4" />
+                                                    <span>{option.label}</span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+                            {loading ? (
+                                <div className="flex justify-center items-center py-12">
+                                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500"></div>
+                                </div>
+                            ) : searchResults.length > 0 ? (
+                                <div className="grid grid-cols-1 min-[400px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+                                    {searchResults.map((product) => (
+                                        <ProductCard
+                                            key={product._id}
+                                            product={{
+                                                ...product,
+                                                isWishlisted: wishlist.some(item => item.productId === product._id)
+                                            }}
+                                            onWishlistToggle={handleWishlistToggle}
+                                            onAddToCart={handleAddToCart}
+                                            showWishlistOnHover={true}
+                                        />
                                     ))}
                                 </div>
-                            </div>
-
-                            {/* Bracelet Size Filter - Only show if category has bracelet products */}
-                            {showBraceletSizeFilter && (
-                                <div>
-                                    <div className="flex items-center justify-between mb-3">
-                                        <h3 className="font-semibold text-gray-900">Bracelet Size</h3>
-                                        <button
-                                            onClick={() => setShowBraceletSizes(!showBraceletSizes)}
-                                            className="text-blue-500 hover:text-blue-600 text-sm"
-                                        >
-                                            {showBraceletSizes ? 'VIEW LESS' : 'VIEW MORE'}
-                                        </button>
+                            ) : (
+                                <div className="text-center py-12">
+                                    <div className="text-gray-400 mb-4">
+                                        <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                        </svg>
                                     </div>
-                                    {showBraceletSizes && (
-                                        <div className="space-y-2 max-h-48 overflow-y-auto">
-                                            {availableBraceletSizes.map((size) => (
-                                                <label key={size} className="flex items-center space-x-2 cursor-pointer">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={selectedBraceletSizes.includes(size)}
-                                                        onChange={() => handleBraceletSizeChange(size)}
-                                                        className="rounded border-gray-300 text-pink-500 focus:ring-pink-500"
-                                                    />
-                                                    <span className="text-sm text-gray-700">{size}</span>
-                                                </label>
-                                            ))}
-                                        </div>
-                                    )}
+                                    <h3 className="text-lg font-medium text-gray-900 mb-2">No products found</h3>
+                                    <p className="text-gray-600">
+                                        Try adjusting your filters
+                                    </p>
                                 </div>
                             )}
 
-                            {/* Ring Size Filter - Only show if category has ring products */}
-                            {showRingSizeFilter && (
-                                <div>
-                                    <div className="flex items-center justify-between mb-3">
-                                        <h3 className="font-semibold text-gray-900">Ring Size</h3>
-                                        <button
-                                            onClick={() => setShowRingSizes(!showRingSizes)}
-                                            className="text-blue-500 hover:text-blue-600 text-sm"
-                                        >
-                                            {showRingSizes ? 'VIEW LESS' : 'VIEW MORE'}
-                                        </button>
-                                    </div>
-                                    {showRingSizes && (
-                                        <div className="space-y-2 max-h-48 overflow-y-auto">
-                                            {availableRingSizes.map((size) => (
-                                                <label key={size} className="flex items-center space-x-2 cursor-pointer">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={selectedRingSizes.includes(size)}
-                                                        onChange={() => handleRingSizeChange(size)}
-                                                        className="rounded border-gray-300 text-pink-500 focus:ring-pink-500"
-                                                    />
-                                                    <span className="text-sm text-gray-700">{size}</span>
-                                                </label>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* Price Range Filter */}
-                            <div>
-                                <h3 className="font-semibold text-gray-900 mb-3">Price</h3>
-                                <div className="space-y-3">
-                                    <div className="grid grid-cols-3 gap-2 items-center">
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            step="0.01"
-                                            placeholder="Min"
-                                            value={priceRange.min}
-                                            onChange={(e) => {
-                                                const value = e.target.value;
-                                                if (value === '' || (parseFloat(value) >= 0)) {
-                                                    handlePriceRangeChange('min', value);
-                                                }
-                                            }}
-                                            className="w-full px-2 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                                        />
-                                        <span className="text-gray-500 text-center text-sm">to</span>
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            step="0.01"
-                                            placeholder="Max"
-                                            value={priceRange.max}
-                                            onChange={(e) => {
-                                                const value = e.target.value;
-                                                if (value === '' || (parseFloat(value) >= 0)) {
-                                                    handlePriceRangeChange('max', value);
-                                                }
-                                            }}
-                                            className="w-full px-2 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                                        />
-                                    </div>
-                                    {(priceRange.min || priceRange.max) && (
-                                        <button
-                                            onClick={() => {
-                                                setPriceRange({ min: '', max: '' });
-                                            }}
-                                            className="w-full bg-gray-100 text-gray-600 py-2 px-3 rounded-md hover:bg-gray-200 transition-colors text-sm"
-                                        >
-                                            Clear Price Filter
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
+                            {/* Pagination */}
+                            <Pagination
+                                currentPage={currentPage}
+                                totalPages={totalPages}
+                                onPageChange={handlePageChange}
+                                totalItems={totalResults}
+                                itemsPerPage={itemsPerPage}
+                            />
                         </div>
-                    </div>
-
-                    {/* Right Side - Product Grid */}
-                    <div className="flex-1">
-                        {/* Sorting Bar */}
-                        <div className="mb-6">
-                            <div className="bg-white rounded-lg shadow-sm border border-gray-300 p-4">
-                                <div className="flex flex-wrap items-center gap-3">
-                                    <span className="text-sm font-medium text-gray-700 mr-2">Sort by:</span>
-                                    {sortingOptions.map((option) => {
-                                        const IconComponent = option.icon;
-                                        const isActive = sortBy === option.value;
-                                        return (
-                                            <button
-                                                key={option.value}
-                                                onClick={() => handleSortChange(option.value)}
-                                                className={`flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 cursor-pointer ${isActive
-                                                    ? `${option.color} text-white shadow-md transform scale-105`
-                                                    : 'text-gray-600 bg-gray-100 hover:bg-gray-200 hover:text-gray-800'
-                                                    }`}
-                                            >
-                                                <IconComponent className="w-4 h-4" />
-                                                <span>{option.label}</span>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        </div>
-                        {loading ? (
-                            <div className="flex justify-center items-center py-12">
-                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500"></div>
-                            </div>
-                        ) : searchResults.length > 0 ? (
-                            <div className="grid grid-cols-1 min-[400px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-                                {searchResults.map((product) => (
-                                    <ProductCard
-                                        key={product._id}
-                                        product={{
-                                            ...product,
-                                            isWishlisted: wishlist.some(item => item.productId === product._id)
-                                        }}
-                                        onWishlistToggle={handleWishlistToggle}
-                                        onAddToCart={handleAddToCart}
-                                        showWishlistOnHover={true}
-                                    />
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="text-center py-12">
-                                <div className="text-gray-400 mb-4">
-                                    <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                    </svg>
-                                </div>
-                                <h3 className="text-lg font-medium text-gray-900 mb-2">No products found</h3>
-                                <p className="text-gray-600">
-                                    Try adjusting your filters
-                                </p>
-                            </div>
-                        )}
-
-                        {/* Pagination */}
-                        <Pagination
-                            currentPage={currentPage}
-                            totalPages={totalPages}
-                            onPageChange={handlePageChange}
-                            totalItems={totalResults}
-                            itemsPerPage={itemsPerPage}
-                        />
                     </div>
                 </div>
             </div>
@@ -544,8 +546,8 @@ function ShopPageContent() {
 export default function ShopPage() {
     return (
         <Suspense fallback={
-            <div className="min-h-screen bg-gray-50">
-                <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto px-4 py-4">
+            <div className="min-h-screen bg-gray-50 ">
+                <div className="max-w-screen-2xl mx-auto py-4">
                     <div className="flex justify-center items-center py-12">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500"></div>
                     </div>

@@ -324,7 +324,7 @@ export default function ProductDetails({ productSlug }) {
 
     return (
         <div className="min-h-screen px-4 lg:px-4 py-4">
-            <div className="2xl:2xl:max-w-7xl xl:max-w-6xl xl:max-w-6xl  max-w-xl mx-auto">
+            <div className="max-w-screen-2xl px-4 mx-auto">
                 {/* Breadcrumb */}
                 <div className="mb-6">
                     <nav className="flex text-sm text-gray-500">

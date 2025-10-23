@@ -416,9 +416,7 @@ export default function OrderDetails() {
                                                                 {item.variant.color && <span className="ml-2">Color: {item.variant.color}</span>}
                                                             </div>
                                                         )}
-                                                        <div className="text-xs text-gray-500">
-                                                            SKU: {item.variant?.sku || 'N/A'}
-                                                        </div>
+                                                        
                                                     </td>
                                                     <td className="border border-gray-300 px-2 py-2 text-center text-sm">
                                                         {item.quantity}
@@ -444,7 +442,7 @@ export default function OrderDetails() {
                                         <div className="space-y-2">
                                             <div className="flex justify-between text-sm">
                                                 <span className="text-gray-600">Subtotal</span>
-                                                <span className="text-gray-900">৳{(order.total + order.shippingCost).toLocaleString()}</span>
+                                                <span className="text-gray-900">৳{order.total.toLocaleString()}</span>
                                             </div>
                                             {order.couponDiscount > 0 && (
                                                 <div className="flex justify-between text-sm">

@@ -7,14 +7,15 @@ import { orderAPI, productAPI, loyaltyAPI, couponAPI, addressAPI } from '@/servi
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import { getCookie } from 'cookies-next';
-import LoginRequiredModal from '@/components/Common/LoginRequiredModal';
+import CheckoutOptionsModal from '@/components/Common/CheckoutOptionsModal';
 
 export default function Checkout() {
     const { cart, cartTotal, updateCartItem, removeFromCart, cartLoading, user, clearCart, deliveryChargeSettings } = useAppContext();
     const router = useRouter();
-    // Login required modal state
-    const [showLoginModal, setShowLoginModal] = useState(false);
+    // Checkout options modal state
+    const [showCheckoutModal, setShowCheckoutModal] = useState(false);
     const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+    const [isGuestCheckout, setIsGuestCheckout] = useState(false);
 
     // Check authentication status
     useEffect(() => {
@@ -23,17 +24,17 @@ export default function Checkout() {
         // If we have a token but user data is still loading
         if (token && !user) {
             setIsCheckingAuth(true);
-            setShowLoginModal(false);
+            setShowCheckoutModal(false);
         }
         // If no token, show modal immediately
         else if (!token) {
             setIsCheckingAuth(false);
-            setShowLoginModal(true);
+            setShowCheckoutModal(true);
         }
         // If user is loaded and has email, hide modal
         else if (user && user.email) {
             setIsCheckingAuth(false);
-            setShowLoginModal(false);
+            setShowCheckoutModal(false);
         }
     }, [user]);
 
@@ -42,7 +43,7 @@ export default function Checkout() {
         const timer = setTimeout(() => {
             if (isCheckingAuth) {
                 setIsCheckingAuth(false);
-                setShowLoginModal(true);
+                setShowCheckoutModal(true);
             }
         }, 5000); // 5 second timeout
 
@@ -508,9 +509,20 @@ export default function Checkout() {
         const currentItem = cart.find(item => item.id === itemId);
         if (currentItem) {
             const newQuantity = currentItem.quantity + change;
-            if (newQuantity >= 1) {
-                updateCartItem(itemId, newQuantity);
+            
+            // Check minimum quantity
+            if (newQuantity < 1) {
+                return;
             }
+            
+            // Check maximum available stock
+            const availableStock = stockData[itemId]?.availableStock || currentItem.stockQuantity || 0;
+            if (newQuantity > availableStock) {
+                toast.error(`Only ${availableStock} items available in stock`);
+                return;
+            }
+            
+            updateCartItem(itemId, newQuantity);
         }
     };
 
@@ -530,9 +542,15 @@ export default function Checkout() {
         }));
     };
 
+    // Handle guest checkout selection
+    const handleGuestCheckout = () => {
+        setIsGuestCheckout(true);
+        setShowCheckoutModal(false);
+    };
+
     const handleConfirmOrder = async () => {
         // Validate form data
-        if (!formData.fullName || !formData.mobileNumber || !formData.division || !formData.deliveryAddress) {
+        if (!formData.fullName || !formData.mobileNumber || !formData.deliveryAddress) {
             toast.error('Please fill in all required fields');
             return;
         }
@@ -632,8 +650,16 @@ export default function Checkout() {
                     };
 
                     
-                    // Create order with authentication
-                    const response = await orderAPI.createOrder(orderData, getCookie('token'));
+                    // Create order based on checkout type
+                    let response;
+                    if (isGuestCheckout) {
+                        // Create guest order (no authentication required)
+                        response = await orderAPI.createGuestOrder(orderData);
+                    } else {
+                        // Create authenticated order
+                        const token = getCookie('token');
+                        response = await orderAPI.createOrder(orderData, token);
+                    }
                     
                     if (response.success) {
                         toast.success('Order placed successfully! Cash on delivery');
@@ -643,12 +669,13 @@ export default function Checkout() {
                         const params = new URLSearchParams({
                             orderId: order.orderId,
                             status: order.status,
-                            total: order.total,
+                            total: order.total + order.shippingCost, // Include shipping cost in total
                             createdAt: order.createdAt,
                             ...(order.couponDiscount > 0 && { couponDiscount: order.couponDiscount }),
                             ...(order.loyaltyDiscount > 0 && { loyaltyDiscount: order.loyaltyDiscount }),
                             ...(order.discount > 0 && { discount: order.discount }),
-                            ...(order.coupon && { coupon: order.coupon })
+                            ...(order.coupon && { coupon: order.coupon }),
+                            ...(order.isGuestOrder && { isGuestOrder: 'true' })
                         });
                         router.push(`/order-confirmation?${params.toString()}`);
                     } else {
@@ -1065,8 +1092,8 @@ export default function Checkout() {
                         </div>
 
 
-                        {/* Loyalty Points Section */}
-                        {loyaltyData && loyaltyData.coins > 0 && (
+                        {/* Loyalty Points Section - Only for logged-in users */}
+                        {!isGuestCheckout && loyaltyData && loyaltyData.coins > 0 && (
                             <div className="bg-white border border-gray-300 shadow rounded-lg p-6">
                                 <h2 className="text-lg font-semibold text-gray-900 mb-6">04. Loyalty Points</h2>
                                 
@@ -1301,7 +1328,12 @@ export default function Checkout() {
                                                 <span className="w-8 text-center text-sm">{item.quantity}</span>
                                                 <button
                                                     onClick={() => handleQuantityChange(item.id, 1)}
-                                                    className="w-6 h-6 flex items-center justify-center border border-gray-300 rounded text-sm hover:bg-gray-50"
+                                                    disabled={item.quantity >= (stockData[item.id]?.availableStock || item.stockQuantity || 0)}
+                                                    className={`w-6 h-6 flex items-center justify-center border border-gray-300 rounded text-sm hover:bg-gray-50 ${
+                                                        item.quantity >= (stockData[item.id]?.availableStock || item.stockQuantity || 0)
+                                                            ? 'opacity-50 cursor-not-allowed'
+                                                            : 'cursor-pointer'
+                                                    }`}
                                                 >
                                                     <Plus className="w-3 h-3" />
                                                 </button>
@@ -1334,12 +1366,15 @@ export default function Checkout() {
                         <div className="mt-6">
                             <label className="block text-sm font-medium text-gray-700 mb-2">ENTER YOUR COUPON CODE</label>
                             
-                            {useLoyaltyPoints && (
+                            {(useLoyaltyPoints || isGuestCheckout) && (
                                 <div className="mb-3 p-2 bg-yellow-50 border border-yellow-200 rounded">
                                     <div className="flex items-center space-x-2">
                                         <AlertTriangle className="h-3 w-3 text-yellow-600" />
                                         <span className="text-xs text-yellow-800">
-                                            Coupon cannot be used when paying with loyalty points
+                                            {isGuestCheckout 
+                                                ? 'Coupon feature is available for registered users only'
+                                                : 'Coupon cannot be used when paying with loyalty points'
+                                            }
                                         </span>
                                     </div>
                                 </div>
@@ -1351,13 +1386,13 @@ export default function Checkout() {
                                     value={couponCode}
                                     onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                                     placeholder="ENTER YOUR COUPON CODE"
-                                    disabled={useLoyaltyPoints}
+                                    disabled={useLoyaltyPoints || isGuestCheckout}
                                     className="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-pink-500 focus:border-pink-500 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
-                                    onKeyPress={(e) => e.key === 'Enter' && !useLoyaltyPoints && handleApplyCoupon()}
+                                    onKeyPress={(e) => e.key === 'Enter' && !useLoyaltyPoints && !isGuestCheckout && handleApplyCoupon()}
                                 />
                                 <button
                                     onClick={handleApplyCoupon}
-                                    disabled={couponLoading || !couponCode.trim() || useLoyaltyPoints}
+                                    disabled={couponLoading || !couponCode.trim() || useLoyaltyPoints || isGuestCheckout}
                                     className="px-4 py-2 bg-pink-500 text-white rounded hover:bg-pink-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center"
                                 >
                                     {couponLoading ? (
@@ -1391,7 +1426,7 @@ export default function Checkout() {
                                         </div>
                                         <button
                                             onClick={removeCoupon}
-                                            disabled={useLoyaltyPoints}
+                                            disabled={useLoyaltyPoints || isGuestCheckout}
                                             className="text-xs text-green-600 hover:text-green-800 disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
                                             Remove
@@ -1485,10 +1520,11 @@ export default function Checkout() {
                 </div>
             </div>
 
-            {/* Login Required Modal */}
-            <LoginRequiredModal 
-                isOpen={showLoginModal}
-                onClose={() => setShowLoginModal(false)}
+            {/* Checkout Options Modal */}
+            <CheckoutOptionsModal 
+                isOpen={showCheckoutModal}
+                onClose={() => setShowCheckoutModal(false)}
+                onGuestCheckout={handleGuestCheckout}
             />
         </div>
     );
