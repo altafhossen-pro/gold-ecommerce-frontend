@@ -7,15 +7,15 @@ import {
     ShoppingCart, 
     Heart, 
     Package, 
-    TrendingUp,
     Clock,
     CheckCircle,
     AlertCircle,
-    User
+    User,
+    Coins
 } from 'lucide-react'
 import Link from 'next/link'
 import { getCookie } from 'cookies-next'
-import { orderAPI } from '@/services/api'
+import { orderAPI, loyaltyAPI } from '@/services/api'
 import toast from 'react-hot-toast'
 
 const CustomerDashboardContent = () => {
@@ -23,8 +23,8 @@ const CustomerDashboardContent = () => {
     const [loading, setLoading] = useState(true)
     const [dashboardData, setDashboardData] = useState({
         totalOrders: 0,
-        totalSpent: 0,
-        recentOrders: []
+        recentOrders: [],
+        loyaltyCoins: 0
     })
 
     useEffect(() => {
@@ -46,13 +46,21 @@ const CustomerDashboardContent = () => {
             const ordersResponse = await orderAPI.getUserOrders(token)
             if (ordersResponse.success) {
                 const orders = ordersResponse.data || []
-                const totalSpent = orders.reduce((sum, order) => sum + (order.total || 0), 0)
                 
-                setDashboardData({
+                setDashboardData(prev => ({
+                    ...prev,
                     totalOrders: orders.length,
-                    totalSpent: totalSpent,
                     recentOrders: orders.slice(0, 5) // Latest 5 orders
-                })
+                }))
+            }
+
+            // Fetch loyalty data
+            const loyaltyResponse = await loyaltyAPI.getLoyalty(user._id, token)
+            if (loyaltyResponse.success) {
+                setDashboardData(prev => ({
+                    ...prev,
+                    loyaltyCoins: loyaltyResponse.data?.coins || 0
+                }))
             }
         } catch (error) {
             console.error('Error fetching dashboard data:', error)
@@ -105,10 +113,10 @@ const CustomerDashboardContent = () => {
             color: 'bg-pink-500'
         },
         {
-            name: 'Total Spent',
-            value: formatCurrency(dashboardData.totalSpent),
-            icon: TrendingUp,
-            color: 'bg-green-500'
+            name: 'Loyalty Coins',
+            value: dashboardData.loyaltyCoins.toString(),
+            icon: Coins,
+            color: 'bg-yellow-500'
         }
     ]
 

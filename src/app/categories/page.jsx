@@ -54,7 +54,7 @@ export default function CategoriesPage() {
     if (loading) {
         return (
             <div className="min-h-screen bg-gray-50">
-                <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto px-4 py-8">
+                <div className="max-w-screen-2xl mx-auto px-4 py-8">
                     <div className="flex justify-center items-center py-12">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500"></div>
                     </div>
@@ -65,7 +65,7 @@ export default function CategoriesPage() {
 
     return (
         <div className="min-h-screen bg-gray-50">
-            <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto px-4 py-8">
+            <div className="max-w-screen-2xl mx-auto px-4 py-8">
                 {/* Page Header */}
                 <div className="text-center mb-8">
                     <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-3">Shop by Category</h1>

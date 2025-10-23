@@ -94,7 +94,7 @@ export default function CustomerTestimonial() {
     }
     return (
         <section className="py-12 px-4 bg-white">
-            <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto">
+            <div className="max-w-screen-2xl mx-auto">
                 {/* Header */}
                 <div className="text-center mb-8">
                     <h2 className="text-3xl font-bold text-gray-800 mb-4">Customer Testimonial</h2>

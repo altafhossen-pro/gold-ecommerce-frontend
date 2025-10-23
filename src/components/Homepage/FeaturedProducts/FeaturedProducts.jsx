@@ -116,7 +116,7 @@ export default function FeaturedProducts() {
 
     return (
         <section className="py-8 sm:py-12 px-4 bg-white">
-            <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto">
+            <div className="max-w-screen-2xl mx-auto">
                 {/* Header */}
                 <div className="text-center mb-6 sm:mb-8">
                     <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800 mb-4 sm:mb-6">Our Features Product</h2>
@@ -140,7 +140,7 @@ export default function FeaturedProducts() {
 
                 {/* Products Grid - Maximum 10 products (2 rows × 5 columns) */}
                 {loading ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
+                    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 md:gap-6">
                         {[...Array(10)].map((_, index) => (
                             <div key={index} className="animate-pulse">
                                 <div className="bg-gray-200 rounded-lg h-64 mb-4"></div>
@@ -170,7 +170,7 @@ export default function FeaturedProducts() {
                         </div>
                     </div>
                 ) : filteredProducts.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
+                    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 md:gap-6">
                         {filteredProducts.map((product) => (
                             <ProductCard
                                 key={product.id}

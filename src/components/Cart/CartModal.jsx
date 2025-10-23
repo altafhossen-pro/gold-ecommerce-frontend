@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { productAPI } from '@/services/api';
     
 export default function CartModal({ isOpen, onClose }) {
-    const { cart, cartTotal, updateCartItem, removeFromCart, cartLoading } = useAppContext();
+    const { cart, cartTotal, updateCartItem, removeFromCart, cartLoading, deliveryChargeSettings } = useAppContext();
     const router = useRouter();
     
     // State for stock validation
@@ -346,14 +346,33 @@ export default function CartModal({ isOpen, onClose }) {
                                 <span>Checking stock availability...</span>
                             </div>
                         ) : (
-                            <Link 
-                                href="/checkout"
-                                onClick={onClose}
-                                className="w-full bg-[#EF3D6A] text-white py-3 px-4 rounded-lg font-semibold hover:bg-[#D63447] transition-all duration-200 flex items-center justify-between cursor-pointer hover:scale-[1.02] hover:shadow-lg"
-                            >
-                                <span>Proceed To Checkout</span>
-                                <span>{cartTotal} ৳</span>
-                            </Link>
+                            <>
+                                {/* Delivery Charge Display */}
+                                {deliveryChargeSettings && (
+                                    <div className="mb-3 bg-gray-50 rounded-lg p-3">
+                                        <h4 className="text-sm font-semibold text-gray-700 mb-2">Delivery Charges</h4>
+                                        <div className="space-y-1">
+                                            <p className="text-sm text-gray-600 flex justify-between">
+                                                <span>Inside Dhaka:</span>
+                                                <span className="font-medium text-[#EF3D6A]">{deliveryChargeSettings.insideDhaka} ৳</span>
+                                            </p>
+                                            <p className="text-sm text-gray-600 flex justify-between">
+                                                <span>Outside Dhaka:</span>
+                                                <span className="font-medium text-[#EF3D6A]">{deliveryChargeSettings.outsideDhaka} ৳</span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+                                
+                                <Link 
+                                    href="/checkout"
+                                    onClick={onClose}
+                                    className="w-full bg-[#EF3D6A] text-white py-3 px-4 rounded-lg font-semibold hover:bg-[#D63447] transition-all duration-200 flex items-center justify-between cursor-pointer hover:scale-[1.02] hover:shadow-lg"
+                                >
+                                    <span>Proceed To Checkout</span>
+                                    <span>{cartTotal} ৳</span>
+                                </Link>
+                            </>
                         )}
                     </div>
                 )}

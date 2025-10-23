@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import toast from 'react-hot-toast'
 import { getCookie, setCookie, deleteCookie } from 'cookies-next'
-import { userAPI } from '@/services/api'
+import { userAPI, settingsAPI } from '@/services/api'
 
 // Create context
 const AppContext = createContext()
@@ -50,6 +50,10 @@ export const AppProvider = ({ children }) => {
         sortBy: 'newest',
         inStock: false
     })
+
+    // Delivery charge settings state
+    const [deliveryChargeSettings, setDeliveryChargeSettings] = useState(null)
+    const [deliverySettingsLoading, setDeliverySettingsLoading] = useState(true)
 
     // Cart functions
     const addToCart = (product, selectedVariant, quantity = 1) => {
@@ -347,6 +351,25 @@ export const AppProvider = ({ children }) => {
         }
     }, [])
 
+    // Fetch delivery charge settings from backend
+    const fetchDeliveryChargeSettings = useCallback(async () => {
+        try {
+            setDeliverySettingsLoading(true)
+            const data = await settingsAPI.getDeliveryChargeSettings()
+
+            if (data.success) {
+                // Keep the delivery charge settings object as it comes from backend
+                setDeliveryChargeSettings(data.data)
+            } else {
+                console.error('Failed to fetch delivery settings:', data.message)
+            }
+        } catch (error) {
+            console.error('Error fetching delivery settings:', error)
+        } finally {
+            setDeliverySettingsLoading(false)
+        }
+    }, [])
+
     const logout = () => {
         setUser(null)
         setToken(null)
@@ -436,6 +459,9 @@ export const AppProvider = ({ children }) => {
             const savedCart = localStorage.getItem('cart')
             const savedWishlist = localStorage.getItem('wishlist')
             
+            // Fetch delivery charge settings first (no auth required)
+            await fetchDeliveryChargeSettings()
+            
             if (savedToken) {
                 setToken(savedToken)
                 // Fetch user profile from backend
@@ -456,7 +482,7 @@ export const AppProvider = ({ children }) => {
         }
         
         initializeApp()
-    }, [fetchUserProfile])
+    }, [fetchUserProfile, fetchDeliveryChargeSettings])
 
     // Save to localStorage when state changes
     useEffect(() => {
@@ -481,6 +507,8 @@ export const AppProvider = ({ children }) => {
         searchQuery,
         searchResults,
         filters,
+        deliveryChargeSettings,
+        deliverySettingsLoading,
 
         // Actions
         setUser,
@@ -516,7 +544,8 @@ export const AppProvider = ({ children }) => {
         updateSearchResults,
         updateFilters,
         clearFilters,
-        moveToCart
+        moveToCart,
+        fetchDeliveryChargeSettings
     }
 
     return (

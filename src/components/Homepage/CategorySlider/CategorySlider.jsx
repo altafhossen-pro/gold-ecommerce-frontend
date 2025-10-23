@@ -113,7 +113,7 @@ export default function CategorySlider() {
     if (error) {
         return (
             <section className="py-12 px-4 bg-white">
-                <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto">
+                <div className="max-w-screen-2xl mx-auto">
                     <div className="flex items-center justify-between mb-8">
                         <h2 className="text-2xl font-bold text-gray-800">Browse Category</h2>
                     </div>
@@ -142,7 +142,7 @@ export default function CategorySlider() {
 
     return (
         <section className="py-12 px-4 bg-white">
-            <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto">
+            <div className="max-w-screen-2xl mx-auto">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-8">
                     <h2 className="text-2xl font-bold text-gray-800">Browse Category</h2>

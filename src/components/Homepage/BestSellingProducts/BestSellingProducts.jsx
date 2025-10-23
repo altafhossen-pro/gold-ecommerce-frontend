@@ -85,7 +85,7 @@ export default function BestSellingProducts() {
 
     return (
         <section className="py-8 px-4 bg-white">
-            <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto">
+            <div className="max-w-screen-2xl mx-auto">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-2">
                     <h2 className="text-2xl font-bold text-gray-800">Best Selling Product</h2>
@@ -146,24 +146,36 @@ export default function BestSellingProducts() {
                     <Swiper
                         modules={[Navigation]}
                         spaceBetween={24}
-                        slidesPerView={1}
+                        slidesPerView={'auto'}
                         loop={true}
                         navigation={{
                             nextEl: '.best-selling-next-btn',
                             prevEl: '.best-selling-prev-btn',
                         }}
                         breakpoints={{
+                            0: {
+                                slidesPerView: 2,
+                                spaceBetween: 8,
+                            },
+                            480: {
+                                slidesPerView: 2,
+                                spaceBetween: 10,
+                            },
                             640: {
                                 slidesPerView: 2,
+                                spaceBetween: 12,
                             },
                             768: {
                                 slidesPerView: 3,
+                                spaceBetween: 16,
                             },
                             1024: {
                                 slidesPerView: 4,
+                                spaceBetween: 20,
                             },
                             1280: {
                                 slidesPerView: 5,
+                                spaceBetween: 24,
                             },
                         }}
                         className="best-selling-swiper !py-5 !px-1"

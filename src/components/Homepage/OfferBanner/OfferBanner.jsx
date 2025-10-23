@@ -32,7 +32,7 @@ export default function OfferBanner() {
     if (loading) {
         return (
             <section className="px-4 bg-white">
-                <div className="2xl:max-w-7xl xl:max-w-6xl lg:xl:2xl:max-w-7xl xl:max-w-6xl max-w-xl xl:2xl:max-w-7xl xl:max-w-6xl mx-auto px-4 sm:px-6 lg:px-0">
+                <div className="max-w-screen-2xl mx-auto">
                     <div className="relative overflow-hidden">
                         <div className="flex flex-col lg:flex-row items-center min-h-[400px] bg-gray-100 rounded-lg">
                             <div className="w-full lg:w-1/2 relative h-[300px] lg:h-[400px] bg-gray-200 animate-pulse"></div>
@@ -57,7 +57,7 @@ export default function OfferBanner() {
 
     return (
         <section className=" px-4 bg-white">
-            <div className="2xl:max-w-7xl xl:max-w-6xl lg:xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl xl:2xl:max-w-7xl xl:max-w-6xl mx-auto px-4 sm:px-6 lg:px-0">
+            <div className="max-w-screen-2xl mx-auto">
                 {/* <div className="text-center mb-12">
                     <h2 className="text-3xl font-bold text-gray-900 mb-4">
                         Special Offers

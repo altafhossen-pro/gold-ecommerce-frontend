@@ -3,14 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, ArrowRight, MessageCircle, Minus, Plus, Trash2, Check, AlertTriangle } from 'lucide-react';
 import { useAppContext } from '@/context/AppContext';
-import { orderAPI, productAPI, loyaltyAPI, couponAPI } from '@/services/api';
+import { orderAPI, productAPI, loyaltyAPI, couponAPI, addressAPI } from '@/services/api';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import { getCookie } from 'cookies-next';
 import LoginRequiredModal from '@/components/Common/LoginRequiredModal';
 
 export default function Checkout() {
-    const { cart, cartTotal, updateCartItem, removeFromCart, cartLoading, user, clearCart } = useAppContext();
+    const { cart, cartTotal, updateCartItem, removeFromCart, cartLoading, user, clearCart, deliveryChargeSettings } = useAppContext();
     const router = useRouter();
     // Login required modal state
     const [showLoginModal, setShowLoginModal] = useState(false);
@@ -72,6 +72,11 @@ export default function Checkout() {
             fetchLoyaltyData();
         }
     }, [user]);
+
+    // Load divisions on component mount
+    useEffect(() => {
+        fetchDivisions();
+    }, []);
 
     // Real-time stock checking function
     const checkStockAvailability = async () => {
@@ -150,11 +155,79 @@ export default function Checkout() {
         } catch (error) {
         }
     };
+
+    // Fetch divisions data
+    const fetchDivisions = async () => {
+        try {
+            setDivisionsLoading(true);
+            const response = await addressAPI.getDivisions();
+            if (response.success) {
+                setDivisions(response.data);
+            }
+        } catch (error) {
+            console.error('Error fetching divisions:', error);
+        } finally {
+            setDivisionsLoading(false);
+        }
+    };
+
+    // Fetch districts by division
+    const fetchDistricts = async (divisionId) => {
+        try {
+            setDistrictsLoading(true);
+            const response = await addressAPI.getDistrictsByDivision(divisionId);
+            if (response.success) {
+                setDistricts(response.data);
+            }
+        } catch (error) {
+            console.error('Error fetching districts:', error);
+        } finally {
+            setDistrictsLoading(false);
+        }
+    };
+
+    // Fetch upazilas by district
+    const fetchUpazilas = async (districtId) => {
+        try {
+            setUpazilasLoading(true);
+            const response = await addressAPI.getUpazilasByDistrict(districtId);
+            if (response.success) {
+                setUpazilas(response.data);
+            }
+        } catch (error) {
+            console.error('Error fetching upazilas:', error);
+        } finally {
+            setUpazilasLoading(false);
+        }
+    };
+
+    // Fetch Dhaka city areas (all areas, no district filter)
+    const fetchDhakaAreas = async () => {
+        try {
+            setDhakaAreasLoading(true);
+            const response = await addressAPI.getAllDhakaCityAreas();
+            if (response.success) {
+                setDhakaAreas(response.data);
+            }
+        } catch (error) {
+            console.error('Error fetching Dhaka areas:', error);
+        } finally {
+            setDhakaAreasLoading(false);
+        }
+    };
     
     const [formData, setFormData] = useState({
         fullName: '',
         mobileNumber: '',
         division: '',
+        divisionId: '',
+        district: '',
+        districtId: '',
+        upazila: '',
+        upazilaId: '',
+        area: '',
+        areaId: '',
+        deliveryType: 'outsideDhaka', // Default to outside Dhaka
         deliveryAddress: '',
         orderNotes: ''
     });
@@ -183,21 +256,61 @@ export default function Checkout() {
     const [stockLoading, setStockLoading] = useState(false);
     const [outOfStockItems, setOutOfStockItems] = useState([]);
 
-    const divisions = [
-        'Dhaka',
-        'Chittagong',
-        'Rajshahi',
-        'Khulna',
-        'Barisal',
-        'Sylhet',
-        'Rangpur',
-        'Mymensingh'
-    ];
+    // Address state
+    const [divisions, setDivisions] = useState([]);
+    const [divisionsLoading, setDivisionsLoading] = useState(true);
+    const [districts, setDistricts] = useState([]);
+    const [districtsLoading, setDistrictsLoading] = useState(false);
+    const [upazilas, setUpazilas] = useState([]);
+    const [upazilasLoading, setUpazilasLoading] = useState(false);
+    const [dhakaAreas, setDhakaAreas] = useState([]);
+    const [dhakaAreasLoading, setDhakaAreasLoading] = useState(false);
 
     const subtotal = cartTotal;
-    const shippingCost = 0;
+    
+    // Dynamic delivery charge calculation based on delivery type
+    const calculateDeliveryCharge = () => {
+        if (!deliveryChargeSettings || !formData.deliveryType) return 0;
+        
+        // Check if cart total meets free shipping requirement
+        if (subtotal >= deliveryChargeSettings.shippingFreeRequiredAmount) {
+            return 0; // Free shipping
+        }
+        
+        // Check delivery type for delivery charge
+        if (formData.deliveryType === 'insideDhaka') {
+            return deliveryChargeSettings.insideDhaka;
+        } else if (formData.deliveryType === 'subDhaka') {
+            return deliveryChargeSettings.subDhaka;
+        } else if (formData.deliveryType === 'outsideDhaka') {
+            return deliveryChargeSettings.outsideDhaka;
+        }
+        
+        return 0;
+    };
+    
+    const shippingCost = calculateDeliveryCharge();
     const discount = 0; // General discount (not coupon discount)
     const totalCost = useLoyaltyPoints ? 0 : (subtotal + shippingCost - discount - loyaltyDiscount - couponDiscount);
+    
+    // Auto-select delivery type when division/district is selected
+    useEffect(() => {
+        if (formData.divisionId && formData.districtId) {
+            // Auto-select delivery type based on district
+            if (formData.districtId === '65') {
+                setFormData(prev => ({ ...prev, deliveryType: 'insideDhaka' }));
+            } else if (formData.districtId === '1') {
+                setFormData(prev => ({ ...prev, deliveryType: 'subDhaka' }));
+            } else {
+                setFormData(prev => ({ ...prev, deliveryType: 'outsideDhaka' }));
+            }
+        }
+    }, [formData.divisionId, formData.districtId]);
+    
+    // Recalculate delivery charge when delivery type changes
+    useEffect(() => {
+        // This will trigger re-calculation when formData.deliveryType changes
+    }, [formData.deliveryType, subtotal, deliveryChargeSettings]);
 
     // Calculate coins needed for the order
     const calculateCoinsNeeded = () => {
@@ -300,12 +413,95 @@ export default function Checkout() {
         setCouponError('');
     };
 
+    
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: value
-        }));
+        
+        if (name === 'division') {
+            // Find division ID from name
+            const selectedDivision = divisions.find(div => div.name === value);
+            if (selectedDivision) {
+                // Load districts for selected division
+                fetchDistricts(selectedDivision.id);
+                // Reset district and upazila when division changes
+                setFormData(prev => ({
+                    ...prev,
+                    division: value,
+                    divisionId: selectedDivision.id,
+                    district: '',
+                    districtId: '',
+                    upazila: '',
+                    upazilaId: '',
+                    area: '',
+                    areaId: ''
+                }));
+                setDistricts([]);
+                setUpazilas([]);
+                setDhakaAreas([]);
+            }
+        } else if (name === 'district') {
+            // Find district ID from name
+            const selectedDistrict = districts.find(dist => dist.name === value);
+            if (selectedDistrict) {
+                // Check if it's Dhaka city (district ID 65)
+                if (selectedDistrict.id === '65') {
+                    // Load all Dhaka city areas (no district filter)
+                    fetchDhakaAreas();
+                    setFormData(prev => ({
+                        ...prev,
+                        district: value,
+                        districtId: selectedDistrict.id,
+                        upazila: '',
+                        upazilaId: '',
+                        area: '',
+                        areaId: ''
+                    }));
+                    setUpazilas([]);
+                    setDhakaAreas([]);
+                } else {
+                    // Load upazilas for other districts by district ID
+                    fetchUpazilas(selectedDistrict.id);
+                    setFormData(prev => ({
+                        ...prev,
+                        district: value,
+                        districtId: selectedDistrict.id,
+                        upazila: '',
+                        upazilaId: '',
+                        area: '',
+                        areaId: ''
+                    }));
+                    setUpazilas([]);
+                    setDhakaAreas([]);
+                }
+            }
+        } else if (name === 'upazila') {
+            // Find upazila ID from name
+            const selectedUpazila = upazilas.find(up => up.name === value);
+            setFormData(prev => ({
+                ...prev,
+                upazila: value,
+                upazilaId: selectedUpazila ? selectedUpazila.id : '',
+                area: '',
+                areaId: ''
+            }));
+            setDhakaAreas([]);
+        } else if (name === 'area') {
+            // Find area ID from name
+            const selectedArea = dhakaAreas.find(area => area.name === value);
+            setFormData(prev => ({
+                ...prev,
+                area: value,
+                areaId: selectedArea ? selectedArea._id : '',
+                upazila: '',
+                upazilaId: ''
+            }));
+            setUpazilas([]);
+        } else {
+            setFormData(prev => ({
+                ...prev,
+                [name]: value
+            }));
+        }
     };
 
     const handleQuantityChange = (itemId, change) => {
@@ -394,7 +590,16 @@ export default function Checkout() {
                             state: formData.division,
                             postalCode: '',
                             country: 'Bangladesh',
-                            isDefault: true
+                            isDefault: true,
+                            // Address IDs for backend processing
+                            divisionId: formData.divisionId,
+                            districtId: formData.districtId,
+                            upazilaId: formData.upazilaId,
+                            areaId: formData.areaId,
+                            division: formData.division,
+                            district: formData.district,
+                            upazila: formData.upazila,
+                            area: formData.area
                         },
                         billingAddress: {
                             label: 'Billing Address',
@@ -403,7 +608,16 @@ export default function Checkout() {
                             state: formData.division,
                             postalCode: '',
                             country: 'Bangladesh',
-                            isDefault: true
+                            isDefault: true,
+                            // Address IDs for backend processing
+                            divisionId: formData.divisionId,
+                            districtId: formData.districtId,
+                            upazilaId: formData.upazilaId,
+                            areaId: formData.areaId,
+                            division: formData.division,
+                            district: formData.district,
+                            upazila: formData.upazila,
+                            area: formData.area
                         },
                         paymentMethod: 'cod',
                         paymentStatus: 'pending',
@@ -478,13 +692,13 @@ export default function Checkout() {
             {/* Sub Navigation */}
             
             {/* Main Content */}
-            <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto px-4 py-8">
+            <div className="max-w-screen-2xl mx-auto px-4 py-4">
                 <h1 className="text-3xl font-bold text-center text-gray-900 mb-8">Checkout</h1>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="flex flex-col lg:flex-row gap-6">
 
                     {/* Left Column - Checkout Form */}
-                    <div className="space-y-6">
+                    <div className="space-y-6 w-[60%]">
                         {/* Customer Information */}
                         <div className="bg-white border border-gray-300 shadow rounded-lg p-6">
                             <h2 className="text-lg font-semibold text-gray-900 mb-6">01. Fill in the following information:</h2>
@@ -521,23 +735,120 @@ export default function Checkout() {
                                 </div>
                             </div>
 
-                            {/* Division */}
+                            {/* Address Selection - Division, District, Upazila in one row */}
                             <div className="mb-4">
-                                <label className="block text-sm text-gray-700 mb-2">
-                                    Division / বিভাগঃ <span className="text-red-500">*</span>
-                                </label>
-                                <select
-                                    name="division"
-                                    value={formData.division}
-                                    onChange={handleInputChange}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-pink-500 focus:border-pink-500"
-                                >
-                                    <option value="">Select Division</option>
-                                    {divisions.map((division) => (
-                                        <option key={division} value={division}>{division}</option>
-                                    ))}
-                                </select>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    {/* Division */}
+                                    <div>
+                                        <label className="block text-sm text-gray-700 mb-2">
+                                            Division / বিভাগঃ
+                                        </label>
+                                        <select
+                                            name="division"
+                                            value={formData.division}
+                                            onChange={handleInputChange}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-pink-500 focus:border-pink-500"
+                                            disabled={divisionsLoading}
+                                        >
+                                            <option value="">
+                                                {divisionsLoading ? 'Loading...' : 'Select Division'}
+                                            </option>
+                                            {divisions.map((division) => (
+                                                <option key={division.id} value={division.name}>
+                                                    {division.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* District - Show only when division is selected */}
+                                    {formData.division && (
+                                        <div>
+                                            <label className="block text-sm text-gray-700 mb-2">
+                                                District / জেলাঃ
+                                            </label>
+                                            <select
+                                                name="district"
+                                                value={formData.district}
+                                                onChange={handleInputChange}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-pink-500 focus:border-pink-500"
+                                                disabled={districtsLoading}
+                                            >
+                                                <option value="">
+                                                    {districtsLoading ? 'Loading...' : 'Select District'}
+                                                </option>
+                                                {districts.map((district) => (
+                                                    <option key={district.id} value={district.name}>
+                                                        {district.name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    )}
+
+                                    {/* Upazila/Area - Show based on district ID */}
+                                    {formData.district && (
+                                        <div>
+                                            {/* Show Upazila for non-Dhaka districts (ID != 65) */}
+                                            {(() => {
+                                                const selectedDistrict = districts.find(dist => dist.name === formData.district);
+                                                return selectedDistrict && selectedDistrict.id !== '65';
+                                            })() && (
+                                                <>
+                                                    <label className="block text-sm text-gray-700 mb-2">
+                                                        Upazila / উপজেলাঃ
+                                                    </label>
+                                                    <select
+                                                        name="upazila"
+                                                        value={formData.upazila}
+                                                        onChange={handleInputChange}
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-pink-500 focus:border-pink-500"
+                                                        disabled={upazilasLoading}
+                                                    >
+                                                        <option value="">
+                                                            {upazilasLoading ? 'Loading...' : 'Select Upazila'}
+                                                        </option>
+                                                        {upazilas.map((upazila) => (
+                                                            <option key={upazila.id} value={upazila.name}>
+                                                                {upazila.name}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </>
+                                            )}
+
+                                            {/* Show Area for Dhaka city (ID = 65) */}
+                                            {(() => {
+                                                const selectedDistrict = districts.find(dist => dist.name === formData.district);
+                                                return selectedDistrict && selectedDistrict.id === '65';
+                                            })() && (
+                                                <>
+                                                    <label className="block text-sm text-gray-700 mb-2">
+                                                        Area / এলাকাঃ
+                                                    </label>
+                                                    <select
+                                                        name="area"
+                                                        value={formData.area}
+                                                        onChange={handleInputChange}
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-pink-500 focus:border-pink-500"
+                                                        disabled={dhakaAreasLoading}
+                                                    >
+                                                        <option value="">
+                                                            {dhakaAreasLoading ? 'Loading...' : 'Select Area'}
+                                                        </option>
+                                                        {dhakaAreas.map((area) => (
+                                                            <option key={area._id} value={area.name}>
+                                                                {area.name} ({area.city_corporation})
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
+
 
                             {/* Delivery Address */}
                             <div className="mb-4">
@@ -550,6 +861,7 @@ export default function Checkout() {
                                     value={formData.deliveryAddress}
                                     onChange={handleInputChange}
                                     placeholder="Delivery Address"
+                                    required
                                     className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-pink-500 focus:border-pink-500"
                                 />
                             </div>
@@ -570,9 +882,86 @@ export default function Checkout() {
                             </div>
                         </div>
 
+                        {/* Delivery Type Selection */}
+                        <div className="bg-white border border-gray-300 shadow rounded-lg p-6">
+                            <h2 className="text-lg font-semibold text-gray-900 mb-6">02. Delivery Type <span className="text-red-500">*</span></h2>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <label className={`flex items-center p-3 border rounded cursor-pointer transition-colors ${
+                                    formData.deliveryType === 'insideDhaka' 
+                                        ? 'border-pink-500 bg-pink-50' 
+                                        : 'border-gray-300 hover:border-pink-300'
+                                }`}>
+                                    <input
+                                        type="radio"
+                                        name="deliveryType"
+                                        value="insideDhaka"
+                                        checked={formData.deliveryType === 'insideDhaka'}
+                                        onChange={handleInputChange}
+                                        className="mr-3 text-pink-500"
+                                    />
+                                    <div>
+                                        <div className="font-medium text-gray-900">Inside Dhaka</div>
+                                        <div className="text-sm text-gray-600">
+                                            {deliveryChargeSettings ? `${deliveryChargeSettings.insideDhaka} ৳` : '80 ৳'}
+                                        </div>
+                                    </div>
+                                </label>
+                                
+                                <label className={`flex items-center p-3 border rounded cursor-pointer transition-colors ${
+                                    formData.deliveryType === 'subDhaka' 
+                                        ? 'border-pink-500 bg-pink-50' 
+                                        : 'border-gray-300 hover:border-pink-300'
+                                }`}>
+                                    <input
+                                        type="radio"
+                                        name="deliveryType"
+                                        value="subDhaka"
+                                        checked={formData.deliveryType === 'subDhaka'}
+                                        onChange={handleInputChange}
+                                        className="mr-3 text-pink-500"
+                                    />
+                                    <div>
+                                        <div className="font-medium text-gray-900">Sub Dhaka</div>
+                                        <div className="text-sm text-gray-600">
+                                            {deliveryChargeSettings ? `${deliveryChargeSettings.subDhaka} ৳` : '120 ৳'}
+                                        </div>
+                                    </div>
+                                </label>
+                                
+                                <label className={`flex items-center p-3 border rounded cursor-pointer transition-colors ${
+                                    formData.deliveryType === 'outsideDhaka' 
+                                        ? 'border-pink-500 bg-pink-50' 
+                                        : 'border-gray-300 hover:border-pink-300'
+                                }`}>
+                                    <input
+                                        type="radio"
+                                        name="deliveryType"
+                                        value="outsideDhaka"
+                                        checked={formData.deliveryType === 'outsideDhaka'}
+                                        onChange={handleInputChange}
+                                        className="mr-3 text-pink-500"
+                                    />
+                                    <div>
+                                        <div className="font-medium text-gray-900">Outside Dhaka</div>
+                                        <div className="text-sm text-gray-600">
+                                            {deliveryChargeSettings ? `${deliveryChargeSettings.outsideDhaka} ৳` : '150 ৳'}
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
+                            
+                            {/* Auto-selected info */}
+                            {formData.divisionId && formData.districtId && (
+                                <div className="mt-3 text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                                    📍 Auto-selected based on your location: {formData.division} → {formData.district}
+                                </div>
+                            )}
+                        </div>
+
                         {/* Payment Method */}
                         <div className="bg-white border border-gray-300 shadow rounded-lg p-6">
-                            <h2 className="text-lg font-semibold text-gray-900 mb-6">02. Payment Method <span className="text-red-500">*</span></h2>
+                            <h2 className="text-lg font-semibold text-gray-900 mb-6">03. Payment Method <span className="text-red-500">*</span></h2>
 
                             <div className="space-y-3">
                                 <label className="flex items-center space-x-3 cursor-pointer">
@@ -679,7 +1068,7 @@ export default function Checkout() {
                         {/* Loyalty Points Section */}
                         {loyaltyData && loyaltyData.coins > 0 && (
                             <div className="bg-white border border-gray-300 shadow rounded-lg p-6">
-                                <h2 className="text-lg font-semibold text-gray-900 mb-6">03. Loyalty Points</h2>
+                                <h2 className="text-lg font-semibold text-gray-900 mb-6">04. Loyalty Points</h2>
                                 
                                 {appliedCoupon && (
                                     <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
@@ -815,7 +1204,7 @@ export default function Checkout() {
                     </div>
 
                     {/* Right Column - Order Summary */}
-                    <div className="bg-white border border-gray-300 shadow rounded-lg h-fit p-6">
+                    <div className="bg-white border border-gray-300 shadow rounded-lg h-fit p-6 w-[40%]">
                         <h2 className="text-lg font-semibold text-gray-900 mb-6">Order Summary</h2>
 
                         {/* Cart Items */}
@@ -1026,8 +1415,8 @@ export default function Checkout() {
                                     <div className="h-4 bg-gray-200 rounded w-16"></div>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-gray-600">Shipping Cost</span>
-                                    <span className="text-pink-500 font-medium">Free</span>
+                                    <span className="text-gray-600">Delivery Charge</span>
+                                    <span className="text-pink-500 font-medium">Calculating...</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="text-gray-600">Discount</span>
@@ -1045,9 +1434,15 @@ export default function Checkout() {
                                     <span className="text-gray-900">{subtotal} ৳</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-gray-600">Shipping Cost</span>
-                                    <span className="text-pink-500 font-medium">Free</span>
+                                    <span className="text-gray-600">Delivery Charge</span>
+                                    {shippingCost === 0 ? (
+                                        <span className="text-green-600 font-medium">Free</span>
+                                    ) : (
+                                        <span className="text-pink-500 font-medium">{shippingCost} ৳</span>
+                                    )}
                                 </div>
+                                
+                                
                                 <div className="flex justify-between">
                                     <span className="text-gray-600">Discount</span>
                                     <span className="text-orange-500">{discount} ৳</span>

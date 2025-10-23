@@ -39,14 +39,14 @@ export default function LoyaltySettingsPage() {
 
   const fetchSettings = async () => {
     try {
-      const response = await settingsAPI.getSettings();
+      const response = await settingsAPI.getLoyaltySettings();
       if (response.success) {
         setSettings(response.data);
       } else {
-        setMessage({ type: 'error', text: response.message || 'Failed to load settings' });
+        setMessage({ type: 'error', text: response.message || 'Failed to load loyalty settings' });
       }
     } catch (error) {
-      setMessage({ type: 'error', text: 'Failed to load settings' });
+      setMessage({ type: 'error', text: 'Failed to load loyalty settings' });
     } finally {
       setLoading(false);
     }
@@ -76,7 +76,7 @@ export default function LoyaltySettingsPage() {
       }
 
       const token = getCookie('token');
-      const response = await settingsAPI.updateSettings(processedSettings, token);
+      const response = await settingsAPI.updateLoyaltySettings(processedSettings, token);
       
       if (response.success) {
         setMessage({ type: 'success', text: 'Settings saved successfully!' });
@@ -422,11 +422,6 @@ export default function LoyaltySettingsPage() {
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Min Redeem:</span>
                 <span className="font-medium">৳{settings.minRedeemAmount}</span>
-              </div>
-              
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Max Redeem:</span>
-                <span className="font-medium">{settings.maxRedeemPercentage}%</span>
               </div>
             </div>
           </div>

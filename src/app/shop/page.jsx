@@ -20,7 +20,7 @@ function ShopPageContent() {
     const sortParam = searchParams.get('sort');
 
     // State for products and loading
-    const [searchResults, setSearchResults] = useState([]); 
+    const [searchResults, setSearchResults] = useState([]);
     const [loading, setLoading] = useState(true);
     const [totalResults, setTotalResults] = useState(0);
     const [currentPage, setCurrentPage] = useState(1);
@@ -251,14 +251,14 @@ function ShopPageContent() {
         }));
     };
 
-        const clearAllFilters = () => {
+    const clearAllFilters = () => {
         setSelectedCategories([]);
         setSelectedBraceletSizes([]);
         setSelectedRingSizes([]);
         setPriceRange({ min: '', max: '' });
         setSortBy('popular'); // Reset to popular sorting
         setCurrentPage(1); // Reset to first page
-        
+
         // Fetch all available sizes when filters are cleared
         fetchAvailableSizes([]);
     };
@@ -282,7 +282,7 @@ function ShopPageContent() {
         if (product) {
             // Check if product is already in wishlist
             const isInWishlist = wishlist.some(item => item.productId === product._id);
-            
+
             if (isInWishlist) {
                 // Remove from wishlist
                 removeProductFromWishlist(product._id, removeFromWishlist);
@@ -303,7 +303,7 @@ function ShopPageContent() {
 
     return (
         <div className="min-h-screen bg-gray-50">
-            <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto px-4 py-4">
+            <div className="max-w-screen-2xl mx-auto  py-4">
                 {/* Mobile Filter Toggle Button */}
                 <div className="lg:hidden mb-6">
                     <button
@@ -318,64 +318,6 @@ function ShopPageContent() {
                     </button>
                 </div>
 
-                {/* Breadcrumb Navigation */}
-                {selectedCategories.length > 0 && (
-                    <div className="mb-4">
-                        <nav className="flex items-center space-x-2 text-sm text-gray-500">
-                            <button
-                                onClick={() => {
-                                    setSelectedCategories([]);
-                                    setSelectedBraceletSizes([]);
-                                    setSelectedRingSizes([]);
-                                    setPriceRange({ min: '', max: '' });
-                                    setSortBy('popular'); // Reset sorting when clearing category
-                                    setCurrentPage(1); // Reset to first page
-                                    
-                                    // Clear URL parameters
-                                    const url = new URL(window.location);
-                                    url.searchParams.delete('sort');
-                                    window.history.replaceState({}, '', url);
-                                    
-                                    fetchAvailableSizes([]);
-                                }}
-                                className="hover:text-pink-600 transition-colors duration-200"
-                            >
-                                All Categories
-                            </button>
-                            <span>/</span>
-                            <span className="text-gray-900 font-medium">
-                                {categories.find(cat => cat._id === selectedCategories[0])?.name}
-                            </span>
-                        </nav>
-                    </div>
-                )}
-
-                {/* Shop Header */}
-                <div className="mb-6">
-                    <h1 className="text-xl font-bold text-gray-900 ">
-                        {selectedCategories.length > 0
-                            ? `Shop ${categories.find(cat => cat._id === selectedCategories[0])?.name || 'Category'}`
-                            : 'Shop All Products'
-                        }
-                    </h1>
-                    <div className="flex items-center justify-between">
-                        <p className="text-gray-600">
-                            {loading ? 'Loading...' : `${totalResults} products found`}
-                        </p>
-                        {(selectedCategories.length > 0 || selectedBraceletSizes.length > 0 ||
-                            selectedRingSizes.length > 0 || priceRange.min || priceRange.max) && (
-                                <button
-                                    onClick={clearAllFilters}
-                                    className="text-pink-500 hover:text-pink-600 text-sm flex items-center space-x-1"
-                                >
-                                    <X className="w-4 h-4" />
-                                    <span>Clear all filters</span>
-                                </button>
-                            )}
-                    </div>
-                </div>
-
-
 
                 <div className="flex flex-col lg:flex-row gap-8">
                     {/* Left Sidebar - Filters */}
@@ -383,7 +325,21 @@ function ShopPageContent() {
                         <div className="bg-white rounded-lg shadow-sm p-6 space-y-6">
                             {/* Main Category Filter */}
                             <div>
-                                <h3 className="font-semibold text-gray-900 mb-3">Main Category</h3>
+                                <div className='flex justify-between items-center mb-3'>
+                                    <h3 className="font-semibold text-gray-900 ">Main Category</h3>
+
+                                    {/* {(selectedCategories.length > 0 || selectedBraceletSizes.length > 0 ||
+                                        selectedRingSizes.length > 0 || priceRange.min || priceRange.max) && (
+                                            <button
+                                                onClick={clearAllFilters}
+                                                className="text-pink-500 hover:text-pink-600 text-sm flex items-center space-x-1 cursor-pointer"
+                                            >
+                                                <X className="w-4 h-4" />
+                                                <span>Reset All</span>
+                                            </button>
+                                        )} */}
+
+                                </div>
                                 <div className="space-y-2 max-h-48 overflow-y-auto">
                                     {categories.map((category) => (
                                         <label key={category._id} className="flex items-center space-x-2 cursor-pointer">
@@ -524,8 +480,8 @@ function ShopPageContent() {
                                                 key={option.value}
                                                 onClick={() => handleSortChange(option.value)}
                                                 className={`flex items-center space-x-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 cursor-pointer ${isActive
-                                                        ? `${option.color} text-white shadow-md transform scale-105`
-                                                        : 'text-gray-600 bg-gray-100 hover:bg-gray-200 hover:text-gray-800'
+                                                    ? `${option.color} text-white shadow-md transform scale-105`
+                                                    : 'text-gray-600 bg-gray-100 hover:bg-gray-200 hover:text-gray-800'
                                                     }`}
                                             >
                                                 <IconComponent className="w-4 h-4" />
@@ -542,42 +498,42 @@ function ShopPageContent() {
                             </div>
                         ) : searchResults.length > 0 ? (
                             <div className="grid grid-cols-1 min-[400px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-                                                                                         {searchResults.map((product) => (
-                            <ProductCard
-                                key={product._id}
-                                product={{
-                                    ...product,
-                                    isWishlisted: wishlist.some(item => item.productId === product._id)
-                                }}
-                                onWishlistToggle={handleWishlistToggle}
-                                onAddToCart={handleAddToCart}
-                                showWishlistOnHover={true}
-                            />
-                        ))}
-                                                            </div>
-                            ) : (
-                                <div className="text-center py-12">
-                                    <div className="text-gray-400 mb-4">
-                                        <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                        </svg>
-                                    </div>
-                                    <h3 className="text-lg font-medium text-gray-900 mb-2">No products found</h3>
-                                    <p className="text-gray-600">
-                                        Try adjusting your filters
-                                    </p>
+                                {searchResults.map((product) => (
+                                    <ProductCard
+                                        key={product._id}
+                                        product={{
+                                            ...product,
+                                            isWishlisted: wishlist.some(item => item.productId === product._id)
+                                        }}
+                                        onWishlistToggle={handleWishlistToggle}
+                                        onAddToCart={handleAddToCart}
+                                        showWishlistOnHover={true}
+                                    />
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-12">
+                                <div className="text-gray-400 mb-4">
+                                    <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
                                 </div>
-                            )}
+                                <h3 className="text-lg font-medium text-gray-900 mb-2">No products found</h3>
+                                <p className="text-gray-600">
+                                    Try adjusting your filters
+                                </p>
+                            </div>
+                        )}
 
-                            {/* Pagination */}
-                            <Pagination
-                                currentPage={currentPage}
-                                totalPages={totalPages}
-                                onPageChange={handlePageChange}
-                                totalItems={totalResults}
-                                itemsPerPage={itemsPerPage}
-                            />
-                        </div>
+                        {/* Pagination */}
+                        <Pagination
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            onPageChange={handlePageChange}
+                            totalItems={totalResults}
+                            itemsPerPage={itemsPerPage}
+                        />
+                    </div>
                 </div>
             </div>
             <Footer />

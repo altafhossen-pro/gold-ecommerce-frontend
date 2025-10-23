@@ -1100,6 +1100,78 @@ export const settingsAPI = {
             },
         });
     },
+
+    // Get loyalty settings only
+    getLoyaltySettings: () => {
+        return apiCall('/settings/loyalty');
+    },
+
+    // Update loyalty settings only (Admin only)
+    updateLoyaltySettings: (loyaltyData, token) => {
+        return apiCall('/settings/loyalty', {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(loyaltyData),
+        });
+    },
+
+    // Get delivery charge settings only
+    getDeliveryChargeSettings: () => {
+        return apiCall('/settings/delivery-charge');
+    },
+
+    // Update delivery charge settings only (Admin only)
+    updateDeliveryChargeSettings: (deliveryChargeData, token) => {
+        return apiCall('/settings/delivery-charge', {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(deliveryChargeData),
+        });
+    },
+};
+
+// Address API functions
+export const addressAPI = {
+    // Get all divisions
+    getDivisions: () => {
+        return apiCall('/address/divisions');
+    },
+
+    // Get districts by division
+    getDistrictsByDivision: (divisionId) => {
+        return apiCall(`/address/districts/division/${divisionId}`);
+    },
+
+    // Get upazilas by district
+    getUpazilasByDistrict: (districtId) => {
+        return apiCall(`/address/upazilas/district/${districtId}`);
+    },
+
+    // Get Dhaka city areas by district
+    getDhakaCityAreas: (districtId) => {
+        return apiCall(`/address/dhaka-city/district/${districtId}`);
+    },
+
+    // Get all districts
+    getAllDistricts: () => {
+        return apiCall('/address/districts');
+    },
+
+    // Get all upazilas
+    getAllUpazilas: () => {
+        return apiCall('/address/upazilas');
+    },
+
+    // Get all Dhaka city areas
+    getAllDhakaCityAreas: () => {
+        return apiCall('/address/dhaka-city');
+    },
 };
 
 // Coupon API functions

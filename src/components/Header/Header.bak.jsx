@@ -129,156 +129,137 @@ function Header({ isTrackingShow = true }) {
   return (
     <>
       {/* Top bar */}
-      {/* {
+      {
         isTrackingShow && (
           <Link href="/tracking" className="bg-gray-700 text-white text-sm py-2 px-4 flex items-center justify-center hover:bg-gray-600 transition-colors">
             <Truck className="w-4 h-4 mr-2" />
-            <span className="text-xs ">Track your order</span>
+            <span className="text-xs sm:text-sm">Track your order</span>
           </Link>
         )
-      } */}
+      }
 
 
       {/* Main header */}
-      <div className="bg-white shadow-sm sticky top-0 z-50">
-        {/* Upper part: Logo, Search, Login/Wishlist/Cart */}
-        <div className="px-4 py-3">
-          <div className="max-w-screen-2xl mx-auto flex items-center justify-between">
-            {/* Logo */}
-            <div className="flex items-center">
-              <Link href="/">
-                <Image
-                  src="/images/logo.png"
-                  alt="Logo"
-                  width={170}
-                  height={70}
-                  className="w-32 sm:w-40 -mt-3"
-                  priority
-                />
-              </Link>
+      <div className="bg-white shadow-sm px-4 py-4 sticky top-0 z-50">
+        <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto flex items-center justify-between">
+          {/* Logo */}
+          <div className="flex items-center">
+            <Link href="/">
+              <Image
+                src="/images/logo.png"
+                alt="Logo"
+                width={170}
+                height={70}
+                className="w-32 sm:w-40  -mt-3"
+                priority
+              />
+            </Link>
+          </div>
+
+          {/* Desktop Navigation */}
+          <nav className="hidden lg:flex items-center space-x-5">
+            {menuLoading ? (
+              <div className="flex space-x-5">
+                {[...Array(6)].map((_, index) => (
+                  <div key={index} className="h-4 bg-gray-200 rounded animate-pulse w-16"></div>
+                ))}
+              </div>
+            ) : (
+              navigationMenu.map((item) => {
+                const isActive = isMenuItemActive(item.href);
+                return (
+                  <Link
+                    key={item.id}
+                    href={item.href}
+                    target={item.target}
+                    className={`font-medium transition-colors ${isActive
+                      ? 'text-pink-500'
+                      : 'text-gray-700 hover:text-pink-500'
+                      }`}
+                  >
+                    {item.name}
+                  </Link>
+                );
+              })
+            )}
+          </nav>
+
+          {/* Right section */}
+          <div className="flex items-center space-x-2 sm:space-x-4">
+            {/* Desktop Search */}
+            <div className="hidden md:flex">
+              <SearchBar className="" />
             </div>
 
-            {/* Desktop Search - Center */}
-            <div className="hidden md:flex flex-1 mx-8">
-              <SearchBar className="w-full mx-5" />
-            </div>
+            {/* Mobile Search Toggle */}
+            <button
+              onClick={toggleSearch}
+              className="md:hidden p-2 hover:bg-gray-100 rounded-full transition-colors"
+              aria-label={isSearchOpen ? "Close search" : "Open search"}
+            >
+              <Search className="w-5 h-5 text-gray-700" />
+            </button>
 
-            {/* Right section - Login/Wishlist/Cart */}
-            <div className="flex items-center space-x-2 sm:space-x-4">
-              {/* Mobile Search Toggle */}
+            {/* Icons */}
+            <div className="flex items-center space-x-1 sm:space-x-3">
+              {/* User */}
+              {
+                user?.email ? user?.role === 'admin' ? (
+                  <Link href={`/admin/dashboard`} className="p-2 bg-gray-100 hover:bg-gray-200 cursor-pointer rounded-full transition-colors border border-gray-200" aria-label="Admin Dashboard">
+                    <User className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700" />
+                  </Link>
+                ) : (
+                  <Link href={`/dashboard`} className="p-2 bg-gray-100 hover:bg-gray-200 cursor-pointer rounded-full transition-colors border border-gray-200" aria-label="User Dashboard">
+                    <User className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700" />
+                  </Link>
+                ) : (
+                  <Link href="/login" className="p-2 hover:bg-gray-100 rounded-full transition-colors" aria-label="Login">
+                    <User className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700" />
+                  </Link>
+                )
+              }
+
+
+              {/* Wishlist with badge */}
               <button
-                onClick={toggleSearch}
-                className="md:hidden p-2 hover:bg-gray-100 rounded-full transition-colors"
-                aria-label={isSearchOpen ? "Close search" : "Open search"}
+                onClick={() => setIsWishlistOpen(true)}
+                className="relative p-2 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
+                aria-label={`Wishlist with ${wishlistCount} items`}
               >
-                <Search className="w-5 h-5 text-gray-700" />
+                <Heart className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700" />
+                <span className="absolute -top-1 -right-1 bg-pink-500 text-white text-xs rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center">
+                  {wishlistCount}
+                </span>
               </button>
 
-              {/* Icons */}
-              <div className="flex items-center space-x-1 sm:space-x-3">
-                {/* User */}
-                {
-                  user?.email ? user?.role === 'admin' ? (
-                    <Link href={`/admin/dashboard`} className="p-2 bg-gray-100 hover:bg-gray-200 cursor-pointer rounded-full transition-colors border border-gray-200" aria-label="Admin Dashboard">
-                      <User className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700" />
-                    </Link>
+              {/* Cart with badge */}
+              <button
+                onClick={() => setIsCartOpen(true)}
+                className="relative p-2 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
+                aria-label={`Shopping cart with ${cartCount} items`}
+              >
+                <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700" />
+                <span className="absolute -top-1 -right-1 bg-pink-500 text-white text-xs rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center">
+                  {cartLoading ? (
+                    <div className="">0</div>
                   ) : (
-                    <Link href={`/dashboard`} className="p-2 bg-gray-100 hover:bg-gray-200 cursor-pointer rounded-full transition-colors border border-gray-200" aria-label="User Dashboard">
-                      <User className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700" />
-                    </Link>
-                  ) : (
-                    <Link href="/login" className="p-2 hover:bg-gray-100 rounded-full transition-colors" aria-label="Login">
-                      <User className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700" />
-                    </Link>
-                  )
-                }
-
-                {/* Wishlist with badge */}
-                <button
-                  onClick={() => setIsWishlistOpen(true)}
-                  className="relative p-2 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
-                  aria-label={`Wishlist with ${wishlistCount} items`}
-                >
-                  <Heart className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700" />
-                  <span className="absolute -top-1 -right-1 bg-pink-500 text-white text-xs rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center">
-                    {wishlistCount}
-                  </span>
-                </button>
-
-                {/* Cart with badge */}
-                <button
-                  onClick={() => setIsCartOpen(true)}
-                  className="relative p-2 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
-                  aria-label={`Shopping cart with ${cartCount} items`}
-                >
-                  <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700" />
-                  <span className="absolute -top-1 -right-1 bg-pink-500 text-white text-xs rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center">
-                    {cartLoading ? (
-                      <div className="">0</div>
-                    ) : (
-                      cartCount
-                    )}
-                  </span>
-                </button>
-
-                {/* Mobile Menu Toggle */}
-                <button
-                  onClick={toggleMobileMenu}
-                  className="lg:hidden p-2 hover:bg-gray-100 rounded-full transition-colors"
-                  aria-label={isMobileMenuOpen ? "Close mobile menu" : "Open mobile menu"}
-                >
-                  {isMobileMenuOpen ? (
-                    <X className="w-5 h-5 text-gray-700" />
-                  ) : (
-                    <Menu className="w-5 h-5 text-gray-700" />
+                    cartCount
                   )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+                </span>
+              </button>
 
-        {/* Lower part: Navigation Menu */}
-        <div className="hidden lg:block border-t border-gray-100">
-          <div className="px-4 py-3">
-            <div className="max-w-screen-2xl mx-auto">
-              <nav className="flex items-center justify-between">
-                {/* Left side - Main menu */}
-                <div className="flex items-center space-x-8">
-                  {menuLoading ? (
-                    <div className="flex space-x-8">
-                      {[...Array(6)].map((_, index) => (
-                        <div key={index} className="h-4 bg-gray-200 rounded animate-pulse w-16"></div>
-                      ))}
-                    </div>
-                  ) : (
-                    navigationMenu.map((item) => {
-                      const isActive = isMenuItemActive(item.href);
-                      return (
-                        <Link
-                          key={item.id}
-                          href={item.href}
-                          target={item.target}
-                          className={`font-medium transition-colors ${isActive
-                            ? 'text-pink-500'
-                            : 'text-gray-700 hover:text-pink-500'
-                            }`}
-                        >
-                          {item.name}
-                        </Link>
-                      );
-                    })
-                  )}
-                </div>
-
-                {/* Right side - Track your order */}
-                {isTrackingShow && (
-                  <Link href="/tracking" className="flex items-center space-x-2 text-gray-700 hover:text-pink-500 transition-colors">
-                    <Truck className="w-4 h-4" />
-                    <span className="font-medium">Track your order</span>
-                  </Link>
+              {/* Mobile Menu Toggle */}
+              <button
+                onClick={toggleMobileMenu}
+                className="lg:hidden p-2 hover:bg-gray-100 rounded-full transition-colors"
+                aria-label={isMobileMenuOpen ? "Close mobile menu" : "Open mobile menu"}
+              >
+                {isMobileMenuOpen ? (
+                  <X className="w-5 h-5 text-gray-700" />
+                ) : (
+                  <Menu className="w-5 h-5 text-gray-700" />
                 )}
-              </nav>
+              </button>
             </div>
           </div>
         </div>

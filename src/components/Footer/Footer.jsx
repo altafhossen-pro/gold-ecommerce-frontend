@@ -81,7 +81,7 @@ export default function Footer() {
   return (
     <footer className="text-white" style={{ background: 'linear-gradient(280.37deg, #2C1A25 1.99%, #1C071B 53.16%, #200C25 99.63%)' }}>
       {/* Main Footer Content */}
-      <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto px-4 py-12">
+      <div className="max-w-screen-2xl mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
 
           {/* About Section */}
@@ -339,7 +339,7 @@ export default function Footer() {
 
       {/* Copyright Section */}
       <div className="border-t border-pink-400/30">
-        <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto px-4 py-6">
+        <div className="max-w-screen-2xl mx-auto px-4 py-6">
           <div className="text-center">
             <p className="text-gray-300 text-sm">
               ©2025 Forpink. All rights reserved. Developed by <a href="https://altaf-hossen.netlify.app?utm_source=forpink_website" target="_blank" rel="noopener noreferrer" className="text-pink-400 hover:text-pink-500 transition-colors duration-300">ALTAF</a>
