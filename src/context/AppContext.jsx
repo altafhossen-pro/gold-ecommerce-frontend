@@ -23,6 +23,10 @@ export const AppProvider = ({ children }) => {
     const [user, setUser] = useState(null)
     const [isAuthenticated, setIsAuthenticated] = useState(false)
     const [token, setToken] = useState(null)
+    
+    // Permissions state
+    const [permissions, setPermissions] = useState([])
+    const [roleDetails, setRoleDetails] = useState(null)
 
     // Cart state
     const [cart, setCart] = useState([])
@@ -338,6 +342,14 @@ export const AppProvider = ({ children }) => {
                 setUser(data.data)
                 setIsAuthenticated(true)
                 setToken(savedToken)
+                
+                // Set permissions and role details
+                if (data.data.permissions) {
+                    setPermissions(data.data.permissions)
+                }
+                if (data.data.roleDetails) {
+                    setRoleDetails(data.data.roleDetails)
+                }
             } else {
                 // Token is invalid, clear everything
                 logout()
@@ -386,6 +398,26 @@ export const AppProvider = ({ children }) => {
 
     const updateUser = (userData) => {
         setUser(userData)
+        // Update permissions and role if present
+        if (userData?.permissions) {
+            setPermissions(userData.permissions)
+        }
+        if (userData?.roleDetails) {
+            setRoleDetails(userData.roleDetails)
+        }
+    }
+    
+    // Check if user has permission
+    const hasPermission = (module, action) => {
+        if (!permissions || permissions.length === 0) return false
+        
+        // Super admin has all permissions
+        if (roleDetails?.isSuperAdmin) return true
+        
+        // Check if permission exists
+        return permissions.some(p => 
+            p.module === module && p.action === action
+        )
     }
 
     // UI functions
@@ -432,8 +464,15 @@ export const AppProvider = ({ children }) => {
 
     // Update cart totals when cart changes
     const updateCartTotals = () => {
-        const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0)
-        const count = cart.reduce((sum, item) => sum + item.quantity, 0)
+        const total = cart.reduce((sum, item) => {
+            const price = Number(item.price) || 0
+            const quantity = Number(item.quantity) || 0
+            return sum + (price * quantity)
+        }, 0)
+        const count = cart.reduce((sum, item) => {
+            const quantity = Number(item.quantity) || 0
+            return sum + quantity
+        }, 0)
         setCartTotal(total)
         setCartCount(count)
     }
@@ -509,6 +548,8 @@ export const AppProvider = ({ children }) => {
         filters,
         deliveryChargeSettings,
         deliverySettingsLoading,
+        permissions,
+        roleDetails,
 
         // Actions
         setUser,
@@ -545,7 +586,8 @@ export const AppProvider = ({ children }) => {
         updateFilters,
         clearFilters,
         moveToCart,
-        fetchDeliveryChargeSettings
+        fetchDeliveryChargeSettings,
+        hasPermission
     }
 
     return (

@@ -232,7 +232,7 @@ function Header({ isTrackingShow = true }) {
                     {cartLoading ? (
                       <div className="">0</div>
                     ) : (
-                      cartCount
+                      Number(cartCount) || 0
                     )}
                   </span>
                 </button>

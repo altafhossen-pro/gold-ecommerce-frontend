@@ -32,6 +32,7 @@ export default function RootLayout({ children }) {
           {children}
           <Toaster />
         </AppProvider>
+        
       </body>
     </html>
   );

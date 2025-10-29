@@ -16,7 +16,7 @@ import {
     AlertCircle
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { userAPI } from '@/services/api'
+import { userAPI, roleAPI } from '@/services/api'
 import { getCookie } from 'cookies-next'
 import LoyaltyPointsSection from '@/components/Admin/LoyaltyPointsSection'
 
@@ -28,26 +28,45 @@ export default function EditCustomerPage() {
     const [customer, setCustomer] = useState(null)
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
+    const [roles, setRoles] = useState([])
+    const [loadingRoles, setLoadingRoles] = useState(false)
     const [formData, setFormData] = useState({
         name: '',
         email: '',
         phone: '',
         address: '',
         status: 'active',
-        role: 'customer'
+        roleId: null
     })
     const [showRoleConfirmModal, setShowRoleConfirmModal] = useState(false)
     const [captchaQuestion, setCaptchaQuestion] = useState('')
     const [captchaAnswer, setCaptchaAnswer] = useState('')
     const [captchaInput, setCaptchaInput] = useState('')
     const [isCaptchaCorrect, setIsCaptchaCorrect] = useState(false)
-    const [originalRole, setOriginalRole] = useState('customer')
+    const [originalRoleId, setOriginalRoleId] = useState(null)
 
     useEffect(() => {
         if (customerId) {
             fetchCustomerDetails()
+            fetchRoles()
         }
     }, [customerId])
+
+    const fetchRoles = async () => {
+        try {
+            setLoadingRoles(true)
+            const token = getCookie('token')
+            const data = await roleAPI.getRoles({ limit: 100 }, token)
+            
+            if (data.success) {
+                setRoles(data.data || [])
+            }
+        } catch (error) {
+            console.error('Error fetching roles:', error)
+        } finally {
+            setLoadingRoles(false)
+        }
+    }
 
     const fetchCustomerDetails = async () => {
         try {
@@ -63,9 +82,9 @@ export default function EditCustomerPage() {
                     phone: data.data.phone,
                     address: data.data.address || '',
                     status: data.data.status,
-                    role: data.data.role
+                    roleId: data.data.roleId || null
                 })
-                setOriginalRole(data.data.role)
+                setOriginalRoleId(data.data.roleId || null)
             } else {
                 toast.error('Customer not found')
                 router.push('/admin/dashboard/customers')
@@ -107,10 +126,6 @@ export default function EditCustomerPage() {
         }))
     }
 
-    const handleRoleChange = (e) => {
-        const newRole = e.target.value
-        setFormData(prev => ({ ...prev, role: newRole }))
-    }
 
     const handleCaptchaInput = (e) => {
         const value = e.target.value
@@ -129,7 +144,10 @@ export default function EditCustomerPage() {
     }
 
     const handleRoleCancel = () => {
-        setFormData(prev => ({ ...prev, role: originalRole }))
+        setFormData(prev => ({ 
+            ...prev, 
+            roleId: originalRoleId
+        }))
         setShowRoleConfirmModal(false)
         setCaptchaInput('')
         setIsCaptchaCorrect(false)
@@ -138,8 +156,10 @@ export default function EditCustomerPage() {
     const handleSubmit = async (e) => {
         e.preventDefault()
         
-        // Check if role is being changed
-        if (formData.role !== originalRole) {
+        // Check if roleId is being changed
+        const roleIdChanged = formData.roleId !== originalRoleId
+        
+        if (roleIdChanged) {
             // Role is being changed, show confirmation modal
             generateCaptcha()
             setShowRoleConfirmModal(true)
@@ -299,22 +319,37 @@ export default function EditCustomerPage() {
                             </select>
                         </div>
 
-                        {/* Role */}
+                        {/* Role Assignment */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                User Role *
+                                Assign Admin Role
                             </label>
-                            <select
-                                name="role"
-                                value={formData.role}
-                                onChange={handleRoleChange}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                required
-                            >
-                                <option value="customer">Customer</option>
-                                <option value="admin">Admin</option>
-                                <option value="seller">Seller</option>
-                            </select>
+                            {loadingRoles ? (
+                                <div className="flex items-center gap-2 text-sm text-gray-500">
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                                    Loading roles...
+                                </div>
+                            ) : (
+                                <select
+                                    name="roleId"
+                                    value={formData.roleId || ''}
+                                    onChange={(e) => {
+                                        const roleId = e.target.value || null
+                                        setFormData({ ...formData, roleId })
+                                    }}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                >
+                                    <option value="">Customer (No Admin Role)</option>
+                                    {roles.filter(r => r.isActive).map((role) => (
+                                        <option key={role._id} value={role._id}>
+                                            {role.name} {role.isSuperAdmin && '(Super Admin)'}
+                                        </option>
+                                    ))}
+                                </select>
+                            )}
+                            <p className="mt-1 text-xs text-gray-500">
+                                Assign an admin role for admin panel access. If none selected, user will remain as a regular customer.
+                            </p>
                         </div>
 
                         {/* Address */}
@@ -397,8 +432,11 @@ export default function EditCustomerPage() {
                                             Security Confirmation Required
                                         </h4>
                                         <p className="text-sm text-yellow-700 mt-1">
-                                            You are about to change this user's role from <strong>{originalRole}</strong> to <strong>{formData.role}</strong>. 
-                                            This action will grant significant system access. Please confirm you want to proceed.
+                                            You are about to change this user's admin role. 
+                                            {formData.roleId !== originalRoleId && (
+                                                <> Role: {originalRoleId ? roles.find(r => r._id === originalRoleId)?.name || 'Role assigned' : 'Customer (No role)'} → {formData.roleId ? roles.find(r => r._id === formData.roleId)?.name || 'Role assigned' : 'Customer (No role)'}</>
+                                            )}
+                                            This action will grant admin panel access. Please confirm you want to proceed.
                                         </p>
                                     </div>
                                 </div>

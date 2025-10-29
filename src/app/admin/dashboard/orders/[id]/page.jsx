@@ -29,42 +29,85 @@ import {
     MoreVertical,
     Eye,
     MessageSquare,
-    Coins
+    Coins,
+    RotateCcw
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { formatDateForTable } from '@/utils/formatDate';
 import { orderAPI } from '@/services/api';
+import OrderUpdateHistory from '@/components/Admin/OrderUpdateHistory';
+import PermissionDenied from '@/components/Common/PermissionDenied';
+import { useAppContext } from '@/context/AppContext';
+import { getCookie } from 'cookies-next';
 
 export default function OrderDetailsPage() {
     const params = useParams();
     const router = useRouter();
     const orderId = params.id;
+    const { hasPermission, loading: contextLoading } = useAppContext();
 
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [permissionError, setPermissionError] = useState(null);
     const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
     const [newStatus, setNewStatus] = useState('');
     const [updatingStatus, setUpdatingStatus] = useState(false);
+    const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
+    const [returnQuantities, setReturnQuantities] = useState({});
 
     useEffect(() => {
-        fetchOrderDetails();
-    }, [orderId]);
+        // Check permission first
+        if (!contextLoading) {
+            if (!hasPermission('order', 'read')) {
+                setPermissionError({
+                    message: "You don't have permission to view order details.",
+                    action: 'Read Orders'
+                });
+                setLoading(false);
+            } else {
+                fetchOrderDetails();
+            }
+        }
+    }, [contextLoading, hasPermission, orderId]);
 
     const fetchOrderDetails = async () => {
         try {
             setLoading(true);
-            const data = await orderAPI.getAdminOrderDetails(orderId);
+            const token = getCookie('token');
+            const data = await orderAPI.getAdminOrderDetails(orderId, token);
 
             if (data.success) {
                 setOrder(data.data);
+                setPermissionError(null);
             } else {
-                toast.error('Failed to fetch order details');
-                router.push('/admin/dashboard/orders');
+                // Check if it's a permission error
+                if (data.message && (
+                    data.message.toLowerCase().includes('permission') ||
+                    data.message.toLowerCase().includes('access denied') ||
+                    data.message.toLowerCase().includes("don't have permission")
+                )) {
+                    setPermissionError({
+                        message: data.message,
+                        action: 'Read Orders'
+                    });
+                } else {
+                    toast.error('Failed to fetch order details');
+                    router.push('/admin/dashboard/orders');
+                }
             }
         } catch (error) {
             console.error('Error fetching order details:', error);
-            toast.error('Error fetching order details');
-            router.push('/admin/dashboard/orders');
+            // Check if it's a 403 error (permission denied)
+            if (error.status === 403 || error.response?.status === 403) {
+                const errorMessage = error.response?.data?.message || error.message || 'You don\'t have permission to access this resource.';
+                setPermissionError({
+                    message: errorMessage,
+                    action: 'Read Orders'
+                });
+            } else {
+                toast.error('Error fetching order details');
+                router.push('/admin/dashboard/orders');
+            }
         } finally {
             setLoading(false);
         }
@@ -84,6 +127,8 @@ export default function OrderDetailsPage() {
                 return 'bg-emerald-100 text-emerald-800 border-emerald-200';
             case 'cancelled':
                 return 'bg-red-100 text-red-800 border-red-200';
+            case 'returned':
+                return 'bg-pink-100 text-pink-800 border-pink-200';
             default:
                 return 'bg-gray-100 text-gray-800 border-gray-200';
         }
@@ -116,6 +161,8 @@ export default function OrderDetailsPage() {
                 return <CheckCircle className="h-4 w-4" />;
             case 'cancelled':
                 return <AlertCircle className="h-4 w-4" />;
+            case 'returned':
+                return <RotateCcw className="h-4 w-4" />;
             default:
                 return <Info className="h-4 w-4" />;
         }
@@ -124,11 +171,16 @@ export default function OrderDetailsPage() {
     const getStatusTimeline = (status) => {
         const timeline = [
             { step: 'pending', label: 'Order Placed', completed: true },
-            { step: 'confirmed', label: 'Order Confirmed', completed: ['confirmed', 'processing', 'shipped', 'delivered'].includes(status) },
-            { step: 'processing', label: 'Processing', completed: ['processing', 'shipped', 'delivered'].includes(status) },
-            { step: 'shipped', label: 'Shipped', completed: ['shipped', 'delivered'].includes(status) },
-            { step: 'delivered', label: 'Delivered', completed: status === 'delivered' }
+            { step: 'confirmed', label: 'Order Confirmed', completed: ['confirmed', 'processing', 'shipped', 'delivered', 'returned'].includes(status) },
+            { step: 'processing', label: 'Processing', completed: ['processing', 'shipped', 'delivered', 'returned'].includes(status) },
+            { step: 'shipped', label: 'Shipped', completed: ['shipped', 'delivered', 'returned'].includes(status) },
+            { step: 'delivered', label: 'Delivered', completed: ['delivered', 'returned'].includes(status) }
         ];
+
+        // Add returned step if status is returned
+        if (status === 'returned') {
+            timeline.push({ step: 'returned', label: 'Returned', completed: true });
+        }
 
         if (status === 'cancelled') {
             return timeline.map(item => ({ ...item, completed: false }));
@@ -142,6 +194,21 @@ export default function OrderDetailsPage() {
         toast.success('Order ID copied!');
     };
 
+    // Get available status options based on current status
+    const getAvailableStatusOptions = (currentStatus) => {
+        const statusFlow = {
+            'pending': ['confirmed', 'cancelled'],
+            'confirmed': ['processing', 'cancelled'],
+            'processing': ['shipped', 'cancelled'],
+            'shipped': ['delivered', 'returned'],
+            'delivered': ['returned'],
+            'cancelled': [], // Final status
+            'returned': [] // Final status
+        };
+        
+        return statusFlow[currentStatus] || [];
+    };
+
     const openStatusModal = () => {
         setNewStatus(order.status);
         setIsStatusModalOpen(true);
@@ -152,16 +219,47 @@ export default function OrderDetailsPage() {
         setNewStatus('');
     };
 
+    const openReturnModal = () => {
+        // Initialize return quantities with 0 for all items
+        const initialQuantities = {};
+        order.items.forEach((item, index) => {
+            initialQuantities[index] = 0;
+        });
+        setReturnQuantities(initialQuantities);
+        setIsReturnModalOpen(true);
+    };
+
+    const closeReturnModal = () => {
+        setIsReturnModalOpen(false);
+        setReturnQuantities({});
+    };
+
+    const handleReturnQuantityChange = (itemIndex, quantity) => {
+        const maxQuantity = order.items[itemIndex].quantity;
+        const validQuantity = Math.max(0, Math.min(quantity, maxQuantity));
+        
+        setReturnQuantities(prev => ({
+            ...prev,
+            [itemIndex]: validQuantity
+        }));
+    };
+
     const handleStatusUpdate = async () => {
         if (!newStatus) return;
 
+        if (!hasPermission('order', 'update')) {
+            toast.error("You don't have permission to update orders");
+            closeStatusModal();
+            return;
+        }
+
         try {
             setUpdatingStatus(true);
-            const response = await orderAPI.updateOrderStatus(order._id, newStatus);
+            const token = getCookie('token');
+            const response = await orderAPI.updateOrderStatus(order._id, { status: newStatus }, token);
             
             if (response.success) {
                 toast.success('Order status updated successfully');
-                // Update the order in the local state
                 setOrder({ ...order, status: newStatus });
                 closeStatusModal();
             } else {
@@ -169,13 +267,67 @@ export default function OrderDetailsPage() {
             }
         } catch (error) {
             console.error('Error updating order status:', error);
-            toast.error('Error updating order status');
+            if (error.status === 403 || error.response?.status === 403) {
+                toast.error("You don't have permission to update orders");
+            } else {
+                toast.error('Error updating order status');
+            }
         } finally {
             setUpdatingStatus(false);
         }
     };
 
-    if (loading) {
+    const handleReturnSubmit = async () => {
+        // Check if any items are being returned
+        const hasReturns = Object.values(returnQuantities).some(qty => qty > 0);
+        if (!hasReturns) {
+            toast.error('Please specify return quantities for at least one item');
+            return;
+        }
+
+        try {
+            setUpdatingStatus(true);
+            
+            // Prepare return data
+            const returnData = {
+                status: 'returned',
+                returnQuantities: Object.entries(returnQuantities)
+                    .filter(([index, qty]) => qty > 0)
+                    .map(([index, qty]) => ({
+                        itemIndex: parseInt(index),
+                        quantity: qty
+                    }))
+            };
+
+            const response = await orderAPI.updateOrderStatus(order._id, returnData);
+            
+            if (response.success) {
+                toast.success('Order returned successfully');
+                setOrder({ ...order, status: 'returned' });
+                closeReturnModal();
+            } else {
+                toast.error(response.message || 'Failed to return order');
+            }
+        } catch (error) {
+            console.error('Error returning order:', error);
+            toast.error('Error returning order');
+        } finally {
+            setUpdatingStatus(false);
+        }
+    };
+
+    // Show permission denied if permission error exists
+    if (permissionError && !loading) {
+        return (
+            <PermissionDenied
+                title="Access Denied"
+                message={permissionError.message}
+                action={permissionError.action}
+            />
+        );
+    }
+
+    if (loading || contextLoading) {
         return (
             <div className="min-h-screen bg-slate-50 flex items-center justify-center">
                 <div className="flex flex-col items-center space-y-4">
@@ -208,8 +360,8 @@ export default function OrderDetailsPage() {
     return (
         <div className="min-h-screen bg-slate-50">
             {/* Top Header Bar */}
-            <div className="bg-white border-b border-slate-200  z-10">
-                <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="bg-white border shadow rounded-lg border-slate-300  z-10">
+                <div className=" mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between h-16">
                         <div className="flex items-center space-x-4">
                             <Link
@@ -243,17 +395,44 @@ export default function OrderDetailsPage() {
                                 <span className="ml-2">{order.status.charAt(0).toUpperCase() + order.status.slice(1)}</span>
                             </span>
                             <div className="flex items-center space-x-2">
-                                <button 
-                                    onClick={openStatusModal}
-                                    className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-                                >
-                                    <Edit3 className="h-4 w-4 mr-2" />
-                                    Update Status
-                                </button>
-                                <button className="inline-flex items-center px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors text-sm font-medium">
-                                    <Download className="h-4 w-4 mr-2" />
-                                    Export
-                                </button>
+                                {hasPermission('order', 'update') && (
+                                    <>
+                                        {order.status !== 'returned' && order.status !== 'cancelled' ? (
+                                            <Link
+                                                href={`/admin/dashboard/orders/${orderId}/edit`}
+                                                className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                                            >
+                                                <Edit3 className="h-4 w-4 mr-2" />
+                                                Edit Order
+                                            </Link>
+                                        ) : (
+                                            <button
+                                                disabled
+                                                className="inline-flex items-center px-4 py-2 bg-gray-400 text-white rounded-lg cursor-not-allowed text-sm font-medium"
+                                                title={`Cannot edit ${order.status} orders`}
+                                            >
+                                                <Edit3 className="h-4 w-4 mr-2" />
+                                                Edit Order
+                                            </button>
+                                        )}
+                                        <button 
+                                            onClick={openStatusModal}
+                                            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                                        >
+                                            <Edit3 className="h-4 w-4 mr-2" />
+                                            Update Status
+                                        </button>
+                                    </>
+                                )}
+                                {hasPermission('order', 'read') && (
+                                    <Link
+                                        href={`/admin/dashboard/orders/${orderId}/invoice`}
+                                        className="inline-flex items-center px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors text-sm font-medium"
+                                    >
+                                        <Download className="h-4 w-4 mr-2" />
+                                        Invoice
+                                    </Link>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -261,7 +440,7 @@ export default function OrderDetailsPage() {
             </div>
 
             {/* Main Content */}
-            <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto px-4 sm:px-6 lg:px-0 py-8">
+            <div className="mx-auto px-4 sm:px-6 lg:px-0 py-8">
                 {/* Status Overview Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                     <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
@@ -314,28 +493,28 @@ export default function OrderDetailsPage() {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 xl:grid-cols-5 gap-8">
+                <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
                     {/* Left Column - Main Content */}
                     <div className="xl:col-span-3 space-y-8">
                         {/* Order Progress Timeline */}
-                        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+                        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
                             <div className="flex items-center justify-between mb-8">
                                 <h2 className="text-xl font-bold text-slate-900">Order Progress</h2>
                                 <span className="text-sm text-slate-500">Track your order status</span>
                             </div>
                             
                             <div className="relative">
-                                <div className="absolute left-6 top-8 bottom-8 w-0.5 bg-slate-200"></div>
+                                <div className="absolute left-5 top-8 bottom-8 w-0.5 bg-slate-200"></div>
                                 <div className="space-y-8">
                                     {getStatusTimeline(order.status).map((step, index) => (
                                         <div key={step.step} className="relative flex items-start">
-                                            <div className={`relative z-10 flex items-center justify-center w-12 h-12 rounded-full border-4 ${
+                                            <div className={`relative z-10 flex items-center justify-center w-10 h-10 rounded-full border-4 ${
                                                 step.completed 
                                                     ? 'bg-emerald-500 border-emerald-500' 
                                                     : 'bg-white border-slate-300'
                                             }`}>
                                                 {step.completed ? (
-                                                    <CheckCircle className="h-6 w-6 text-white" />
+                                                    <CheckCircle className="h-5 w-5 text-white" />
                                                 ) : (
                                                     <div className="w-2 h-2 bg-slate-300 rounded-full"></div>
                                                 )}
@@ -462,6 +641,9 @@ export default function OrderDetailsPage() {
                                 </div>
                             </div>
                         )}
+
+                        {/* Order Update History */}
+                        <OrderUpdateHistory updateHistory={order.updateHistory} />
                     </div>
 
                     {/* Right Column - Sidebar */}
@@ -475,7 +657,7 @@ export default function OrderDetailsPage() {
                             <div className="space-y-4">
                                 <div className="flex justify-between items-center py-3 border-b border-slate-100">
                                     <span className="text-slate-600 font-medium">Subtotal</span>
-                                    <span className="font-bold text-slate-900">৳{order.total + order.shippingCost}</span>
+                                    <span className="font-bold text-slate-900">৳{order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0)}</span>
                                 </div>
                                 <div className="flex justify-between items-center py-3 border-b border-slate-100">
                                     <span className="text-slate-600 font-medium">Shipping</span>
@@ -502,7 +684,7 @@ export default function OrderDetailsPage() {
                                 <div className="pt-4">
                                     <div className="flex justify-between items-center">
                                         <span className="text-lg font-bold text-slate-900">Total</span>
-                                        <span className="text-2xl font-bold text-slate-900">৳{order.total + order.shippingCost - (order.discount || 0) - (order.loyaltyDiscount || 0) - (order.couponDiscount || 0)}</span>
+                                        <span className="text-2xl font-bold text-slate-900">৳{order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0) + order.shippingCost - (order.discount || 0) - (order.couponDiscount || 0) - (order.loyaltyDiscount || 0)}</span>
                                     </div>
                                 </div>
                                 {order.loyaltyPointsUsed > 0 && (
@@ -587,7 +769,7 @@ export default function OrderDetailsPage() {
                                     </div>
                                 </div>
                                 
-                                {order.loyaltyPointsUsed && order.loyaltyPointsUsed > 0 && (
+                                {!!order.loyaltyPointsUsed && order.loyaltyPointsUsed > 0 && (
                                     <div className="flex items-center p-4 bg-pink-50 rounded-xl border border-pink-200">
                                         <div className="p-2 bg-pink-100 rounded-lg">
                                             <Coins className="h-4 w-4 text-pink-600" />
@@ -636,15 +818,15 @@ export default function OrderDetailsPage() {
                         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
                             <h2 className="text-xl font-bold text-slate-900 mb-6">Quick Actions</h2>
                             <div className="grid grid-cols-1 gap-4">
-                                <button 
-                                    onClick={openStatusModal}
-                                    className="group flex items-center justify-center px-6 py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-xl"
-                                >
-                                    <Edit3 className="h-5 w-5 mr-3 group-hover:scale-110 transition-transform" />
-                                    <span className="font-semibold">Update Order Status</span>
-                                </button>
-                                
-                                
+                                {hasPermission('order', 'update') && (
+                                    <button 
+                                        onClick={openStatusModal}
+                                        className="group flex items-center justify-center px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-xl"
+                                    >
+                                        <Edit3 className="h-5 w-5 mr-3 group-hover:scale-110 transition-transform" />
+                                        <span className="font-semibold">Update Order Status</span>
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -689,12 +871,14 @@ export default function OrderDetailsPage() {
                                 onChange={(e) => setNewStatus(e.target.value)}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                             >
-                                <option value="pending">Pending</option>
-                                <option value="confirmed">Confirmed</option>
-                                <option value="processing">Processing</option>
-                                <option value="shipped">Shipped</option>
-                                <option value="delivered">Delivered</option>
-                                <option value="cancelled">Cancelled</option>
+                                <option value={order.status}>
+                                    {order.status.charAt(0).toUpperCase() + order.status.slice(1)} (Current)
+                                </option>
+                                {getAvailableStatusOptions(order.status).map(status => (
+                                    <option key={status} value={status}>
+                                        {status.charAt(0).toUpperCase() + status.slice(1)}
+                                    </option>
+                                ))}
                             </select>
                         </div>
 
@@ -706,7 +890,14 @@ export default function OrderDetailsPage() {
                                 Cancel
                             </button>
                             <button
-                                onClick={handleStatusUpdate}
+                                onClick={() => {
+                                    if (newStatus === 'returned') {
+                                        closeStatusModal();
+                                        openReturnModal();
+                                    } else {
+                                        handleStatusUpdate();
+                                    }
+                                }}
                                 disabled={updatingStatus || newStatus === order.status}
                                 className={`px-4 py-2 rounded-md text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
                                     updatingStatus || newStatus === order.status
@@ -716,6 +907,187 @@ export default function OrderDetailsPage() {
                             >
                                 {updatingStatus ? 'Updating...' : 'Update Status'}
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Return Items Modal */}
+            {isReturnModalOpen && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-3">
+                    <div className="bg-white rounded-lg shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+                        {/* Header - Fixed */}
+                        <div className="bg-gradient-to-r from-pink-600 to-red-500 px-4 py-3 flex-shrink-0">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-2">
+                                    <div className="bg-white/20 p-1.5 rounded-md">
+                                        <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m5 14v-5a2 2 0 00-2-2H6a2 2 0 00-2 2v5a2 2 0 002 2h12a2 2 0 002-2z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h3 className="text-base font-bold text-white">Process Return</h3>
+                                        <p className="text-pink-100 text-xs">Specify quantities for returned items</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={closeReturnModal}
+                                    className="text-white/80 hover:text-white hover:bg-white/20 p-1.5 rounded-md transition-colors"
+                                >
+                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Content - Scrollable */}
+                        <div className="flex-1 overflow-y-auto">
+                            <div className="p-3">
+                                {/* Order Info */}
+                                <div className="bg-gray-50 rounded-md p-3 mb-3">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <p className="text-xs text-gray-500 mb-1">Order ID</p>
+                                            <p className="font-semibold text-gray-900 text-sm">#{order._id.slice(-8).toUpperCase()}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-500 mb-1">Customer</p>
+                                            <p className="font-semibold text-gray-900 text-sm break-all">{order.user?.email || 'N/A'}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Instructions */}
+                                <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-3">
+                                    <div className="flex items-start space-x-2">
+                                        <svg className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        <div>
+                                            <h4 className="text-xs font-semibold text-blue-900 mb-1">Instructions</h4>
+                                            <p className="text-xs text-blue-700">
+                                                Enter the quantity of each item being returned. Only the specified quantities will be added back to inventory.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                        <div className="space-y-2 mb-3">
+                            {order.items.map((item, index) => (
+                                <div key={index} className="border border-gray-200 rounded-md p-3 bg-gray-50 hover:bg-gray-100 transition-colors">
+                                    <div className="flex items-start justify-between mb-2">
+                                        <div className="flex items-start space-x-3 flex-1">
+                                            <div className="relative flex-shrink-0">
+                                                <img
+                                                    src={item.featuredImage || item.image || '/images/placeholder.png'}
+                                                    alt={item.name}
+                                                    className="h-10 w-10 rounded-md object-cover border border-white shadow-sm"
+                                                    onError={(e) => {
+                                                        e.target.src = '/images/placeholder.png';
+                                                    }}
+                                                />
+                                                <div className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-medium">
+                                                    {item.quantity}
+                                                </div>
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <h4 className="font-semibold text-gray-900 text-sm mb-1 break-words">{item.name}</h4>
+                                                <div className="space-y-1">
+                                                    <p className="text-xs text-gray-600">
+                                                        <span className="font-medium">Price:</span> ৳{item.price.toLocaleString()} × {item.quantity} = ৳{(item.price * item.quantity).toLocaleString()}
+                                                    </p>
+                                                    {item.variant && (
+                                                        <p className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-md inline-block">
+                                                            <span className="font-medium">Variant:</span> {item.variant.name} 
+                                                            <span className="text-gray-500 ml-1">(SKU: {item.variant.sku})</span>
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="bg-white rounded-md p-2 border border-gray-200">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center space-x-2">
+                                                <label className="text-xs font-semibold text-gray-700 whitespace-nowrap">
+                                                    Return Quantity:
+                                                </label>
+                                                <div className="relative">
+                                                    <input
+                                                        type="text"
+                                                        value={returnQuantities[index] || 0}
+                                                        onChange={(e) => {
+                                                            const value = e.target.value;
+                                                            // Allow only numbers
+                                                            if (value === '' || /^\d+$/.test(value)) {
+                                                                const numValue = parseInt(value) || 0;
+                                                                handleReturnQuantityChange(index, numValue);
+                                                            }
+                                                        }}
+                                                        className="w-16 px-2 py-1 border border-gray-300 rounded-md text-center font-medium text-gray-900 focus:ring-2 focus:ring-pink-600 focus:border-pink-600 transition-colors text-sm"
+                                                        placeholder="0"
+                                                    />
+                                                </div>
+                                                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-md whitespace-nowrap">
+                                                    Max: {item.quantity}
+                                                </span>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-xs text-gray-500">Ordered</p>
+                                                <p className="font-bold text-gray-900 text-sm">{item.quantity}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                            </div>
+                        </div>
+
+                        {/* Footer - Fixed */}
+                        <div className="bg-gray-50 px-3 py-2 border-t border-gray-200 flex-shrink-0">
+                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-2 sm:space-y-0">
+                                <div className="text-xs text-gray-600 text-center sm:text-left">
+                                    <span className="font-medium">Total Items:</span> {order.items.length} | 
+                                    <span className="font-medium ml-2">Returning:</span> {Object.values(returnQuantities).filter(qty => qty > 0).length} items
+                                </div>
+                                <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+                                    <button
+                                        onClick={closeReturnModal}
+                                        className="w-full sm:w-auto px-4 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={handleReturnSubmit}
+                                        disabled={updatingStatus}
+                                        className={`w-full sm:w-auto px-4 py-1.5 rounded-md text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-600 transition-colors ${
+                                            updatingStatus
+                                                ? 'bg-gray-400 cursor-not-allowed'
+                                                : 'bg-gradient-to-r from-pink-600 to-red-500 hover:from-pink-600 hover:to-red-600 shadow-lg'
+                                        }`}
+                                    >
+                                        {updatingStatus ? (
+                                            <div className="flex items-center justify-center space-x-2">
+                                                <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                                <span>Processing...</span>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center justify-center space-x-2">
+                                                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m5 14v-5a2 2 0 00-2-2H6a2 2 0 00-2 2v5a2 2 0 002 2h12a2 2 0 002-2z" />
+                                                </svg>
+                                                <span>Process Return</span>
+                                            </div>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

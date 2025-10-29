@@ -5,16 +5,21 @@ import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Edit, Trash2, Package, Tag, Calendar, DollarSign, Star, Eye, EyeOff } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { getCookie } from 'cookies-next'
 import { productAPI } from '@/services/api'
+import PermissionDenied from '@/components/Common/PermissionDenied'
+import { useAppContext } from '@/context/AppContext'
 
 export default function ProductDetailsPage() {
     const router = useRouter()
     const params = useParams()
     const productId = params.id
+    const { hasPermission, loading: contextLoading } = useAppContext()
     
     const [product, setProduct] = useState(null)
     const [loading, setLoading] = useState(true)
     const [deleting, setDeleting] = useState(false)
+    const [permissionError, setPermissionError] = useState(null)
 
     useEffect(() => {
         fetchProduct()
@@ -23,17 +28,40 @@ export default function ProductDetailsPage() {
     const fetchProduct = async () => {
         try {
             setLoading(true)
-            const data = await productAPI.getProductById(productId)
+            const token = getCookie('token')
+            const data = await productAPI.getAdminProductById(productId, token)
             
             if (data.success) {
                 setProduct(data.data)
+                setPermissionError(null)
             } else {
-                router.push('/admin/dashboard/products')
+                // Check if it's a permission error
+                if (data.message && (
+                    data.message.toLowerCase().includes('permission') ||
+                    data.message.toLowerCase().includes('access denied') ||
+                    data.message.toLowerCase().includes("don't have permission")
+                )) {
+                    setPermissionError({
+                        message: data.message,
+                        action: 'Read Products'
+                    })
+                } else {
+                    router.push('/admin/dashboard/products')
+                }
             }
         } catch (error) {
             console.error('Error fetching product:', error)
-            toast.error('Error fetching product')
-            router.push('/admin/dashboard/products')
+            // Check if it's a 403 error (permission denied)
+            if (error.status === 403 || error.response?.status === 403) {
+                const errorMessage = error.response?.data?.message || error.message || 'You don\'t have permission to access this resource.'
+                setPermissionError({
+                    message: errorMessage,
+                    action: 'Read Products'
+                })
+            } else {
+                toast.error('Error fetching product')
+                router.push('/admin/dashboard/products')
+            }
         } finally {
             setLoading(false)
         }
@@ -85,10 +113,37 @@ export default function ProductDetailsPage() {
         )
     }
 
-    if (loading) {
+    // Check permission before showing content
+    useEffect(() => {
+        if (!contextLoading) {
+            if (!hasPermission('product', 'read')) {
+                setPermissionError({
+                    message: "You don't have permission to view products.",
+                    action: 'Read Products'
+                })
+                setLoading(false)
+            }
+        }
+    }, [contextLoading, hasPermission])
+
+    // Show permission denied if permission error exists
+    if (permissionError && !loading) {
+        return (
+            <PermissionDenied
+                title="Access Denied"
+                message={permissionError.message}
+                action={permissionError.action}
+            />
+        )
+    }
+
+    if (loading || contextLoading) {
         return (
             <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                <div className="flex items-center space-x-2">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <span className="text-gray-600">Loading product...</span>
+                </div>
             </div>
         )
     }
@@ -133,21 +188,25 @@ export default function ProductDetailsPage() {
                         </div>
                     </div>
                     <div className="flex items-center space-x-3">
-                        <Link
-                            href={`/admin/dashboard/products/${productId}/edit`}
-                            className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors duration-200"
-                        >
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit Product
-                        </Link>
-                        <button
-                            onClick={handleDeleteProduct}
-                            disabled={deleting}
-                            className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 transition-colors duration-200"
-                        >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            {deleting ? 'Deleting...' : 'Delete Product'}
-                        </button>
+                        {hasPermission('product', 'update') && (
+                            <Link
+                                href={`/admin/dashboard/products/${productId}/edit`}
+                                className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors duration-200"
+                            >
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit Product
+                            </Link>
+                        )}
+                        {hasPermission('product', 'delete') && (
+                            <button
+                                onClick={handleDeleteProduct}
+                                disabled={deleting}
+                                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 transition-colors duration-200"
+                            >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                {deleting ? 'Deleting...' : 'Delete Product'}
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
@@ -382,26 +441,32 @@ export default function ProductDetailsPage() {
                     </div>
 
                     {/* Quick Actions */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                        <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
-                        <div className="space-y-3">
-                            <Link
-                                href={`/admin/dashboard/products/${productId}/edit`}
-                                className="w-full inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                            >
-                                <Edit className="h-4 w-4 mr-2" />
-                                Edit Product
-                            </Link>
-                            <button
-                                onClick={handleDeleteProduct}
-                                disabled={deleting}
-                                className="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 disabled:opacity-50"
-                            >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                {deleting ? 'Deleting...' : 'Delete Product'}
-                            </button>
+                    {(hasPermission('product', 'update') || hasPermission('product', 'delete')) && (
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                            <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
+                            <div className="space-y-3">
+                                {hasPermission('product', 'update') && (
+                                    <Link
+                                        href={`/admin/dashboard/products/${productId}/edit`}
+                                        className="w-full inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                                    >
+                                        <Edit className="h-4 w-4 mr-2" />
+                                        Edit Product
+                                    </Link>
+                                )}
+                                {hasPermission('product', 'delete') && (
+                                    <button
+                                        onClick={handleDeleteProduct}
+                                        disabled={deleting}
+                                        className="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 disabled:opacity-50"
+                                    >
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        {deleting ? 'Deleting...' : 'Delete Product'}
+                                    </button>
+                                )}
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </div>
             </div>
         </div>

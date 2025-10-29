@@ -19,7 +19,7 @@ import ProductNotFound from '@/components/Common/ProductNotFound';
 
 
 export default function ProductDetails({ productSlug }) {
-    const { addToCart, addToWishlist, removeFromWishlist, wishlist } = useAppContext();
+    const { addToCart, addToWishlist, removeFromWishlist, wishlist, deliveryChargeSettings, deliverySettingsLoading } = useAppContext();
     const router = useRouter();
     const [selectedImage, setSelectedImage] = useState(0);
     const [quantity, setQuantity] = useState(1);
@@ -29,6 +29,8 @@ export default function ProductDetails({ productSlug }) {
     const [activeTab, setActiveTab] = useState('description');
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [showMagnify, setShowMagnify] = useState(false);
+    const [magnifyPosition, setMagnifyPosition] = useState({ x: 0, y: 0 });
 
     // Fetch product data
     useEffect(() => {
@@ -69,7 +71,7 @@ export default function ProductDetails({ productSlug }) {
                     if (sizeAttr) {
                         setSelectedSize(sizeAttr.value);
                     }
-                    
+
                     // Color is optional - only set if variant has color
                     if (colorAttr) {
                         setSelectedColor(colorAttr.value);
@@ -137,10 +139,10 @@ export default function ProductDetails({ productSlug }) {
         return product.variants.find(variant => {
             const sizeAttr = variant.attributes.find(attr => attr.name === 'Size');
             const colorAttr = variant.attributes.find(attr => attr.name === 'Color');
-            
+
             // Size must match (mandatory)
             const sizeMatches = sizeAttr?.value === selectedSize;
-            
+
             // Color matching logic:
             // 1. If variant has color and we have selectedColor, both must match
             // 2. If variant has no color and we have no selectedColor, it matches
@@ -155,7 +157,7 @@ export default function ProductDetails({ productSlug }) {
                 colorMatches = false; // We have selected color but variant has no color
             }
             // If both variant and selectedColor are null/empty, colorMatches remains true
-            
+
             return sizeMatches && colorMatches;
         });
     };
@@ -254,6 +256,27 @@ export default function ProductDetails({ productSlug }) {
         }
     };
 
+    // Custom magnify functions
+    const handleMouseEnter = () => {
+        setShowMagnify(true);
+    };
+
+    const handleMouseLeave = () => {
+        setShowMagnify(false);
+    };
+
+    const handleMouseMove = (e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        // Calculate percentage position
+        const xPercent = (x / rect.width) * 100;
+        const yPercent = (y / rect.height) * 100;
+
+        setMagnifyPosition({ x: xPercent, y: yPercent });
+    };
+
     // Calculate price from selected variant
     const getCurrentPrice = () => {
         if (selectedVariant) {
@@ -339,13 +362,47 @@ export default function ProductDetails({ productSlug }) {
                 <div className="flex flex-col lg:flex-row gap-12 mb-12">
                     {/* Product Images - Left Panel */}
                     <div className="space-y-4 lg:w-[40%]">
-                        {/* Main Image with light pink background */}
-                        <div className="aspect-square bg-[#FEF2F4] rounded overflow-hidden border border-[#E7E7E7]">
-                            <img
-                                src={getDisplayImage(selectedImage)}
-                                alt={product.title}
-                                className="w-full h-full object-cover p-2"
-                            />
+                        {/* Main Image Container with space for magnify */}
+                        <div className="relative">
+                            <div className="aspect-square bg-[#FEF2F4] rounded border border-[#E7E7E7] p-2">
+                                <div
+                                    className="relative w-full h-full cursor-crosshair"
+                                    onMouseEnter={handleMouseEnter}
+                                    onMouseLeave={handleMouseLeave}
+                                    onMouseMove={handleMouseMove}
+                                >
+                                    <img
+                                        src={getDisplayImage(selectedImage)}
+                                        alt={product.title}
+                                        className="w-full h-full object-contain"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Magnified Preview - Positioned outside on right */}
+                            {showMagnify && (
+                                <div
+                                    className="hidden lg:block absolute bg-white border-2 border-gray-300 rounded-lg overflow-hidden shadow-2xl pointer-events-none"
+                                    style={{
+                                        left: 'calc(100% + 20px)',
+                                        top: '0',
+                                        width: '100%',
+                                        height: '100%',
+                                        zIndex: 40
+                                    }}
+                                >
+                                    <div
+                                        style={{
+                                            width: '100%',
+                                            height: '100%',
+                                            backgroundImage: `url(${getDisplayImage(selectedImage)})`,
+                                            backgroundSize: '200%',
+                                            backgroundPosition: `${magnifyPosition.x}% ${magnifyPosition.y}%`,
+                                            backgroundRepeat: 'no-repeat',
+                                        }}
+                                    />
+                                </div>
+                            )}
                         </div>
 
                         {/* Thumbnail Images Slider */}
@@ -402,7 +459,7 @@ export default function ProductDetails({ productSlug }) {
                                 totalImages > 4 && (
                                     <>
                                         <div className='!h-full !m-0 ' style={{ display: "ruby-text" }}>
-                                            <button 
+                                            <button
                                                 className="swiper-button-prev absolute left-0 top-1/2 transform -translate-y-1/2 z-10 w-4  flex items-center justify-center  transition-colors"
                                                 aria-label="Previous image"
                                             >
@@ -410,7 +467,7 @@ export default function ProductDetails({ productSlug }) {
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                                                 </svg>
                                             </button>
-                                            <button 
+                                            <button
                                                 className="swiper-button-next absolute right-0 top-1/2 transform -translate-y-1/2 z-10 w-4  flex items-center justify-center  transition-colors"
                                                 aria-label="Next image"
                                             >
@@ -587,7 +644,7 @@ export default function ProductDetails({ productSlug }) {
                                     Add to cart
                                 </button>
                             )}
-                            
+
                             {/* Check if variant is out of stock for Buy Now */}
                             {selectedVariant && selectedVariant.stockQuantity <= 0 ? (
                                 <button
@@ -621,31 +678,28 @@ export default function ProductDetails({ productSlug }) {
                         <nav className="flex space-x-8">
                             <button
                                 onClick={() => setActiveTab('description')}
-                                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                                    activeTab === 'description'
-                                        ? 'border-pink-500 text-pink-600'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                }`}
+                                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'description'
+                                    ? 'border-pink-500 text-pink-600'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                    }`}
                             >
                                 Description
                             </button>
                             <button
                                 onClick={() => setActiveTab('additional')}
-                                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                                    activeTab === 'additional'
-                                        ? 'border-pink-500 text-pink-600'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                }`}
+                                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'additional'
+                                    ? 'border-pink-500 text-pink-600'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                    }`}
                             >
                                 Additional Information
                             </button>
                             <button
                                 onClick={() => setActiveTab('delivery')}
-                                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                                    activeTab === 'delivery'
-                                        ? 'border-pink-500 text-pink-600'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                }`}
+                                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'delivery'
+                                    ? 'border-pink-500 text-pink-600'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                    }`}
                             >
                                 Delivery & Return
                             </button>
@@ -667,8 +721,8 @@ export default function ProductDetails({ productSlug }) {
                                         )}
                                     </div>
                                 </div>
-                                
-                                
+
+
                             </div>
                         )}
 
@@ -758,8 +812,24 @@ export default function ProductDetails({ productSlug }) {
                                     </h4>
                                     <div className="text-sm text-gray-600 space-y-2">
                                         <p>• <strong>Delivery Time:</strong> 3-5 business days from order confirmation</p>
-                                        <p>• <strong>Delivery Charge:</strong> Must be paid upfront with order</p>
-                                        <p>• <strong>Free Delivery:</strong> Available for select products (admin will notify during order confirmation)</p>
+                                        
+                                        {/* Dynamic Delivery Charges */}
+                                        {deliverySettingsLoading ? (
+                                            <p>• <strong>Delivery Charges:</strong> Loading...</p>
+                                        ) : deliveryChargeSettings ? (
+                                            <>
+                                                <p>• <strong>Delivery Charges:</strong></p>
+                                                <div className="ml-4 space-y-1">
+                                                    <p>  - Inside Dhaka: ৳{deliveryChargeSettings.insideDhaka}</p>
+                                                    <p>  - Sub Dhaka: ৳{deliveryChargeSettings.subDhaka}</p>
+                                                    <p>  - Outside Dhaka: ৳{deliveryChargeSettings.outsideDhaka}</p>
+                                                    <p>  - <strong>Free Delivery:</strong> Orders above ৳{deliveryChargeSettings.shippingFreeRequiredAmount}</p>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <p>• <strong>Delivery Charge:</strong> Must be paid upfront with order</p>
+                                        )}
+                                        
                                         <p>• <strong>Tracking:</strong> You will receive tracking information via SMS/Email</p>
                                         <p>• <strong>Delivery Areas:</strong> We deliver across Bangladesh</p>
                                         {product.shippingInfo?.weight && (
@@ -771,39 +841,6 @@ export default function ProductDetails({ productSlug }) {
                                     </div>
                                 </div>
 
-                                {/* Return Info */}
-                                <div className="space-y-3 pt-4 border-t border-gray-100">
-                                    <h4 className="font-semibold text-gray-900 flex items-center gap-2">
-                                        <svg className="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 15v-1a4 4 0 00-4-4H8m0 0l3 3m-3-3l3-3m9 14V5a2 2 0 00-2-2H6a2 2 0 00-2 2v16l4-2 4 2 4-2 4 2z" />
-                                        </svg>
-                                        Return & Exchange Policy
-                                    </h4>
-                                    <div className="bg-orange-50 p-3 rounded-lg">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <svg className="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                            <span className="text-sm font-medium text-orange-800">7 Days Return</span>
-                                        </div>
-                                        <p className="text-xs text-orange-700">Easy return and exchange process</p>
-                                    </div>
-                                    <div className="text-sm text-gray-600 space-y-2">
-                                        {product.returnPolicy ? (
-                                            <div dangerouslySetInnerHTML={{ __html: product.returnPolicy.replace(/\n/g, '<br/>') }} />
-                                        ) : (
-                                            <>
-                                                <p>• <strong>Return Period:</strong> 7 days from delivery date</p>
-                                                <p>• <strong>Condition:</strong> Product must be unused and in original packaging</p>
-                                                <p>• <strong>Processing Time:</strong> 3-5 working days for refund processing</p>
-                                                <p>• <strong>Return Shipping:</strong> Customer responsible for return shipping costs</p>
-                                                <p>• <strong>Refund Method:</strong> Refund will be processed to original payment method</p>
-                                                <p>• <strong>Exchange:</strong> Available for size/color issues within return period</p>
-                                                <p>• <strong>Defective Items:</strong> Free return shipping for defective or damaged products</p>
-                                            </>
-                                        )}
-                                    </div>
-                                </div>
                             </div>
                         )}
                     </div>
@@ -848,4 +885,3 @@ export default function ProductDetails({ productSlug }) {
         </div>
     );
 }
-

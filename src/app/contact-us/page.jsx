@@ -8,7 +8,13 @@ import {
     Clock, 
     Send,
     User,
-    MessageSquare
+    MessageSquare,
+    Facebook,
+    Twitter,
+    Instagram,
+    Linkedin,
+    Youtube,
+    Github
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Footer from '@/components/Footer/Footer'
@@ -22,6 +28,58 @@ export default function ContactUsPage() {
         subject: '',
         message: ''
     })
+
+    // Dynamic social media data
+    const socialLinks = [
+        {
+            name: 'Facebook',
+            url: 'https://facebook.com/goldecommerce',
+            icon: Facebook,
+            color: 'bg-blue-600',
+            followers: '25.2K',
+            description: 'Follow us for updates'
+        },
+        {
+            name: 'Instagram',
+            url: 'https://instagram.com/goldecommerce',
+            icon: Instagram,
+            color: 'bg-pink-600',
+            followers: '18.7K',
+            description: 'See our latest products'
+        },
+        {
+            name: 'Twitter',
+            url: 'https://twitter.com/goldecommerce',
+            icon: Twitter,
+            color: 'bg-blue-400',
+            followers: '12.3K',
+            description: 'Get news and updates'
+        },
+        {
+            name: 'LinkedIn',
+            url: 'https://linkedin.com/company/goldecommerce',
+            icon: Linkedin,
+            color: 'bg-blue-700',
+            followers: '8.9K',
+            description: 'Connect professionally'
+        },
+        {
+            name: 'YouTube',
+            url: 'https://youtube.com/goldecommerce',
+            icon: Youtube,
+            color: 'bg-red-600',
+            followers: '15.6K',
+            description: 'Watch our tutorials'
+        },
+        {
+            name: 'GitHub',
+            url: 'https://github.com/goldecommerce',
+            icon: Github,
+            color: 'bg-gray-800',
+            followers: '2.1K',
+            description: 'View our code'
+        }
+    ]
 
     const handleInputChange = (e) => {
         const { name, value } = e.target
@@ -57,15 +115,14 @@ export default function ContactUsPage() {
 
     return (
         <div className="min-h-screen bg-gray-50">
-
+            
             {/* Main Content */}
-            <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto px-4 py-12">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* Contact Form */}
-                    <div className="bg-white h-fit rounded-2xl shadow-lg border border-gray-300 p-8">
-                        <h2 className="text-2xl text-center font-bold text-gray-900 mb-6">
-                            Send us a message
-                        </h2>
+            <div className="max-w-4xl mx-auto px-4 py-12">
+                {/* Contact Form - Centered */}
+                <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8 mb-12">
+                    <h2 className="text-2xl text-center font-bold text-gray-900 mb-6">
+                        Send us a message
+                    </h2>
                         
                         <form onSubmit={handleSubmit} className="space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -184,91 +241,100 @@ export default function ContactUsPage() {
                                 )}
                             </button>
                         </form>
-                    </div>
+                </div>
 
-                    {/* Contact Information */}
-                    <div className="space-y-8">
-                        {/* Contact Info Cards */}
-                        <div className="space-y-6">
-                            
-                            
-                            <div className="space-y-4">
-                                <div className="bg-white border border-gray-300 rounded-xl shadow-lg p-6">
-                                    <div className="flex items-start">
-                                        <div className="flex-shrink-0">
-                                            <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                                                <Mail className="h-6 w-6 text-blue-600" />
-                                            </div>
-                                        </div>
-                                        <div className="ml-4">
-                                            <h3 className="text-lg font-semibold text-gray-900">Email</h3>
-                                            <p className="text-gray-600">support@goldecommerce.com</p>
-                                            <p className="text-gray-600">info@goldecommerce.com</p>
+                {/* Contact Information - Below Form */}
+                <div className="space-y-8">
+                    {/* Contact Info Cards */}
+                    <div className="space-y-6">
+                        <div className="space-y-4">
+                            <div className="bg-white border border-gray-300 rounded-xl shadow-lg p-6">
+                                <div className="flex items-start">
+                                    <div className="flex-shrink-0">
+                                        <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                                            <Mail className="h-6 w-6 text-blue-600" />
                                         </div>
                                     </div>
-                                </div>
-
-                                <div className="bg-white rounded-xl shadow-lg border border-gray-300 p-6">
-                                    <div className="flex items-start">
-                                        <div className="flex-shrink-0">
-                                            <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                                                <Phone className="h-6 w-6 text-green-600" />
-                                            </div>
-                                        </div>
-                                        <div className="ml-4">
-                                            <h3 className="text-lg font-semibold text-gray-900">Phone</h3>
-                                            <p className="text-gray-600">+1 (555) 123-4567</p>
-                                            <p className="text-gray-600">+1 (555) 987-6543</p>
-                                        </div>
+                                    <div className="ml-4">
+                                        <h3 className="text-lg font-semibold text-gray-900">Email</h3>
+                                        <p className="text-gray-600">support@goldecommerce.com</p>
+                                        <p className="text-gray-600">info@goldecommerce.com</p>
                                     </div>
                                 </div>
+                            </div>
 
-                                <div className="bg-white rounded-xl shadow-lg border border-gray-300 p-6">
-                                    <div className="flex items-start">
-                                        <div className="flex-shrink-0">
-                                            <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                                                <MapPin className="h-6 w-6 text-purple-600" />
-                                            </div>
-                                        </div>
-                                        <div className="ml-4">
-                                            <h3 className="text-lg font-semibold text-gray-900">Address</h3>
-                                            <p className="text-gray-600">
-                                                123 Commerce Street<br />
-                                                Business District<br />
-                                                New York, NY 10001<br />
-                                                United States
-                                            </p>
+                            <div className="bg-white rounded-xl shadow-lg border border-gray-300 p-6">
+                                <div className="flex items-start">
+                                    <div className="flex-shrink-0">
+                                        <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                                            <Phone className="h-6 w-6 text-green-600" />
                                         </div>
                                     </div>
+                                    <div className="ml-4">
+                                        <h3 className="text-lg font-semibold text-gray-900">Phone</h3>
+                                        <p className="text-gray-600">+1 (555) 123-4567</p>
+                                        <p className="text-gray-600">+1 (555) 987-6543</p>
+                                    </div>
                                 </div>
+                            </div>
 
-                                <div className="bg-white rounded-xl shadow-lg border border-gray-300 p-6">
-                                    <div className="flex items-start">
-                                        <div className="flex-shrink-0">
-                                            <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
-                                                <Clock className="h-6 w-6 text-orange-600" />
-                                            </div>
+                            <div className="bg-white rounded-xl shadow-lg border border-gray-300 p-6">
+                                <div className="flex items-start">
+                                    <div className="flex-shrink-0">
+                                        <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                                            <MapPin className="h-6 w-6 text-purple-600" />
                                         </div>
-                                        <div className="ml-4">
-                                            <h3 className="text-lg font-semibold text-gray-900">Business Hours</h3>
-                                            <p className="text-gray-600">Monday - Friday: 9:00 AM - 6:00 PM</p>
-                                            <p className="text-gray-600">Saturday: 10:00 AM - 4:00 PM</p>
-                                            <p className="text-gray-600">Sunday: Closed</p>
+                                    </div>
+                                    <div className="ml-4">
+                                        <h3 className="text-lg font-semibold text-gray-900">Address</h3>
+                                        <p className="text-gray-600">
+                                            123 Commerce Street<br />
+                                            Business District<br />
+                                            New York, NY 10001<br />
+                                            United States
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-white rounded-xl shadow-lg border border-gray-300 p-6">
+                                <div className="flex items-start">
+                                    <div className="flex-shrink-0">
+                                        <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+                                            <Clock className="h-6 w-6 text-orange-600" />
                                         </div>
+                                    </div>
+                                    <div className="ml-4">
+                                        <h3 className="text-lg font-semibold text-gray-900">Business Hours</h3>
+                                        <p className="text-gray-600">Monday - Friday: 9:00 AM - 6:00 PM</p>
+                                        <p className="text-gray-600">Saturday: 10:00 AM - 4:00 PM</p>
+                                        <p className="text-gray-600">Sunday: Closed</p>
                                     </div>
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        {/* Map Placeholder */}
-                        <div className="bg-white rounded-xl shadow-lg border border-gray-300 p-6">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Our Location</h3>
-                            <div className="bg-gray-200 rounded-xl h-64 flex items-center justify-center">
-                                <div className="text-center">
-                                    <MapPin className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-                                    <p className="text-gray-500">Interactive Map Coming Soon</p>
-                                </div>
-                            </div>
+                    {/* Social Media Links */}
+                    <div className="bg-white rounded-xl shadow-lg border border-gray-300 p-6">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">Follow Us on Social Media</h3>
+                        <div className="flex justify-center items-center space-x-4">
+                            {socialLinks.map((social, index) => {
+                                const IconComponent = social.icon
+                                return (
+                                    <a
+                                        key={index}
+                                        href={social.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="group"
+                                    >
+                                        <div className={`w-10 h-10 ${social.color} rounded-full flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
+                                            <IconComponent className="h-5 w-5 text-white" />
+                                        </div>
+                                    </a>
+                                )
+                            })}
                         </div>
                     </div>
                 </div>

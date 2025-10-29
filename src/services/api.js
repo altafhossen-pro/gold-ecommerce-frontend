@@ -18,9 +18,25 @@ const apiCall = async (endpoint, options = {}) => {
         
         const response = await fetch(`${API_BASE_URL}${endpoint}`, requestOptions);
         const data = await response.json();
+        
+        // Include status code in response for error handling
+        if (!response.ok) {
+            const error = new Error(data.message || 'Request failed');
+            error.status = response.status;
+            error.response = { data, status: response.status };
+            throw error;
+        }
+        
         return data;
     } catch (error) {
-        throw error;
+        // Re-throw with status if it's a fetch error
+        if (error.status || error.response) {
+            throw error;
+        }
+        // For network errors, throw with 500 status
+        const networkError = new Error(error.message || 'Network error');
+        networkError.status = 500;
+        throw networkError;
     }
 };
 
@@ -95,11 +111,15 @@ export const productAPI = {
         return apiCall(`/product/similar/${productId}?limit=${limit}&minRequired=${minRequired}`);
     },
 
-    // Admin: Create new product
-    createProduct: (productData) => {
+    // Admin: Create product
+    createProduct: (productData, token) => {
         return apiCall('/product', {
             method: 'POST',
             body: JSON.stringify(productData),
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
         });
     },
 
@@ -119,6 +139,35 @@ export const productAPI = {
     deleteProduct: (id) => {
         return apiCall(`/product/${id}`, {
             method: 'DELETE',
+        });
+    },
+
+    // Admin: Get all products with search, filter, and pagination
+    getAdminProducts: (params = {}, token) => {
+        const queryParams = new URLSearchParams();
+        Object.keys(params).forEach(key => {
+            if (params[key] !== undefined && params[key] !== null && params[key] !== '') {
+                queryParams.append(key, params[key]);
+            }
+        });
+        const queryString = queryParams.toString();
+        const url = `/product/admin/list${queryString ? `?${queryString}` : ''}`;
+        return apiCall(url, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+    },
+
+    // Admin: Get single product by ID (with permission check)
+    getAdminProductById: (id, token) => {
+        return apiCall(`/product/admin/${id}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
         });
     },
 };
@@ -493,26 +542,81 @@ export const orderAPI = {
         });
     },
 
-    // Get admin orders (for admin dashboard)
-    getAdminOrders: (token, queryParams = '') => {
-        const url = queryParams ? `/order?${queryParams}` : '/order';
-        return apiCall(url, {
+    // Search orders by phone number
+    searchOrdersByPhone: (phoneNumber, token) => {
+        return apiCall(`/order/search-by-phone/${phoneNumber}`, {
             headers: {
                 'Authorization': `Bearer ${token}`,
             },
         });
     },
 
-    // Get admin order details
-    getAdminOrderDetails: (orderId) => {
-        return apiCall(`/order/${orderId}`);
+    // Get customer info by phone number (unified API)
+    getCustomerInfoByPhone: (phoneNumber, token) => {
+        return apiCall(`/order/get-customer-info/${phoneNumber}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
     },
 
-    // Update order status (for admin)
-    updateOrderStatus: (orderId, status) => {
+    // Get admin orders (for admin dashboard)
+    // Admin: Get all orders with filtering and pagination
+    getAdminOrders: (token, queryParams = '') => {
+        const url = queryParams ? `/order/admin/list?${queryParams}` : '/order/admin/list';
+        return apiCall(url, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+    },
+
+    // Get admin order details
+    // Admin: Get order details
+    getAdminOrderDetails: (orderId, token) => {
+        return apiCall(`/order/${orderId}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+    },
+
+    // Admin: Update order status
+    updateOrderStatus: (orderId, updateData, token) => {
         return apiCall(`/order/${orderId}`, {
             method: 'PATCH',
-            body: JSON.stringify({ status }),
+            body: JSON.stringify(updateData),
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+    },
+
+    // Admin: Delete order (soft delete)
+    deleteOrder: (orderId, token) => {
+        return apiCall(`/order/${orderId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+    },
+
+    // Comprehensive order update (for admin)
+    updateOrderComprehensive: (orderId, updateData, token) => {
+        return apiCall(`/order/${orderId}/comprehensive`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(updateData),
         });
     },
 
@@ -1218,6 +1322,12 @@ export const couponAPI = {
         });
     },
 
+    // Get public coupons (Public - no authentication required)
+    getPublicCoupons: (params = {}) => {
+        const queryString = new URLSearchParams(params).toString();
+        return apiCall(`/coupon/public?${queryString}`);
+    },
+
     // Validate coupon code (Public)
     validateCoupon: (code, orderAmount) => {
         return apiCall('/coupon/validate', {
@@ -1511,6 +1621,82 @@ export const upsellAPI = {
     },
 };
 
+// Role API functions
+export const roleAPI = {
+    // Get all roles with pagination
+    getRoles: (params = {}, token) => {
+        const queryParams = new URLSearchParams();
+        Object.keys(params).forEach(key => {
+            if (params[key] !== undefined && params[key] !== null && params[key] !== '') {
+                queryParams.append(key, params[key]);
+            }
+        });
+        const queryString = queryParams.toString();
+        return apiCall(`/admin/role?${queryString}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+    },
+
+    // Get single role by ID
+    getRoleById: (id, token) => {
+        return apiCall(`/admin/role/${id}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+    },
+
+    // Get all permissions
+    getPermissions: (category = null, token) => {
+        const params = category ? `?category=${category}` : '';
+        return apiCall(`/admin/role/permissions${params}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+    },
+
+    // Create new role
+    createRole: (roleData, token) => {
+        return apiCall('/admin/role', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(roleData),
+        });
+    },
+
+    // Update role
+    updateRole: (id, roleData, token) => {
+        return apiCall(`/admin/role/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(roleData),
+        });
+    },
+
+    // Delete role
+    deleteRole: (id, token) => {
+        return apiCall(`/admin/role/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+    },
+};
+
 export default {
     productAPI,
     categoryAPI,
@@ -1532,5 +1718,6 @@ export default {
     couponAPI,
     inventoryAPI,
     upsellAPI,
+    roleAPI,
     transformProductData,
 };

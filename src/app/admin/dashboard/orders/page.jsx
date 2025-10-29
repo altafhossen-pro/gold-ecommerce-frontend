@@ -7,21 +7,29 @@ import toast from 'react-hot-toast';
 import { formatDateForTable } from '@/utils/formatDate';
 import { orderAPI } from '@/services/api';
 import { getCookie } from 'cookies-next';
+import PermissionDenied from '@/components/Common/PermissionDenied';
+import { useAppContext } from '@/context/AppContext';
+import DeleteConfirmationModal from '@/components/Common/DeleteConfirmationModal';
 
 export default function AdminOrdersPage() {
+    const { hasPermission, loading: contextLoading } = useAppContext();
     const [orders, setOrders] = useState([]);
     const [filteredOrders, setFilteredOrders] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [permissionError, setPermissionError] = useState(null);
     const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [newStatus, setNewStatus] = useState('');
     const [updatingStatus, setUpdatingStatus] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [orderToDelete, setOrderToDelete] = useState(null);
+    const [deleting, setDeleting] = useState(false);
     
     // Filter states
     const [filters, setFilters] = useState({
         orderId: '',
-        email: '',
-        phone: '',
+        email: '', // Separate email filter
+        phone: '', // Separate phone filter
         status: 'all'
     });
     
@@ -36,35 +44,67 @@ export default function AdminOrdersPage() {
     });
 
     useEffect(() => {
-        fetchOrders();
-    }, [pagination.currentPage, pagination.itemsPerPage]);
+        // Check permission first
+        if (!contextLoading) {
+            if (!hasPermission('order', 'read')) {
+                setPermissionError({
+                    message: "You don't have permission to view orders.",
+                    action: 'Read Orders'
+                });
+                setLoading(false);
+            } else {
+                fetchOrders();
+            }
+        }
+    }, [contextLoading, hasPermission, pagination.currentPage, pagination.itemsPerPage]);
 
-    // Filter orders whenever filters change
+    // Refetch orders when any filter changes (debounced)
     useEffect(() => {
-        filterOrders();
-    }, [orders, filters]);
+        const timeoutId = setTimeout(() => {
+            fetchOrders();
+        }, 500); // 500ms debounce
+
+        return () => clearTimeout(timeoutId);
+    }, [filters.orderId, filters.email, filters.phone, filters.status, pagination.currentPage, pagination.itemsPerPage]);
 
     const fetchOrders = async () => {
         try {
             const token = getCookie('token');
             setLoading(true);
             
-            // Build query parameters
+            // Build query parameters - all filtering done server-side
             const params = new URLSearchParams({
                 page: pagination.currentPage.toString(),
                 limit: pagination.itemsPerPage.toString()
             });
             
             // Add status filter if not 'all'
-            if (filters.status !== 'all') {
+            if (filters.status && filters.status !== 'all') {
                 params.append('status', filters.status);
+            }
+            
+            // Add Order ID filter
+            if (filters.orderId && filters.orderId.trim()) {
+                params.append('orderId', filters.orderId.trim());
+            }
+            
+            // Add email filter
+            if (filters.email && filters.email.trim()) {
+                params.append('email', filters.email.trim());
+            }
+            
+            // Add phone filter
+            if (filters.phone && filters.phone.trim()) {
+                params.append('phone', filters.phone.trim());
             }
             
             const data = await orderAPI.getAdminOrders(token, params.toString());
             
             if (data.success) {
+                // Server-side filtering - directly use returned data
                 setOrders(data.data);
-                setFilteredOrders(data.data);
+                setFilteredOrders(data.data); // Server has already filtered
+                setPermissionError(null);
                 
                 // Update pagination info
                 if (data.pagination) {
@@ -74,44 +114,38 @@ export default function AdminOrdersPage() {
                     }));
                 }
             } else {
-                toast.error('Failed to fetch orders');
+                // Check if it's a permission error
+                if (data.message && (
+                    data.message.toLowerCase().includes('permission') ||
+                    data.message.toLowerCase().includes('access denied') ||
+                    data.message.toLowerCase().includes("don't have permission")
+                )) {
+                    setPermissionError({
+                        message: data.message,
+                        action: 'Read Orders'
+                    });
+                } else {
+                    toast.error('Failed to fetch orders');
+                }
             }
         } catch (error) {
-            toast.error('Error fetching orders');
+            console.error('Error fetching orders:', error);
+            // Check if it's a 403 error (permission denied)
+            if (error.status === 403 || error.response?.status === 403) {
+                const errorMessage = error.response?.data?.message || error.message || 'You don\'t have permission to access this resource.';
+                setPermissionError({
+                    message: errorMessage,
+                    action: 'Read Orders'
+                });
+            } else {
+                toast.error('Error fetching orders');
+            }
         } finally {
             setLoading(false);
         }
     };
 
-    const filterOrders = () => {
-        let filtered = orders;
-
-        // Client-side filtering for Order ID, Email, and Phone (only on current page)
-        // Status filtering is handled server-side
-        
-        // Filter by Order ID
-        if (filters.orderId) {
-            filtered = filtered.filter(order => 
-                (order.orderId || order._id.slice(-8).toUpperCase()).toLowerCase().includes(filters.orderId.toLowerCase())
-            );
-        }
-
-        // Filter by Email
-        if (filters.email) {
-            filtered = filtered.filter(order => 
-                order.user?.email?.toLowerCase().includes(filters.email.toLowerCase())
-            );
-        }
-
-        // Filter by Phone
-        if (filters.phone) {
-            filtered = filtered.filter(order => 
-                order.user?.phone?.includes(filters.phone)
-            );
-        }
-
-        setFilteredOrders(filtered);
-    };
+    // No client-side filtering needed - all filtering done server-side
 
     const handleFilterChange = (key, value) => {
         setFilters(prev => ({
@@ -189,7 +223,38 @@ export default function AdminOrdersPage() {
     };
 
     const handleDeleteOrder = (orderId) => {
-        toast.error('Admin cannot delete orders. Please contact system administrator.');
+        const order = orders.find(o => o._id === orderId);
+        setOrderToDelete(order);
+        setShowDeleteModal(true);
+    };
+
+    const confirmDeleteOrder = async () => {
+        if (!orderToDelete) return;
+
+        try {
+            setDeleting(true);
+            const token = getCookie('token');
+            const data = await orderAPI.deleteOrder(orderToDelete._id, token);
+
+            if (data.success) {
+                toast.success('Order deleted successfully!');
+                setShowDeleteModal(false);
+                setOrderToDelete(null);
+                // Refresh orders list
+                fetchOrders();
+            } else {
+                toast.error(data.message || 'Failed to delete order');
+            }
+        } catch (error) {
+            console.error('Error deleting order:', error);
+            if (error.status === 403 || error.response?.status === 403) {
+                toast.error("You don't have permission to delete orders");
+            } else {
+                toast.error('Error deleting order');
+            }
+        } finally {
+            setDeleting(false);
+        }
     };
 
     const openStatusModal = (order) => {
@@ -228,9 +293,16 @@ export default function AdminOrdersPage() {
             return;
         }
 
+        if (!hasPermission('order', 'update')) {
+            toast.error("You don't have permission to update orders");
+            closeStatusModal();
+            return;
+        }
+
         try {
             setUpdatingStatus(true);
-            const response = await orderAPI.updateOrderStatus(selectedOrder._id, newStatus);
+            const token = getCookie('token');
+            const response = await orderAPI.updateOrderStatus(selectedOrder._id, { status: newStatus }, token);
             
             if (response.success) {
                 toast.success('Order status updated successfully');
@@ -247,19 +319,29 @@ export default function AdminOrdersPage() {
                 toast.error(response.message || 'Failed to update order status');
             }
         } catch (error) {
-            toast.error('Error updating order status');
+            console.error('Error updating order status:', error);
+            if (error.status === 403 || error.response?.status === 403) {
+                toast.error("You don't have permission to update orders");
+            } else {
+                toast.error('Error updating order status');
+            }
         } finally {
             setUpdatingStatus(false);
         }
     };
 
-    if (loading) {
+    // Show permission denied if permission error exists
+    if (permissionError && !loading) {
         return (
-            <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            </div>
+            <PermissionDenied
+                title="Access Denied"
+                message={permissionError.message}
+                action={permissionError.action}
+            />
         );
     }
+
+    // Show loading only in table area, not full page
 
     return (
         <div className="space-y-6">
@@ -291,13 +373,16 @@ export default function AdminOrdersPage() {
                         {/* Email Filter */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Customer Email
+                                Email
                             </label>
                             <input
                                 type="email"
                                 placeholder="Search by email..."
                                 value={filters.email}
-                                onChange={(e) => handleFilterChange('email', e.target.value)}
+                                onChange={(e) => {
+                                    handleFilterChange('email', e.target.value);
+                                    setPagination(prev => ({ ...prev, currentPage: 1 }));
+                                }}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                             />
                         </div>
@@ -305,13 +390,16 @@ export default function AdminOrdersPage() {
                         {/* Phone Filter */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Customer Phone
+                                Phone
                             </label>
                             <input
                                 type="tel"
                                 placeholder="Search by phone..."
                                 value={filters.phone}
-                                onChange={(e) => handleFilterChange('phone', e.target.value)}
+                                onChange={(e) => {
+                                    handleFilterChange('phone', e.target.value);
+                                    setPagination(prev => ({ ...prev, currentPage: 1 }));
+                                }}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                             />
                         </div>
@@ -348,7 +436,16 @@ export default function AdminOrdersPage() {
                     </div>
                 </div>
                 
-                {filteredOrders.length === 0 ? (
+                {loading || contextLoading ? (
+                    <div className="p-8 text-center">
+                        <div className="flex items-center justify-center">
+                            <div className="flex items-center space-x-2">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                                <span className="text-gray-600">Loading orders...</span>
+                            </div>
+                        </div>
+                    </div>
+                ) : filteredOrders.length === 0 ? (
                     <div className="p-8 text-center">
                         <Package className="mx-auto h-12 w-12 text-gray-400" />
                         <h3 className="mt-2 text-sm font-medium text-gray-900">
@@ -371,7 +468,7 @@ export default function AdminOrdersPage() {
                                     </th>
                                     
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Email
+                                        Email/Phone
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Date
@@ -406,7 +503,9 @@ export default function AdminOrdersPage() {
                                             <div className="flex items-center">
                                                 <Mail className="h-4 w-4 text-gray-400 mr-2" />
                                                 <div className="text-sm text-gray-900">
-                                                    {order.user?.email || 'N/A'}
+                                                    {order.orderType === 'manual' && order.manualOrderInfo?.phone 
+                                                        ? order.manualOrderInfo.phone 
+                                                        : order.user?.email || 'N/A'}
                                                 </div>
                                             </div>
                                         </td>
@@ -465,27 +564,42 @@ export default function AdminOrdersPage() {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                             <div className="flex items-center space-x-2">
-                                                <Link
-                                                    href={`/admin/dashboard/orders/${order._id}`}
-                                                    className="inline-flex items-center px-3 py-1.5 border border-blue-300 shadow-sm text-xs font-medium rounded-md text-blue-700 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                                                >
-                                                    <Eye className="h-3 w-3 mr-1" />
-                                                    View
-                                                </Link>
-                                                <button
-                                                    onClick={() => openStatusModal(order)}
-                                                    className="inline-flex items-center px-3 py-1.5 border border-green-300 shadow-sm text-xs font-medium rounded-md text-green-700 bg-white hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                                                >
-                                                    <Edit className="h-3 w-3 mr-1" />
-                                                    Status
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDeleteOrder(order._id)}
-                                                    className="inline-flex items-center px-3 py-1.5 border border-red-300 shadow-sm text-xs font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                                                >
-                                                    <Trash2 className="h-3 w-3 mr-1" />
-                                                    Delete
-                                                </button>
+                                                {hasPermission('order', 'read') && (
+                                                    <Link
+                                                        href={`/admin/dashboard/orders/${order._id}`}
+                                                        className="inline-flex items-center px-3 py-1.5 border border-blue-300 shadow-sm text-xs font-medium rounded-md text-blue-700 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                                    >
+                                                        <Eye className="h-3 w-3 mr-1" />
+                                                        View
+                                                    </Link>
+                                                )}
+                                                {hasPermission('order', 'update') && (
+                                                    <>
+                                                        <Link
+                                                            href={`/admin/dashboard/orders/${order._id}/edit`}
+                                                            className="inline-flex items-center px-3 py-1.5 border border-purple-300 shadow-sm text-xs font-medium rounded-md text-purple-700 bg-white hover:bg-purple-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+                                                        >
+                                                            <Edit className="h-3 w-3 mr-1" />
+                                                            Edit
+                                                        </Link>
+                                                        <button
+                                                            onClick={() => openStatusModal(order)}
+                                                            className="inline-flex items-center px-3 py-1.5 border border-green-300 shadow-sm text-xs font-medium rounded-md text-green-700 bg-white hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                                                        >
+                                                            <Edit className="h-3 w-3 mr-1" />
+                                                            Status
+                                                        </button>
+                                                    </>
+                                                )}
+                                                {hasPermission('order', 'delete') && (
+                                                    <button
+                                                        onClick={() => handleDeleteOrder(order._id)}
+                                                        className="inline-flex items-center px-3 py-1.5 border border-red-300 shadow-sm text-xs font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                                                    >
+                                                        <Trash2 className="h-3 w-3 mr-1" />
+                                                        Delete
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
@@ -651,6 +765,24 @@ export default function AdminOrdersPage() {
                     </div>
                 </div>
             )}
+
+            {/* Delete Confirmation Modal */}
+            <DeleteConfirmationModal
+                isOpen={showDeleteModal}
+                onClose={() => {
+                    setShowDeleteModal(false);
+                    setOrderToDelete(null);
+                }}
+                onConfirm={confirmDeleteOrder}
+                title="Delete Order"
+                message="Are you sure you want to delete this order? This will soft delete the order (mark as deleted). It will not appear in any lists but will remain in the database."
+                itemName={orderToDelete ? `Order #${orderToDelete.orderId || orderToDelete._id.slice(-8).toUpperCase()}` : ''}
+                itemType="order"
+                isLoading={deleting}
+                confirmText="Delete Order"
+                cancelText="Cancel"
+                dangerLevel="high"
+            />
         </div>
     );
 }

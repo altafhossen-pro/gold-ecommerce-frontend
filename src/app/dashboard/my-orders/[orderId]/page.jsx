@@ -442,7 +442,12 @@ export default function OrderDetails() {
                                         <div className="space-y-2">
                                             <div className="flex justify-between text-sm">
                                                 <span className="text-gray-600">Subtotal</span>
-                                                <span className="text-gray-900">৳{order.total.toLocaleString()}</span>
+                                                <span className="text-gray-900">৳{order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0).toLocaleString()}</span>
+                                            </div>
+                                            
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-gray-600">Shipping</span>
+                                                <span className="text-gray-900">৳{order.shippingCost.toLocaleString()}</span>
                                             </div>
                                             {order.couponDiscount > 0 && (
                                                 <div className="flex justify-between text-sm">
@@ -462,14 +467,10 @@ export default function OrderDetails() {
                                                     <span className="text-pink-600">-৳{order.loyaltyDiscount.toLocaleString()}</span>
                                                 </div>
                                             )}
-                                            <div className="flex justify-between text-sm">
-                                                <span className="text-gray-600">Shipping</span>
-                                                <span className="text-gray-900">৳{order.shippingCost.toLocaleString()}</span>
-                                            </div>
                                             <div className="border-t border-gray-300 pt-2">
                                                 <div className="flex justify-between text-base font-bold">
                                                     <span className="text-gray-900">Total</span>
-                                                    <span className="text-pink-600">৳{(order.total + order.shippingCost - (order.discount || 0) - (order.loyaltyDiscount || 0) - (order.couponDiscount || 0)).toLocaleString()}</span>
+                                                    <span className="text-pink-600">৳{order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0) + order.shippingCost - (order.discount || 0) - (order.loyaltyDiscount || 0) - (order.couponDiscount || 0)}</span>
                                                 </div>
                                             </div>
                                             {order.loyaltyPointsUsed > 0 && (

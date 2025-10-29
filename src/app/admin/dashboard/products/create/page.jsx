@@ -8,10 +8,15 @@ import ImageUpload from '@/components/Common/ImageUpload'
 import GalleryImageUpload from '@/components/Common/GalleryImageUpload'
 import toast from 'react-hot-toast'
 import { productAPI, categoryAPI } from '@/services/api'
+import PermissionDenied from '@/components/Common/PermissionDenied'
+import { useAppContext } from '@/context/AppContext'
+import { getCookie } from 'cookies-next'
 
 export default function CreateProductPage() {
     const router = useRouter()
+    const { hasPermission, permissions, loading: contextLoading } = useAppContext()
     const [loading, setLoading] = useState(false)
+    const [checkingPermission, setCheckingPermission] = useState(true)
     const [categories, setCategories] = useState([])
     const [formData, setFormData] = useState({
         title: '',
@@ -52,10 +57,19 @@ export default function CreateProductPage() {
 
     const [customBraceletSize, setCustomBraceletSize] = useState('');
     const [customRingSize, setCustomRingSize] = useState('');
+    const [tagInput, setTagInput] = useState('');
 
     useEffect(() => {
-        fetchCategories()
-    }, [])
+        // Check permission first
+        if (!contextLoading) {
+            if (!hasPermission('product', 'create')) {
+                setCheckingPermission(false)
+            } else {
+                setCheckingPermission(false)
+                fetchCategories()
+            }
+        }
+    }, [contextLoading, hasPermission])
 
     const fetchCategories = async () => {
         try {
@@ -76,9 +90,29 @@ export default function CreateProductPage() {
         }))
     }
 
-    const handleTagsChange = (e) => {
-        const tags = e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag)
-        setFormData(prev => ({ ...prev, tags }))
+    const addTag = () => {
+        const trimmedTag = tagInput.trim()
+        if (trimmedTag && !formData.tags.includes(trimmedTag)) {
+            setFormData(prev => ({
+                ...prev,
+                tags: [...prev.tags, trimmedTag]
+            }))
+            setTagInput('')
+        }
+    }
+
+    const removeTag = (tagToRemove) => {
+        setFormData(prev => ({
+            ...prev,
+            tags: prev.tags.filter(tag => tag !== tagToRemove)
+        }))
+    }
+
+    const handleTagInputKeyPress = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault()
+            addTag()
+        }
     }
 
     const addSpecification = () => {
@@ -195,7 +229,8 @@ export default function CreateProductPage() {
         setLoading(true)
 
         try {
-            const data = await productAPI.createProduct(formData)
+            const token = getCookie('token')
+            const data = await productAPI.createProduct(formData, token)
 
             if (data.success) {
                 toast.success('🎉 Product created successfully!', {
@@ -226,6 +261,28 @@ export default function CreateProductPage() {
         } finally {
             setLoading(false)
         }
+    }
+
+    // Show permission denied if no permission
+    if (checkingPermission || contextLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-[400px]">
+                <div className="flex items-center space-x-2">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <span className="text-gray-600">Checking permissions...</span>
+                </div>
+            </div>
+        )
+    }
+
+    if (!hasPermission('product', 'create')) {
+        return (
+            <PermissionDenied
+                title="Access Denied"
+                message="You don't have permission to create products."
+                action="Create Products"
+            />
+        )
     }
 
     return (
@@ -354,15 +411,46 @@ export default function CreateProductPage() {
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Tags (comma separated)
+                                Tags
                             </label>
-                            <input
-                                type="text"
-                                value={formData.tags.join(', ')}
-                                onChange={handleTagsChange}
-                                placeholder="tag1, tag2, tag3"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            />
+                            <div className="space-y-2">
+                                <div className="flex items-center space-x-2">
+                                    <input
+                                        type="text"
+                                        value={tagInput}
+                                        onChange={(e) => setTagInput(e.target.value)}
+                                        onKeyPress={handleTagInputKeyPress}
+                                        placeholder="Type tag and press Enter"
+                                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={addTag}
+                                        className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        Add
+                                    </button>
+                                </div>
+                                {formData.tags.length > 0 && (
+                                    <div className="flex flex-wrap gap-2">
+                                        {formData.tags.map((tag, index) => (
+                                            <span 
+                                                key={index} 
+                                                className="inline-flex items-center px-3 py-1 bg-gray-100 text-gray-800 text-sm rounded-full"
+                                            >
+                                                {tag}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeTag(tag)}
+                                                    className="ml-2 text-gray-500 hover:text-red-600"
+                                                >
+                                                    <X className="h-3 w-3" />
+                                                </button>
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
 

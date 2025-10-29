@@ -43,7 +43,8 @@ export default function CouponsPage() {
     endDate: '',
     minOrderAmount: '',
     description: '',
-    isActive: true
+    isActive: true,
+    isShowOnPublicly: false
   });
 
   useEffect(() => {
@@ -156,7 +157,8 @@ export default function CouponsPage() {
       endDate: '',
       minOrderAmount: '',
       description: '',
-      isActive: true
+      isActive: true,
+      isShowOnPublicly: false
     });
     setSelectedCoupon(null);
   };
@@ -172,7 +174,8 @@ export default function CouponsPage() {
       endDate: coupon.endDate ? new Date(coupon.endDate).toISOString().split('T')[0] : '',
       minOrderAmount: coupon.minOrderAmount || '',
       description: coupon.description || '',
-      isActive: coupon.isActive
+      isActive: coupon.isActive,
+      isShowOnPublicly: coupon.isShowOnPublicly || false
     });
     setShowEditModal(true);
   };
@@ -269,6 +272,7 @@ export default function CouponsPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usage</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Validity</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Show Publicly</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
@@ -311,6 +315,15 @@ export default function CouponsPage() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${status.color}`}>
                             {status.text}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            coupon.isShowOnPublicly 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {coupon.isShowOnPublicly ? 'Yes' : 'No'}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -485,6 +498,19 @@ export default function CouponsPage() {
                   Active
                 </label>
               </div>
+
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="isShowOnPublicly"
+                  checked={formData.isShowOnPublicly}
+                  onChange={(e) => setFormData({...formData, isShowOnPublicly: e.target.checked})}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <label htmlFor="isShowOnPublicly" className="ml-2 block text-sm text-gray-900">
+                  Show on Publicly
+                </label>
+              </div>
               </form>
             </div>
             
@@ -625,6 +651,19 @@ export default function CouponsPage() {
                 />
                 <label htmlFor="isActiveEdit" className="ml-2 block text-sm text-gray-900">
                   Active
+                </label>
+              </div>
+
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="isShowOnPubliclyEdit"
+                  checked={formData.isShowOnPublicly}
+                  onChange={(e) => setFormData({...formData, isShowOnPublicly: e.target.checked})}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <label htmlFor="isShowOnPubliclyEdit" className="ml-2 block text-sm text-gray-900">
+                  Show on Publicly
                 </label>
               </div>
               </form>
