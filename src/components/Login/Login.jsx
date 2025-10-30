@@ -31,6 +31,7 @@ function LoginPage() {
     const [activeTab, setActiveTab] = useState('email') // 'email', 'phone', 'social'
     const [otpSent, setOtpSent] = useState(false)
     const [otpVerified, setOtpVerified] = useState(false)
+    const [phoneError, setPhoneError] = useState('')
 
     // Login form state
     const [loginForm, setLoginForm] = useState({
@@ -42,10 +43,54 @@ function LoginPage() {
 
     const handleLoginChange = (e) => {
         const { name, value } = e.target
-        setLoginForm(prev => ({
-            ...prev,
-            [name]: value
-        }))
+        
+        // Special handling for phone number
+        if (name === 'phone') {
+            // Only allow numbers
+            const numericValue = value.replace(/\D/g, '')
+            
+            // Limit to 11 digits
+            const limitedValue = numericValue.slice(0, 11)
+            
+            setLoginForm(prev => ({
+                ...prev,
+                [name]: limitedValue
+            }))
+            
+            // Validate phone number
+            validatePhone(limitedValue)
+        } else {
+            setLoginForm(prev => ({
+                ...prev,
+                [name]: value
+            }))
+        }
+    }
+
+    const validatePhone = (phone) => {
+        if (!phone) {
+            setPhoneError('')
+            return false
+        }
+
+        // Must be 11 digits
+        if (phone.length !== 11) {
+            setPhoneError('Phone number must be 11 digits')
+            return false
+        }
+
+        // Must start with "01"
+        if (!phone.startsWith('01')) {
+            setPhoneError('Phone number must start with 01')
+            return false
+        }
+
+        setPhoneError('')
+        return true
+    }
+
+    const isValidPhone = () => {
+        return loginForm.phone.length === 11 && loginForm.phone.startsWith('01') && !phoneError
     }
 
     const handleEmailLogin = async (e) => {
@@ -79,9 +124,41 @@ function LoginPage() {
         }
     }
 
+    // Helper function to convert seconds to minutes and seconds format
+    const formatTimeRemaining = (seconds) => {
+        if (seconds < 60) {
+            return `${seconds} second${seconds !== 1 ? 's' : ''}`
+        }
+        const minutes = Math.floor(seconds / 60)
+        const remainingSeconds = seconds % 60
+        
+        if (remainingSeconds === 0) {
+            return `${minutes} minute${minutes !== 1 ? 's' : ''}`
+        }
+        return `${minutes} minute${minutes !== 1 ? 's' : ''} ${remainingSeconds} second${remainingSeconds !== 1 ? 's' : ''}`
+    }
+
+    // Helper function to extract seconds from message and convert to readable format
+    const formatRateLimitMessage = (message) => {
+        // Check if message contains "wait X seconds"
+        const secondsMatch = message.match(/wait (\d+) seconds?/i)
+        if (secondsMatch) {
+            const seconds = parseInt(secondsMatch[1])
+            const formattedTime = formatTimeRemaining(seconds)
+            return message.replace(/\d+ seconds?/i, formattedTime)
+        }
+        return message
+    }
+
     const handleSendOTP = async () => {
         if (!loginForm.phone) {
             toast.error('Please enter your phone number')
+            return
+        }
+
+        // Validate phone number before sending OTP
+        if (!validatePhone(loginForm.phone)) {
+            toast.error('Please enter a valid phone number (11 digits starting with 01)')
             return
         }
 
@@ -93,11 +170,25 @@ function LoginPage() {
                 setOtpSent(true)
                 toast.success('OTP sent to your phone number')
             } else {
-                toast.error(data.message || 'Failed to send OTP')
+                // Format the error message if it contains time remaining
+                const formattedMessage = formatRateLimitMessage(data.message || 'Failed to send OTP')
+                toast.error(formattedMessage)
             }
         } catch (error) {
             console.error('Send OTP error:', error)
-            toast.error('Failed to send OTP. Please try again.')
+            
+            // Extract error message from error response
+            let errorMessage = 'Failed to send OTP. Please try again.'
+            
+            if (error.response && error.response.data) {
+                errorMessage = error.response.data.message || errorMessage
+            } else if (error.message) {
+                errorMessage = error.message
+            }
+            
+            // Format the error message if it contains time remaining
+            const formattedMessage = formatRateLimitMessage(errorMessage)
+            toast.error(formattedMessage)
         } finally {
             setLoading(false)
         }
@@ -119,15 +210,39 @@ function LoginPage() {
                 toast.success('OTP verified successfully!')
                 
                 // Login user with returned data
-                login(data.data.user, data.data.token)
-                // Redirect to the original page or home
-                router.push(redirectUrl || '/')
+                if (data.data && data.data.user && data.data.token) {
+                    login(data.data.user, data.data.token)
+                    // Redirect to the original page or home
+                    if (data.data.user?.role === 'admin') {
+                        router.push('/admin/dashboard')
+                    } else {
+                        router.push(redirectUrl || '/')
+                    }
+                } else {
+                    toast.error('Login data not received. Please try again.')
+                }
             } else {
+                // Show backend error message
                 toast.error(data.message || 'Invalid OTP')
             }
         } catch (error) {
             console.error('Verify OTP error:', error)
-            toast.error('OTP verification failed. Please try again.')
+            
+            // Extract error message from error response
+            let errorMessage = 'OTP verification failed. Please try again.'
+            
+            if (error.response && error.response.data) {
+                // API returned error response
+                errorMessage = error.response.data.message || errorMessage
+            } else if (error.message) {
+                // Network or other error
+                errorMessage = error.message
+            }
+            
+            toast.error(errorMessage)
+            
+            // Clear OTP input on error so user can retry
+            setLoginForm(prev => ({ ...prev, otp: '' }))
         } finally {
             setLoading(false)
         }
@@ -296,21 +411,38 @@ function LoginPage() {
                                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                                             <Phone className="h-5 w-5 text-gray-400" />
                                         </div>
-                                        <input
-                                            id="phone"
-                                            name="phone"
-                                            type="tel"
-                                            autoComplete="tel"
-                                            required
-                                            value={loginForm.phone}
-                                            onChange={handleLoginChange}
-                                            className="block w-full pl-12 pr-4 py-3 border border-gray-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-all duration-200 bg-gray-50 focus:bg-white"
-                                            placeholder="Enter your phone number"
-                                        />
-                                    </div>
+                                    <input
+                                        id="phone"
+                                        name="phone"
+                                        type="tel"
+                                        autoComplete="tel"
+                                        required
+                                        value={loginForm.phone}
+                                        onChange={handleLoginChange}
+                                        maxLength={11}
+                                        className={`block w-full pl-12 pr-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 transition-all duration-200 bg-gray-50 focus:bg-white ${
+                                            phoneError 
+                                                ? 'border-red-500 focus:border-red-500' 
+                                                : 'border-gray-400 focus:border-pink-500'
+                                        }`}
+                                        placeholder="01XXXXXXXXX (11 digits)"
+                                    />
+                                </div>
+                                {phoneError && (
+                                    <p className="text-xs text-red-500 mt-1">
+                                        {phoneError}
+                                    </p>
+                                )}
+                                {!phoneError && loginForm.phone && (
                                     <p className="text-xs text-gray-500 mt-2">
                                         We'll send you a verification code via SMS
                                     </p>
+                                )}
+                                {!phoneError && !loginForm.phone && (
+                                    <p className="text-xs text-gray-500 mt-2">
+                                        Enter your 11-digit phone number starting with 01
+                                    </p>
+                                )}
                                 </div>
                             ) : (
                                 <div>
@@ -343,7 +475,7 @@ function LoginPage() {
                                 <button
                                     type="button"
                                     onClick={handleSendOTP}
-                                    disabled={loading || !loginForm.phone}
+                                    disabled={loading || !isValidPhone()}
                                     className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl"
                                 >
                                     {loading ? (
@@ -387,7 +519,8 @@ function LoginPage() {
                                             onClick={() => {
                                                 setOtpSent(false)
                                                 setOtpVerified(false)
-                                                setLoginForm(prev => ({ ...prev, otp: '' }))
+                                                setPhoneError('')
+                                                setLoginForm(prev => ({ ...prev, otp: '', phone: '' }))
                                             }}
                                             className="flex-1 text-sm text-pink-600 hover:text-pink-700 font-medium"
                                         >

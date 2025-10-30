@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { googleAuthAPI } from '@/services/api';
 
 // Google Logo SVG Component
 const GoogleLogo = ({ className = "h-5 w-5" }) => (
@@ -25,10 +26,27 @@ const GitHubLogo = ({ className = "h-5 w-5" }) => (
 );
 
 const SocialLogin = ({ onSocialLogin }) => {
-    const handleSocialLogin = (provider) => {
-        if (onSocialLogin) {
+    const [loading, setLoading] = useState(false);
+
+    const handleSocialLogin = async (provider) => {
+        if (provider === 'Google') {
+            setLoading(true);
+            try {
+                // Get Google OAuth URL from backend
+                const response = await googleAuthAPI.getGoogleAuthUrl();
+                if (response.success && response.data.authUrl) {
+                    // Redirect to Google OAuth
+                    window.location.href = response.data.authUrl;
+                } else {
+                    console.error('Failed to get Google OAuth URL');
+                }
+            } catch (error) {
+                console.error('Google OAuth error:', error);
+            } finally {
+                setLoading(false);
+            }
+        } else if (onSocialLogin) {
             onSocialLogin(provider);
-        } else {
         }
     };
 
@@ -36,13 +54,18 @@ const SocialLogin = ({ onSocialLogin }) => {
         <div className="space-y-3 mb-6">
             <button
                 onClick={() => handleSocialLogin('Google')}
-                className="w-full flex items-center justify-center px-4 py-3 border border-gray-400 rounded-xl shadow-sm bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
+                disabled={loading}
+                className="w-full flex items-center justify-center px-4 py-3 border border-gray-400 rounded-xl shadow-sm bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-                <GoogleLogo className="h-5 w-5 mr-3" />
+                {loading ? (
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-600 mr-3"></div>
+                ) : (
+                    <GoogleLogo className="h-5 w-5 mr-3" />
+                )}
                 Continue with Google
             </button>
 
-            <button
+            {/* <button
                 onClick={() => handleSocialLogin('Facebook')}
                 className="w-full flex items-center justify-center px-4 py-3 border border-gray-400 rounded-xl shadow-sm bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
             >
@@ -56,7 +79,7 @@ const SocialLogin = ({ onSocialLogin }) => {
             >
                 <GitHubLogo className="h-5 w-5 mr-3" />
                 Continue with GitHub
-            </button>
+            </button> */}
         </div>
     );
 };

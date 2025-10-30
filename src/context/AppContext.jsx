@@ -320,7 +320,7 @@ export const AppProvider = ({ children }) => {
         setToken(userToken)
         setIsAuthenticated(true)
         setCookie('token', userToken, {
-            maxAge: 7 * 24 * 60 * 60, // 7 days
+            maxAge: 30 * 24 * 60 * 60, // 30 days
             path: '/',
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'strict'

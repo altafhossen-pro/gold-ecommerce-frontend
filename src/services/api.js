@@ -261,9 +261,41 @@ export const otpAPI = {
         });
     },
 
+    // Send OTP to email for registration
+    sendRegisterOTP: (email) => {
+        return apiCall('/otp/register/send', {
+            method: 'POST',
+            body: JSON.stringify({ email }),
+        });
+    },
+
+    // Verify email OTP only (without creating account) - for Step 2
+    verifyRegisterOTPOnly: (email, otp) => {
+        return apiCall('/otp/register/verify-only', {
+            method: 'POST',
+            body: JSON.stringify({ email, otp }),
+        });
+    },
+
+    // Verify email OTP and create account - for Step 3
+    verifyRegisterOTP: (email, otp, name, password, phone = null) => {
+        return apiCall('/otp/register/verify', {
+            method: 'POST',
+            body: JSON.stringify({ email, otp, name, password, phone }),
+        });
+    },
+
     // Get OTP status (for debugging)
     getOTPStatus: (phone) => {
         return apiCall(`/otp/status?phone=${phone}`);
+    },
+};
+
+// Google OAuth API functions
+export const googleAuthAPI = {
+    // Get Google OAuth URL
+    getGoogleAuthUrl: (state = 'default') => {
+        return apiCall(`/auth/google/initiate?state=${state}`);
     },
 };
 
