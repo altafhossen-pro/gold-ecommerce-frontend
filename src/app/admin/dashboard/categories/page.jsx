@@ -6,17 +6,32 @@ import { Plus, Edit, Trash2, Eye, Search, FolderOpen } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { categoryAPI } from '@/services/api'
 import DeleteConfirmationModal from '@/components/Common/DeleteConfirmationModal'
+import { useAppContext } from '@/context/AppContext'
+import PermissionDenied from '@/components/Common/PermissionDenied'
 
 export default function AdminCategoriesPage() {
+    const { hasPermission, contextLoading } = useAppContext()
     const [categories, setCategories] = useState([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState('')
     const [deleteModal, setDeleteModal] = useState({ isOpen: false, categoryId: null, categoryName: '' })
     const [isDeleting, setIsDeleting] = useState(false)
+    const [checkingPermission, setCheckingPermission] = useState(true)
+    const [hasReadPermission, setHasReadPermission] = useState(false)
+    const [permissionError, setPermissionError] = useState(null)
 
     useEffect(() => {
-        fetchCategories()
-    }, [])
+        if (contextLoading) return
+        const canRead = hasPermission('category', 'read')
+        setHasReadPermission(canRead)
+        setCheckingPermission(false)
+        if (canRead) {
+            fetchCategories()
+        } else {
+            setLoading(false)
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [contextLoading])
 
     const fetchCategories = async () => {
         try {
@@ -25,11 +40,20 @@ export default function AdminCategoriesPage() {
             
             if (data.success) {
                 setCategories(data.data)
+                setPermissionError(null)
             } else {
-                console.error('Failed to fetch categories:', data.message)
+                if (data.status === 403) {
+                    setPermissionError(data.message || "You don't have permission to read categories")
+                } else {
+                    console.error('Failed to fetch categories:', data.message)
+                }
             }
         } catch (error) {
-            console.error('Error fetching categories:', error)
+            if (error?.status === 403) {
+                setPermissionError(error?.data?.message || "You don't have permission to read categories")
+            } else {
+                console.error('Error fetching categories:', error)
+            }
         } finally {
             setLoading(false)
         }
@@ -86,11 +110,22 @@ export default function AdminCategoriesPage() {
         return children.length
     }
 
-    if (loading) {
+    if (checkingPermission || contextLoading || loading) {
         return (
             <div className="flex items-center justify-center h-64">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
             </div>
+        )
+    }
+
+    if (!hasReadPermission || permissionError) {
+        return (
+            <PermissionDenied
+                title="Access Denied"
+                message={permissionError || "You don't have permission to access categories"}
+                action="Contact your administrator for access"
+                showBackButton={true}
+            />
         )
     }
 
@@ -106,13 +141,15 @@ export default function AdminCategoriesPage() {
                         </p>
                     </div>
                     <div className="flex items-center space-x-3">
-                        <Link
-                            href="/admin/dashboard/categories/create"
-                            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 cursor-pointer"
-                        >
-                            <Plus className="h-4 w-4 mr-2" />
-                            Create Category
-                        </Link>
+                        {hasPermission('category','create') && (
+                            <Link
+                                href="/admin/dashboard/categories/create"
+                                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 cursor-pointer"
+                            >
+                                <Plus className="h-4 w-4 mr-2" />
+                                Create Category
+                            </Link>
+                        )}
                     </div>
                 </div>
             </div>
@@ -217,27 +254,33 @@ export default function AdminCategoriesPage() {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             <div className="flex items-center justify-end space-x-2">
-                                                <Link
-                                                    href={`/admin/dashboard/categories/${category._id}`}
-                                                    className="text-blue-600 hover:text-blue-900 p-1 cursor-pointer"
-                                                    title="View"
-                                                >
-                                                    <Eye className="h-4 w-4" />
-                                                </Link>
-                                                <Link
-                                                    href={`/admin/dashboard/categories/${category._id}/edit`}
-                                                    className="text-indigo-600 hover:text-indigo-900 p-1 cursor-pointer"
-                                                    title="Edit"
-                                                >
-                                                    <Edit className="h-4 w-4" />
-                                                </Link>
-                                                <button
-                                                    onClick={() => openDeleteModal(category._id, category.name)}
-                                                    className="text-red-600 hover:text-red-900 p-1 cursor-pointer"
-                                                    title="Delete"
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </button>
+                                                {hasPermission('category','read') && (
+                                                    <Link
+                                                        href={`/admin/dashboard/categories/${category._id}`}
+                                                        className="text-blue-600 hover:text-blue-900 p-1 cursor-pointer"
+                                                        title="View"
+                                                    >
+                                                        <Eye className="h-4 w-4" />
+                                                    </Link>
+                                                )}
+                                                {hasPermission('category','update') && (
+                                                    <Link
+                                                        href={`/admin/dashboard/categories/${category._id}/edit`}
+                                                        className="text-indigo-600 hover:text-indigo-900 p-1 cursor-pointer"
+                                                        title="Edit"
+                                                    >
+                                                        <Edit className="h-4 w-4" />
+                                                    </Link>
+                                                )}
+                                                {hasPermission('category','delete') && (
+                                                    <button
+                                                        onClick={() => openDeleteModal(category._id, category.name)}
+                                                        className="text-red-600 hover:text-red-900 p-1 cursor-pointer"
+                                                        title="Delete"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>

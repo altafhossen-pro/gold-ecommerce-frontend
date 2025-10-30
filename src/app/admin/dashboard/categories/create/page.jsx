@@ -7,9 +7,12 @@ import { ArrowLeft, Save } from 'lucide-react'
 import ImageUpload from '@/components/Common/ImageUpload'
 import toast from 'react-hot-toast'
 import { categoryAPI } from '@/services/api'
+import { useAppContext } from '@/context/AppContext'
+import PermissionDenied from '@/components/Common/PermissionDenied'
 
 export default function CreateCategoryPage() {
     const router = useRouter()
+    const { hasPermission, contextLoading } = useAppContext()
     const [loading, setLoading] = useState(false)
     const [categories, setCategories] = useState([])
     const [formData, setFormData] = useState({
@@ -19,10 +22,20 @@ export default function CreateCategoryPage() {
         parent: '',
         isFeatured: false
     })
+    const [checkingPermission, setCheckingPermission] = useState(true)
+    const [hasCreatePermission, setHasCreatePermission] = useState(false)
+    const [permissionError, setPermissionError] = useState(null)
 
     useEffect(() => {
-        fetchCategories()
-    }, [])
+        if (contextLoading) return
+        const canCreate = hasPermission('category', 'create')
+        setHasCreatePermission(canCreate)
+        setCheckingPermission(false)
+        if (canCreate) {
+            fetchCategories()
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [contextLoading])
 
     const fetchCategories = async () => {
         try {
@@ -64,14 +77,41 @@ export default function CreateCategoryPage() {
                 toast.success('Category created successfully!')
                 router.push('/admin/dashboard/categories')
             } else {
-                toast.error('Failed to create category: ' + data.message)
+                if (data.status === 403) {
+                    setPermissionError(data.message || "You don't have permission to create categories")
+                } else {
+                    toast.error('Failed to create category: ' + data.message)
+                }
             }
         } catch (error) {
             console.error('Error creating category:', error)
-            toast.error('Error creating category')
+            if (error?.status === 403) {
+                setPermissionError(error?.data?.message || "You don't have permission to create categories")
+            } else {
+                toast.error('Error creating category')
+            }
         } finally {
             setLoading(false)
         }
+    }
+
+    if (checkingPermission || contextLoading) {
+        return (
+            <div className="flex items-center justify-center h-64">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+        )
+    }
+
+    if (!hasCreatePermission || permissionError) {
+        return (
+            <PermissionDenied
+                title="Access Denied"
+                message={permissionError || "You don't have permission to create categories"}
+                action="Contact your administrator for access"
+                showBackButton={true}
+            />
+        )
     }
 
     return (

@@ -6,8 +6,12 @@ import { Plus, Edit, Trash2, Eye, Search, Star, StarOff, StarIcon } from 'lucide
 import toast from 'react-hot-toast'
 import { testimonialAPI } from '@/services/api'
 import { getCookie } from 'cookies-next'
+import { useAppContext } from '@/context/AppContext'
+import PermissionDenied from '@/components/Common/PermissionDenied'
+import DeleteConfirmationModal from '@/components/Common/DeleteConfirmationModal'
 
 export default function AdminTestimonialsPage() {
+    const { hasPermission, contextLoading } = useAppContext()
     const [testimonials, setTestimonials] = useState([])
     const [loading, setLoading] = useState(true)
     const [searchLoading, setSearchLoading] = useState(false)
@@ -17,10 +21,34 @@ export default function AdminTestimonialsPage() {
     const [totalPages, setTotalPages] = useState(1)
     const [totalItems, setTotalItems] = useState(0)
     const [itemsPerPage, setItemsPerPage] = useState(10)
+    const [checkingPermission, setCheckingPermission] = useState(true)
+    const [hasReadPermission, setHasReadPermission] = useState(false)
+    const [hasCreatePermission, setHasCreatePermission] = useState(false)
+    const [hasUpdatePermission, setHasUpdatePermission] = useState(false)
+    const [hasDeletePermission, setHasDeletePermission] = useState(false)
+    const [permissionError, setPermissionError] = useState(null)
+    const [showDeleteModal, setShowDeleteModal] = useState(false)
+    const [testimonialToDelete, setTestimonialToDelete] = useState(null)
+    const [deleting, setDeleting] = useState(false)
 
     useEffect(() => {
-        fetchTestimonials()
-    }, [currentPage, itemsPerPage, statusFilter])
+        if (contextLoading) return
+        const canRead = hasPermission('testimonial', 'read')
+        const canCreate = hasPermission('testimonial', 'create')
+        const canUpdate = hasPermission('testimonial', 'update')
+        const canDelete = hasPermission('testimonial', 'delete')
+        setHasReadPermission(canRead)
+        setHasCreatePermission(!!canCreate)
+        setHasUpdatePermission(!!canUpdate)
+        setHasDeletePermission(!!canDelete)
+        setCheckingPermission(false)
+        if (canRead) {
+            fetchTestimonials()
+        } else {
+            setLoading(false)
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [contextLoading, currentPage, itemsPerPage, statusFilter])
 
     // Debounce search term
     useEffect(() => {
@@ -57,38 +85,62 @@ export default function AdminTestimonialsPage() {
                 setTotalPages(data.data.pagination.totalPages)
                 setTotalItems(data.data.pagination.totalItems)
             } else {
-                console.error('Failed to fetch testimonials:', data.message)
-                toast.error('Failed to fetch testimonials')
+                if (data.status === 403) {
+                    setPermissionError(data.message || "You don't have permission to read testimonials")
+                } else {
+                    console.error('Failed to fetch testimonials:', data.message)
+                    toast.error('Failed to fetch testimonials')
+                }
             }
         } catch (error) {
             console.error('Error fetching testimonials:', error)
-            toast.error('Error fetching testimonials')
+            if (error?.status === 403) {
+                setPermissionError(error?.data?.message || "You don't have permission to read testimonials")
+            } else {
+                toast.error('Error fetching testimonials')
+            }
         } finally {
             setLoading(false)
             setSearchLoading(false)
         }
     }
 
-    const handleDeleteTestimonial = async (testimonialId) => {
-        if (!confirm('Are you sure you want to delete this testimonial?')) return
+    const handleDeleteClick = (testimonial) => {
+        setTestimonialToDelete(testimonial)
+        setShowDeleteModal(true)
+    }
 
+    const confirmDeleteTestimonial = async () => {
+        if (!testimonialToDelete) return
+        if (!hasDeletePermission) {
+            toast.error("You don't have permission to delete testimonials")
+            return
+        }
         try {
+            setDeleting(true)
             const token = getCookie('token')
-            const data = await testimonialAPI.deleteTestimonial(testimonialId,token)
-            
+            const data = await testimonialAPI.deleteTestimonial(testimonialToDelete._id, token)
             if (data.success) {
                 toast.success('Testimonial deleted successfully!')
-                fetchTestimonials() // Refresh the list
+                setShowDeleteModal(false)
+                setTestimonialToDelete(null)
+                fetchTestimonials()
             } else {
                 toast.error('Failed to delete testimonial: ' + data.message)
             }
         } catch (error) {
             console.error('Error deleting testimonial:', error)
             toast.error('Error deleting testimonial')
+        } finally {
+            setDeleting(false)
         }
     }
 
     const handleToggleStatus = async (testimonialId) => {
+        if (!hasUpdatePermission) {
+            toast.error("You don't have permission to update testimonials")
+            return
+        }
         try {
             const token = getCookie('token')
             const data = await testimonialAPI.toggleTestimonialStatus(testimonialId)
@@ -123,7 +175,24 @@ export default function AdminTestimonialsPage() {
         return matchesSearch && matchesStatus
     })
 
-    // Remove full page loading - will show loading in table instead
+    if (checkingPermission || contextLoading) {
+        return (
+            <div className="flex items-center justify-center h-64">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+        )
+    }
+
+    if (!hasReadPermission || permissionError) {
+        return (
+            <PermissionDenied
+                title="Access Denied"
+                message={permissionError || "You don't have permission to access testimonials"}
+                action="Contact your administrator for access"
+                showBackButton={true}
+            />
+        )
+    }
 
     return (
         <div className="space-y-6">
@@ -137,13 +206,15 @@ export default function AdminTestimonialsPage() {
                         </p>
                     </div>
                     <div className="flex items-center space-x-3">
-                        <Link
-                            href="/admin/dashboard/testimonials/create"
-                            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
-                        >
-                            <Plus className="h-4 w-4 mr-2" />
-                            Add Testimonial
-                        </Link>
+                        {hasCreatePermission && (
+                            <Link
+                                href="/admin/dashboard/testimonials/create"
+                                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+                            >
+                                <Plus className="h-4 w-4 mr-2" />
+                                Add Testimonial
+                            </Link>
+                        )}
                     </div>
                 </div>
             </div>
@@ -313,20 +384,24 @@ export default function AdminTestimonialsPage() {
                                                 >
                                                     <Eye className="h-4 w-4" />
                                                 </Link>
-                                                <Link
-                                                    href={`/admin/dashboard/testimonials/${testimonial._id}/edit`}
-                                                    className="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-50"
-                                                    title="Edit"
-                                                >
-                                                    <Edit className="h-4 w-4" />
-                                                </Link>
-                                                <button
-                                                    onClick={() => handleDeleteTestimonial(testimonial._id)}
-                                                    className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
-                                                    title="Delete"
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </button>
+                                                {hasUpdatePermission && (
+                                                    <Link
+                                                        href={`/admin/dashboard/testimonials/${testimonial._id}/edit`}
+                                                        className="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-50"
+                                                        title="Edit"
+                                                    >
+                                                        <Edit className="h-4 w-4" />
+                                                    </Link>
+                                                )}
+                                                {hasDeletePermission && (
+                                                    <button
+                                                        onClick={() => handleDeleteClick(testimonial)}
+                                                        className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
+                                                        title="Delete"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
@@ -407,6 +482,20 @@ export default function AdminTestimonialsPage() {
                     </div>
                 )}
             </div>
+            {/* Delete Confirmation Modal */}
+            {showDeleteModal && (
+                <DeleteConfirmationModal
+                    isOpen={showDeleteModal}
+                    onClose={() => { setShowDeleteModal(false); setTestimonialToDelete(null) }}
+                    onConfirm={confirmDeleteTestimonial}
+                    title="Delete Testimonial"
+                    message="Are you sure you want to delete this testimonial? This action cannot be undone."
+                    itemName={testimonialToDelete?.name}
+                    itemType="testimonial"
+                    isLoading={deleting}
+                    confirmText={deleting ? 'Deleting...' : 'Delete'}
+                />
+            )}
         </div>
     )
 }

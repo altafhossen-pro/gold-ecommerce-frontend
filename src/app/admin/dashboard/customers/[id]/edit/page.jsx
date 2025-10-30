@@ -19,11 +19,14 @@ import toast from 'react-hot-toast'
 import { userAPI, roleAPI } from '@/services/api'
 import { getCookie } from 'cookies-next'
 import LoyaltyPointsSection from '@/components/Admin/LoyaltyPointsSection'
+import { useAppContext } from '@/context/AppContext'
+import PermissionDenied from '@/components/Common/PermissionDenied'
 
 export default function EditCustomerPage() {
     const router = useRouter()
     const params = useParams()
     const customerId = params.id
+    const { hasPermission, contextLoading, roleDetails, user: currentUser } = useAppContext()
     
     const [customer, setCustomer] = useState(null)
     const [loading, setLoading] = useState(true)
@@ -44,13 +47,28 @@ export default function EditCustomerPage() {
     const [captchaInput, setCaptchaInput] = useState('')
     const [isCaptchaCorrect, setIsCaptchaCorrect] = useState(false)
     const [originalRoleId, setOriginalRoleId] = useState(null)
+    const [originalEmail, setOriginalEmail] = useState(null)
+    const [checkingPermission, setCheckingPermission] = useState(true)
+    const [hasUpdatePermission, setHasUpdatePermission] = useState(false)
+    const [hasRoleUpdatePermission, setHasRoleUpdatePermission] = useState(false)
+    const [permissionError, setPermissionError] = useState(null)
 
     useEffect(() => {
-        if (customerId) {
+        if (!customerId) return
+        if (contextLoading) return
+        const canUpdate = hasPermission('user', 'update')
+        const canManageRoles = hasPermission('user', 'manage_roles')
+        setHasUpdatePermission(canUpdate)
+        setHasRoleUpdatePermission(!!canManageRoles)
+        setCheckingPermission(false)
+        if (canUpdate) {
             fetchCustomerDetails()
             fetchRoles()
+        } else {
+            setLoading(false)
         }
-    }, [customerId])
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [customerId, contextLoading])
 
     const fetchRoles = async () => {
         try {
@@ -85,13 +103,22 @@ export default function EditCustomerPage() {
                     roleId: data.data.roleId || null
                 })
                 setOriginalRoleId(data.data.roleId || null)
+                setOriginalEmail(data.data.email || null)
             } else {
-                toast.error('Customer not found')
-                router.push('/admin/dashboard/customers')
+                if (data.status === 403) {
+                    setPermissionError(data.message || "You don't have permission to update users")
+                } else {
+                    toast.error('Customer not found')
+                    router.push('/admin/dashboard/customers')
+                }
             }
         } catch (error) {
             console.error('Error fetching customer:', error)
-            toast.error('Error fetching customer details')
+            if (error?.status === 403) {
+                setPermissionError(error?.data?.message || "You don't have permission to update users")
+            } else {
+                toast.error('Error fetching customer details')
+            }
         } finally {
             setLoading(false)
         }
@@ -134,6 +161,10 @@ export default function EditCustomerPage() {
     }
 
     const handleRoleConfirm = async () => {
+        if (!hasRoleUpdatePermission) {
+            toast.error("You don't have permission to manage user roles")
+            return
+        }
         if (isCaptchaCorrect) {
             setShowRoleConfirmModal(false)
             toast.success('Role change confirmed! Proceeding with update...')
@@ -156,8 +187,27 @@ export default function EditCustomerPage() {
     const handleSubmit = async (e) => {
         e.preventDefault()
         
+        // Check if user is editing their own profile
+        const isSelfEdit = customerId === currentUser?._id
+        const isCurrentUserSuperAdmin = roleDetails?.isSuperAdmin === true
+        
+        // Check if email is being changed
+        const emailChanged = formData.email !== originalEmail
+        
+        // Prevent non-Super Admin from changing email
+        if (emailChanged && !isCurrentUserSuperAdmin) {
+            toast.error("Only Super Admin can change email addresses")
+            return
+        }
+        
         // Check if roleId is being changed
         const roleIdChanged = formData.roleId !== originalRoleId
+        
+        // Prevent non-Super Admin from changing their own role
+        if (roleIdChanged && isSelfEdit && !isCurrentUserSuperAdmin) {
+            toast.error("You cannot update your own role. Only Super Admin can update their own role.")
+            return
+        }
         
         if (roleIdChanged) {
             // Role is being changed, show confirmation modal
@@ -175,27 +225,62 @@ export default function EditCustomerPage() {
             setSaving(true)
             const token = getCookie('token')
             
-            const data = await userAPI.updateUserById(customerId, formData, token)
+            const isSelfEdit = customerId === currentUser?._id
+            const isCurrentUserSuperAdmin = roleDetails?.isSuperAdmin === true
+            
+            const payload = { ...formData }
+            
+            // Prevent email changes for non-Super Admin
+            if (!isCurrentUserSuperAdmin) {
+                payload.email = originalEmail
+            }
+            
+            if (!hasRoleUpdatePermission) {
+                payload.roleId = originalRoleId
+            } else if (isSelfEdit && !isCurrentUserSuperAdmin) {
+                // Prevent self-role update for non-Super Admin
+                payload.roleId = originalRoleId
+            }
+            const data = await userAPI.updateUserById(customerId, payload, token)
             
             if (data.success) {
                 toast.success('Customer updated successfully!')
                 router.push(`/admin/dashboard/customers/${customerId}`)
             } else {
-                toast.error('Failed to update customer: ' + data.message)
+                if (data.status === 403) {
+                    setPermissionError(data.message || "You don't have permission to update users")
+                } else {
+                    toast.error('Failed to update customer: ' + data.message)
+                }
             }
         } catch (error) {
             console.error('Error updating customer:', error)
-            toast.error('Error updating customer')
+            if (error?.status === 403) {
+                setPermissionError(error?.data?.message || "You don't have permission to update users")
+            } else {
+                toast.error('Error updating customer')
+            }
         } finally {
             setSaving(false)
         }
     }
 
-    if (loading) {
+    if (checkingPermission || contextLoading || loading) {
         return (
             <div className="flex items-center justify-center h-64">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
             </div>
+        )
+    }
+
+    if (!hasUpdatePermission || permissionError) {
+        return (
+            <PermissionDenied 
+                title="Access Denied"
+                message={permissionError || "You don't have permission to edit this customer"}
+                action="Contact your administrator for access"
+                showBackButton={true}
+            />
         )
     }
 
@@ -267,18 +352,39 @@ export default function EditCustomerPage() {
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Email Address *
                             </label>
-                            <div className="relative">
-                                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                <input
-                                    type="email"
-                                    name="email"
-                                    value={formData.email}
-                                    onChange={handleInputChange}
-                                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                    required
-                                    placeholder="Enter email address"
-                                />
-                            </div>
+                            {(() => {
+                                const isCurrentUserSuperAdmin = roleDetails?.isSuperAdmin === true
+                                const isEmailDisabled = !isCurrentUserSuperAdmin
+                                
+                                return (
+                                    <>
+                                        <div className="relative">
+                                            <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                            <input
+                                                type="email"
+                                                name="email"
+                                                value={formData.email}
+                                                onChange={(e) => {
+                                                    if (!isCurrentUserSuperAdmin) {
+                                                        toast.error("Only Super Admin can change email addresses")
+                                                        return
+                                                    }
+                                                    handleInputChange(e)
+                                                }}
+                                                className={`w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isEmailDisabled ? 'cursor-not-allowed bg-gray-100' : ''}`}
+                                                required
+                                                disabled={isEmailDisabled}
+                                                placeholder="Enter email address"
+                                            />
+                                        </div>
+                                        {isEmailDisabled && (
+                                            <p className="mt-1 text-xs text-red-500">
+                                                Only Super Admin can change email addresses
+                                            </p>
+                                        )}
+                                    </>
+                                )
+                            })()}
                         </div>
 
                         {/* Phone */}
@@ -329,27 +435,54 @@ export default function EditCustomerPage() {
                                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
                                     Loading roles...
                                 </div>
-                            ) : (
-                                <select
-                                    name="roleId"
-                                    value={formData.roleId || ''}
-                                    onChange={(e) => {
-                                        const roleId = e.target.value || null
-                                        setFormData({ ...formData, roleId })
-                                    }}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                >
-                                    <option value="">Customer (No Admin Role)</option>
-                                    {roles.filter(r => r.isActive).map((role) => (
-                                        <option key={role._id} value={role._id}>
-                                            {role.name} {role.isSuperAdmin && '(Super Admin)'}
-                                        </option>
-                                    ))}
-                                </select>
-                            )}
-                            <p className="mt-1 text-xs text-gray-500">
-                                Assign an admin role for admin panel access. If none selected, user will remain as a regular customer.
-                            </p>
+                            ) : (() => {
+                                const isSelfEdit = customerId === currentUser?._id
+                                const isCurrentUserSuperAdmin = roleDetails?.isSuperAdmin === true
+                                const isDisabled = !hasRoleUpdatePermission || (isSelfEdit && !isCurrentUserSuperAdmin)
+                                
+                                return (
+                                    <>
+                                        <select
+                                            name="roleId"
+                                            value={formData.roleId || ''}
+                                            onChange={(e) => {
+                                                if (!hasRoleUpdatePermission || (isSelfEdit && !isCurrentUserSuperAdmin)) {
+                                                    toast.error("You don't have permission to manage user roles")
+                                                    return
+                                                }
+                                                const roleId = e.target.value || null
+                                                setFormData({ ...formData, roleId })
+                                            }}
+                                            className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${isDisabled ? 'cursor-not-allowed' : ''}`}
+                                            disabled={isDisabled}
+                                        >
+                                            <option value="">Customer (No Admin Role)</option>
+                                            {roles
+                                                .filter(r => r.isActive)
+                                                .filter(r => {
+                                                    // Only show Super Admin role if current user is Super Admin
+                                                    if (r.isSuperAdmin) {
+                                                        return roleDetails?.isSuperAdmin === true
+                                                    }
+                                                    return true
+                                                })
+                                                .map((role) => (
+                                                    <option key={role._id} value={role._id}>
+                                                        {role.name} {role.isSuperAdmin && '(Super Admin)'}
+                                                    </option>
+                                                ))}
+                                        </select>
+                                        <p className={`mt-1 text-xs ${isDisabled ? 'text-red-500' : 'text-gray-500'}`}>
+                                            {!hasRoleUpdatePermission 
+                                                ? "You don't have permission to manage user roles"
+                                                : isSelfEdit && !isCurrentUserSuperAdmin
+                                                ? "You cannot update your own role. Only Super Admin can update their own role."
+                                                : "Assign an admin role for admin panel access. If none selected, user will remain as a regular customer."
+                                            }
+                                        </p>
+                                    </>
+                                )
+                            })()}
                         </div>
 
                         {/* Address */}

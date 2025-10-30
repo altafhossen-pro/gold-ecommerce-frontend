@@ -21,11 +21,17 @@ import {
 import toast from 'react-hot-toast'
 import { userAPI } from '@/services/api'
 import { getCookie } from 'cookies-next'
+import { useAppContext } from '@/context/AppContext'
+import PermissionDenied from '@/components/Common/PermissionDenied'
+import DeleteConfirmationModal from '@/components/Common/DeleteConfirmationModal'
 
 export default function AdminCustomersPage() {
     const router = useRouter()
+    const { hasPermission, contextLoading, user: currentUser } = useAppContext()
     const [users, setUsers] = useState([])
     const [loading, setLoading] = useState(true)
+    const [checkingPermission, setCheckingPermission] = useState(true)
+    const [hasReadPermission, setHasReadPermission] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
     const [statusFilter, setStatusFilter] = useState('')
     const [roleFilter, setRoleFilter] = useState('')
@@ -33,10 +39,22 @@ export default function AdminCustomersPage() {
     const [totalPages, setTotalPages] = useState(1)
     const [totalItems, setTotalItems] = useState(0)
     const [itemsPerPage, setItemsPerPage] = useState(10)
+    const [permissionError, setPermissionError] = useState(null)
+    const [showDeleteModal, setShowDeleteModal] = useState(false)
+    const [userToDelete, setUserToDelete] = useState(null)
+    const [deleting, setDeleting] = useState(false)
 
     useEffect(() => {
-        fetchUsers()
-    }, [currentPage, itemsPerPage, searchTerm, statusFilter, roleFilter])
+        if (!contextLoading) {
+            const canRead = hasPermission('user', 'read')
+            setHasReadPermission(canRead)
+            setCheckingPermission(false)
+            if (canRead) {
+                fetchUsers()
+            }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [contextLoading, hasPermission, currentPage, itemsPerPage, searchTerm, statusFilter, roleFilter])
 
     const fetchUsers = async () => {
         const token = getCookie('token')
@@ -56,32 +74,50 @@ export default function AdminCustomersPage() {
                 setUsers(data.data)
                 setTotalPages(data.pagination.totalPages)
                 setTotalItems(data.pagination.totalItems)
+                setPermissionError(null)
             } else {
-                toast.error('Failed to fetch users: ' + data.message)
+                if (data.status === 403 || (typeof data.message === 'string' && data.message.toLowerCase().includes('permission'))) {
+                    setPermissionError(data.message || "You don't have permission to read users")
+                } else {
+                    toast.error('Failed to fetch users: ' + data.message)
+                }
             }
         } catch (error) {
             console.error('Error fetching users:', error)
-            toast.error('Error fetching users')
+            if (error?.status === 403) {
+                setPermissionError(error?.data?.message || "You don't have permission to read users")
+            } else {
+                toast.error('Error fetching users')
+            }
         } finally {
             setLoading(false)
         }
     }
 
-    const handleDeleteUser = async (userId, userName) => {
-        if (!confirm(`Are you sure you want to delete ${userName}? This action cannot be undone.`)) return
+    const handleDeleteClick = (user) => {
+        setUserToDelete(user)
+        setShowDeleteModal(true)
+    }
+
+    const confirmDeleteUser = async () => {
+        if (!userToDelete) return
         const token = getCookie('token')
         try {
-            const data = await userAPI.deleteUser(userId, token)
-            
+            setDeleting(true)
+            const data = await userAPI.deleteUser(userToDelete._id, token)
             if (data.success) {
                 toast.success('User deleted successfully!')
-                fetchUsers() // Refresh the list
+                setShowDeleteModal(false)
+                setUserToDelete(null)
+                fetchUsers()
             } else {
                 toast.error('Failed to delete user: ' + data.message)
             }
         } catch (error) {
             console.error('Error deleting user:', error)
             toast.error('Error deleting user')
+        } finally {
+            setDeleting(false)
         }
     }
 
@@ -144,6 +180,25 @@ export default function AdminCustomersPage() {
         setCurrentPage(1)
     }
 
+
+    if (checkingPermission || contextLoading) {
+        return (
+            <div className="flex items-center justify-center h-64">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+        )
+    }
+
+    if (!hasReadPermission || permissionError) {
+        return (
+            <PermissionDenied 
+                title="Access Denied"
+                message={permissionError || "You don't have permission to access customers"}
+                action="Contact your administrator for access"
+                showBackButton={true}
+            />
+        )
+    }
 
     return (
         <div className="space-y-6">
@@ -320,28 +375,40 @@ export default function AdminCustomersPage() {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             <div className="flex items-center justify-end space-x-2">
-                                                <button
-                                                    onClick={() => router.push(`/admin/dashboard/customers/${user._id}`)}
-                                                    className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 cursor-pointer"
-                                                    title="View Details"
-                                                >
-                                                    <Eye className="h-4 w-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() => router.push(`/admin/dashboard/customers/${user._id}/edit`)}
-                                                    className="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-50 cursor-pointer"
-                                                    title="Edit User"
-                                                >
-                                                    <Edit className="h-4 w-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDeleteUser(user._id, user.name)}
-                                                    className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 cursor-pointer"
-                                                    title="Delete User"
-                                                    disabled={user.status === 'deleted'}
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </button>
+                                                {hasPermission('user','read') && (
+                                                    <button
+                                                        onClick={() => router.push(`/admin/dashboard/customers/${user._id}`)}
+                                                        className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 cursor-pointer"
+                                                        title="View Details"
+                                                    >
+                                                        <Eye className="h-4 w-4" />
+                                                    </button>
+                                                )}
+                                                {hasPermission('user','update') && (
+                                                    <button
+                                                        onClick={() => router.push(`/admin/dashboard/customers/${user._id}/edit`)}
+                                                        className="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-50 cursor-pointer"
+                                                        title="Edit User"
+                                                    >
+                                                        <Edit className="h-4 w-4" />
+                                                    </button>
+                                                )}
+                                                {(() => {
+                                                    const isTargetAdmin = user.role === 'admin' || !!user.roleId
+                                                    const targetIsSuperAdmin = !!(user.roleId && user.roleId.isSuperAdmin)
+                                                    const canDelete = isTargetAdmin ? hasPermission('admin','delete') : hasPermission('user','delete')
+                                                    const isSelf = currentUser?._id === user._id
+                                                    return canDelete && !isSelf && !targetIsSuperAdmin
+                                                })() && (
+                                                    <button
+                                                        onClick={() => handleDeleteClick(user)}
+                                                        className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 cursor-pointer"
+                                                        title="Delete User"
+                                                        disabled={user.status === 'deleted'}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
@@ -434,6 +501,18 @@ export default function AdminCustomersPage() {
                         </div>
                     </div>
                 </div>
+            )}
+            {/* Delete Confirmation Modal */}
+            {showDeleteModal && (
+                <DeleteConfirmationModal
+                    isOpen={showDeleteModal}
+                    title="Delete User"
+                    message={`Are you sure you want to delete ${userToDelete?.name}? This action cannot be undone.`}
+                    confirmText={deleting ? 'Deleting...' : 'Delete'}
+                    onClose={() => { setShowDeleteModal(false); setUserToDelete(null); }}
+                    onConfirm={confirmDeleteUser}
+                    isLoading={deleting}
+                />
             )}
         </div>
     )

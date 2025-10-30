@@ -9,16 +9,17 @@ import {
   Coins, 
   Percent, 
   DollarSign, 
-  ToggleLeft, 
-  ToggleRight,
   Save,
-  RotateCcw,
   AlertCircle,
   Settings as SettingsIcon
 } from 'lucide-react';
 
+import { useAppContext } from '@/context/AppContext';
+import PermissionDenied from '@/components/Common/PermissionDenied';
+
 export default function LoyaltySettingsPage() {
   const router = useRouter();
+  const { hasPermission, contextLoading } = useAppContext();
   const [settings, setSettings] = useState({
     coinPerItem: 1,
     coinValue: 1,
@@ -32,10 +33,25 @@ export default function LoyaltySettingsPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [errors, setErrors] = useState({});
+  const [checkingPermission, setCheckingPermission] = useState(true);
+  const [hasReadPermission, setHasReadPermission] = useState(false);
+  const [permissionError, setPermissionError] = useState(null);
+  const [hasUpdatePermission, setHasUpdatePermission] = useState(false);
 
   useEffect(() => {
-    fetchSettings();
-  }, []);
+    if (contextLoading) return;
+    const canRead = hasPermission('settings', 'read');
+    const canUpdate = hasPermission('settings', 'update');
+    setHasReadPermission(canRead);
+    setHasUpdatePermission(!!canUpdate);
+    setCheckingPermission(false);
+    if (canRead) {
+      fetchSettings();
+    } else {
+      setLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contextLoading]);
 
   const fetchSettings = async () => {
     try {
@@ -53,6 +69,10 @@ export default function LoyaltySettingsPage() {
   };
 
   const handleSave = async () => {
+    if (!hasUpdatePermission) {
+      setMessage({ type: 'error', text: "You don't have permission to update settings" });
+      return;
+    }
     setSaving(true);
     setMessage({ type: '', text: '' });
     setErrors({});
@@ -91,28 +111,7 @@ export default function LoyaltySettingsPage() {
     }
   };
 
-  const handleReset = async () => {
-    if (!confirm('Are you sure you want to reset all settings to default?')) return;
-
-    setSaving(true);
-    setMessage({ type: '', text: '' });
-
-    try {
-      const token = getCookie('token');
-      const response = await settingsAPI.resetSettings(token);
-      
-      if (response.success) {
-        setSettings(response.data);
-        setMessage({ type: 'success', text: 'Settings reset to default!' });
-      } else {
-        setMessage({ type: 'error', text: response.message || 'Failed to reset settings' });
-      }
-    } catch (error) {
-      setMessage({ type: 'error', text: 'Failed to reset settings' });
-    } finally {
-      setSaving(false);
-    }
-  };
+  // Reset functionality removed per requirements
 
   const validateSettings = (settings) => {
     const newErrors = {};
@@ -159,23 +158,29 @@ export default function LoyaltySettingsPage() {
     }));
   };
 
-  const handleToggle = (field) => {
-    setSettings(prev => ({
-      ...prev,
-      [field]: !prev[field]
-    }));
-  };
+  // Toggle handlers removed; earning rules are informational only.
 
   const handleWheel = (e) => {
     // Prevent wheel scroll from changing input values
     e.target.blur();
   };
 
-  if (loading) {
+  if (checkingPermission || contextLoading || loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
       </div>
+    );
+  }
+
+  if (!hasReadPermission || permissionError) {
+    return (
+      <PermissionDenied
+        title="Access Denied"
+        message={permissionError || "You don't have permission to access settings"}
+        action="Contact your administrator for access"
+        showBackButton={true}
+      />
     );
   }
 
@@ -202,16 +207,8 @@ export default function LoyaltySettingsPage() {
           </div>
           <div className="flex space-x-3">
             <button
-              onClick={handleReset}
-              disabled={saving}
-              className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
-            >
-              <RotateCcw className="h-4 w-4" />
-              <span>Reset</span>
-            </button>
-            <button
               onClick={handleSave}
-              disabled={saving}
+              disabled={saving || !hasUpdatePermission}
               className="flex items-center space-x-2 px-6 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 disabled:opacity-50"
             >
               <Save className="h-4 w-4" />
@@ -241,24 +238,6 @@ export default function LoyaltySettingsPage() {
             </h2>
 
             <div className="space-y-6">
-              {/* Enable/Disable Loyalty */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <label className="text-sm font-medium text-gray-700">Enable Loyalty System</label>
-                  <p className="text-xs text-gray-500">Turn loyalty system on/off</p>
-                </div>
-                <button
-                  onClick={() => handleToggle('isLoyaltyEnabled')}
-                  className="flex items-center"
-                >
-                  {settings.isLoyaltyEnabled ? (
-                    <ToggleRight className="h-6 w-6 text-pink-500" />
-                  ) : (
-                    <ToggleLeft className="h-6 w-6 text-gray-400" />
-                  )}
-                </button>
-              </div>
-
               {/* Coins per Item */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -325,16 +304,6 @@ export default function LoyaltySettingsPage() {
                   <label className="text-sm font-medium text-gray-700">Earn on Delivery (COD)</label>
                   <p className="text-xs text-gray-500">Earn coins when COD order is delivered</p>
                 </div>
-                <button
-                  onClick={() => handleToggle('earnOnDelivery')}
-                  className="flex items-center"
-                >
-                  {settings.earnOnDelivery ? (
-                    <ToggleRight className="h-6 w-6 text-pink-500" />
-                  ) : (
-                    <ToggleLeft className="h-6 w-6 text-gray-400" />
-                  )}
-                </button>
               </div>
 
               {/* Earn on Payment Success */}
@@ -343,16 +312,6 @@ export default function LoyaltySettingsPage() {
                   <label className="text-sm font-medium text-gray-700">Earn on Payment Success</label>
                   <p className="text-xs text-gray-500">Earn coins when online payment is successful</p>
                 </div>
-                <button
-                  onClick={() => handleToggle('earnOnPaymentSuccess')}
-                  className="flex items-center"
-                >
-                  {settings.earnOnPaymentSuccess ? (
-                    <ToggleRight className="h-6 w-6 text-pink-500" />
-                  ) : (
-                    <ToggleLeft className="h-6 w-6 text-gray-400" />
-                  )}
-                </button>
               </div>
             </div>
           </div>

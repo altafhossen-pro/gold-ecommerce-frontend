@@ -7,9 +7,12 @@ import { ArrowLeft, Star, Upload, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { testimonialAPI, uploadAPI } from '@/services/api'
 import { getCookie } from 'cookies-next'
+import { useAppContext } from '@/context/AppContext'
+import PermissionDenied from '@/components/Common/PermissionDenied'
 
 export default function CreateTestimonialPage() {
     const router = useRouter()
+    const { hasPermission, contextLoading } = useAppContext()
     const [loading, setLoading] = useState(false)
     const [uploading, setUploading] = useState(false)
     const [formData, setFormData] = useState({
@@ -22,10 +25,20 @@ export default function CreateTestimonialPage() {
         order: 0
     })
     const [previewImage, setPreviewImage] = useState('')
+    const [checkingPermission, setCheckingPermission] = useState(true)
+    const [hasCreatePermission, setHasCreatePermission] = useState(false)
+    const [permissionError, setPermissionError] = useState(null)
 
     useEffect(() => {
-        fetchHighestOrder()
-    }, [])
+        if (contextLoading) return
+        const canCreate = hasPermission('testimonial', 'create')
+        setHasCreatePermission(!!canCreate)
+        setCheckingPermission(false)
+        if (canCreate) {
+            fetchHighestOrder()
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [contextLoading])
 
     const fetchHighestOrder = async () => {
         try {
@@ -137,6 +150,10 @@ export default function CreateTestimonialPage() {
             return
         }
 
+        if (!hasCreatePermission) {
+            toast.error("You don't have permission to create testimonials")
+            return
+        }
         try {
             setLoading(true)
             const token = getCookie('token')
@@ -170,6 +187,25 @@ export default function CreateTestimonialPage() {
                 <Star className={`w-6 h-6 ${index < rating ? 'fill-current' : ''}`} />
             </button>
         ))
+    }
+
+    if (checkingPermission || contextLoading) {
+        return (
+            <div className="flex items-center justify-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+        )
+    }
+
+    if (!hasCreatePermission || permissionError) {
+        return (
+            <PermissionDenied
+                title="Access Denied"
+                message={permissionError || "You don't have permission to create testimonials"}
+                action="Contact your administrator for access"
+                showBackButton={true}
+            />
+        )
     }
 
     return (

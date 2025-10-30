@@ -7,11 +7,14 @@ import { ArrowLeft, Star, Upload, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { testimonialAPI, uploadAPI } from '@/services/api'
 import { getCookie } from 'cookies-next'
+import { useAppContext } from '@/context/AppContext'
+import PermissionDenied from '@/components/Common/PermissionDenied'
 
 export default function EditTestimonialPage() {
     const router = useRouter()
     const params = useParams()
     const testimonialId = params.id
+    const { hasPermission, contextLoading } = useAppContext()
     
     const [loading, setLoading] = useState(false)
     const [uploading, setUploading] = useState(false)
@@ -26,12 +29,22 @@ export default function EditTestimonialPage() {
         order: 0
     })
     const [previewImage, setPreviewImage] = useState('')
+    const [checkingPermission, setCheckingPermission] = useState(true)
+    const [hasUpdatePermission, setHasUpdatePermission] = useState(false)
+    const [permissionError, setPermissionError] = useState(null)
 
     useEffect(() => {
-        if (testimonialId) {
+        if (!testimonialId) return
+        if (contextLoading) return
+        const canUpdate = hasPermission('testimonial', 'update')
+        setHasUpdatePermission(!!canUpdate)
+        setCheckingPermission(false)
+        if (canUpdate) {
             fetchTestimonial()
+        } else {
+            setInitialLoading(false)
         }
-    }, [testimonialId])
+    }, [testimonialId, contextLoading])
 
     const fetchTestimonial = async () => {
         try {
@@ -52,13 +65,21 @@ export default function EditTestimonialPage() {
                 })
                 setPreviewImage(testimonial.profilePic || '')
             } else {
-                toast.error('Failed to fetch testimonial: ' + response.message)
-                router.push('/admin/dashboard/testimonials')
+                if (response.status === 403) {
+                    setPermissionError(response.message || "You don't have permission to update testimonials")
+                } else {
+                    toast.error('Failed to fetch testimonial: ' + response.message)
+                    router.push('/admin/dashboard/testimonials')
+                }
             }
         } catch (error) {
             console.error('Error fetching testimonial:', error)
-            toast.error('Error fetching testimonial')
-            router.push('/admin/dashboard/testimonials')
+            if (error?.status === 403) {
+                setPermissionError(error?.data?.message || "You don't have permission to update testimonials")
+            } else {
+                toast.error('Error fetching testimonial')
+                router.push('/admin/dashboard/testimonials')
+            }
         } finally {
             setInitialLoading(false)
         }
@@ -146,6 +167,10 @@ export default function EditTestimonialPage() {
             return
         }
 
+        if (!hasUpdatePermission) {
+            toast.error("You don't have permission to update testimonials")
+            return
+        }
         try {
             setLoading(true)
             const token = getCookie('token')
@@ -181,11 +206,22 @@ export default function EditTestimonialPage() {
         ))
     }
 
-    if (initialLoading) {
+    if (checkingPermission || contextLoading || initialLoading) {
         return (
             <div className="flex items-center justify-center h-64">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
             </div>
+        )
+    }
+
+    if (!hasUpdatePermission || permissionError) {
+        return (
+            <PermissionDenied
+                title="Access Denied"
+                message={permissionError || "You don't have permission to edit this testimonial"}
+                action="Contact your administrator for access"
+                showBackButton={true}
+            />
         )
     }
 

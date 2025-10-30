@@ -7,20 +7,36 @@ import { ArrowLeft, Edit, Star, Calendar, User, MessageSquare } from 'lucide-rea
 import toast from 'react-hot-toast'
 import { testimonialAPI } from '@/services/api'
 import { getCookie } from 'cookies-next'
+import { useAppContext } from '@/context/AppContext'
+import PermissionDenied from '@/components/Common/PermissionDenied'
 
 export default function TestimonialDetailsPage() {
     const router = useRouter()
     const params = useParams()
     const testimonialId = params.id
+    const { hasPermission, contextLoading } = useAppContext()
     
     const [loading, setLoading] = useState(true)
     const [testimonial, setTestimonial] = useState(null)
+    const [checkingPermission, setCheckingPermission] = useState(true)
+    const [hasReadPermission, setHasReadPermission] = useState(false)
+    const [hasUpdatePermission, setHasUpdatePermission] = useState(false)
+    const [permissionError, setPermissionError] = useState(null)
 
     useEffect(() => {
-        if (testimonialId) {
+        if (!testimonialId) return
+        if (contextLoading) return
+        const canRead = hasPermission('testimonial', 'read')
+        const canUpdate = hasPermission('testimonial', 'update')
+        setHasReadPermission(canRead)
+        setHasUpdatePermission(!!canUpdate)
+        setCheckingPermission(false)
+        if (canRead) {
             fetchTestimonial()
+        } else {
+            setLoading(false)
         }
-    }, [testimonialId])
+    }, [testimonialId, contextLoading])
 
     const fetchTestimonial = async () => {
         try {
@@ -31,13 +47,21 @@ export default function TestimonialDetailsPage() {
             if (response.success) {
                 setTestimonial(response.data.testimonial)
             } else {
-                toast.error('Failed to fetch testimonial: ' + response.message)
-                router.push('/admin/dashboard/testimonials')
+                if (response.status === 403) {
+                    setPermissionError(response.message || "You don't have permission to read testimonials")
+                } else {
+                    toast.error('Failed to fetch testimonial: ' + response.message)
+                    router.push('/admin/dashboard/testimonials')
+                }
             }
         } catch (error) {
             console.error('Error fetching testimonial:', error)
-            toast.error('Error fetching testimonial')
-            router.push('/admin/dashboard/testimonials')
+            if (error?.status === 403) {
+                setPermissionError(error?.data?.message || "You don't have permission to read testimonials")
+            } else {
+                toast.error('Error fetching testimonial')
+                router.push('/admin/dashboard/testimonials')
+            }
         } finally {
             setLoading(false)
         }
@@ -64,11 +88,22 @@ export default function TestimonialDetailsPage() {
         })
     }
 
-    if (loading) {
+    if (checkingPermission || contextLoading || loading) {
         return (
             <div className="flex items-center justify-center h-64">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
             </div>
+        )
+    }
+
+    if (!hasReadPermission || permissionError) {
+        return (
+            <PermissionDenied
+                title="Access Denied"
+                message={permissionError || "You don't have permission to view this testimonial"}
+                action="Contact your administrator for access"
+                showBackButton={true}
+            />
         )
     }
 
@@ -99,13 +134,15 @@ export default function TestimonialDetailsPage() {
                             </p>
                         </div>
                     </div>
-                    <Link
-                        href={`/admin/dashboard/testimonials/${testimonialId}/edit`}
-                        className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
-                    >
-                        <Edit className="h-4 w-4 mr-2" />
-                        Edit Testimonial
-                    </Link>
+                    {hasUpdatePermission && (
+                        <Link
+                            href={`/admin/dashboard/testimonials/${testimonialId}/edit`}
+                            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+                        >
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit Testimonial
+                        </Link>
+                    )}
                 </div>
             </div>
 
@@ -223,13 +260,15 @@ export default function TestimonialDetailsPage() {
                             Actions
                         </h3>
                         <div className="space-y-3">
-                            <Link
-                                href={`/admin/dashboard/testimonials/${testimonialId}/edit`}
-                                className="w-full inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-                            >
-                                <Edit className="h-4 w-4 mr-2" />
-                                Edit Testimonial
-                            </Link>
+                            {hasUpdatePermission && (
+                                <Link
+                                    href={`/admin/dashboard/testimonials/${testimonialId}/edit`}
+                                    className="w-full inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                                >
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Edit Testimonial
+                                </Link>
+                            )}
                             <Link
                                 href="/admin/dashboard/testimonials"
                                 className="w-full inline-flex items-center justify-center px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"

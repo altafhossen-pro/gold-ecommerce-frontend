@@ -6,8 +6,11 @@ import { menuAPI } from '@/services/api';
 import toast from 'react-hot-toast';
 import { getCookie } from 'cookies-next';
 import DeleteConfirmationModal from '@/components/Common/DeleteConfirmationModal';
+import { useAppContext } from '@/context/AppContext';
+import PermissionDenied from '@/components/Common/PermissionDenied';
 
 export default function MenuSettings() {
+    const { hasPermission, contextLoading } = useAppContext();
     const [activeTab, setActiveTab] = useState('header');
     const [headerMenus, setHeaderMenus] = useState([]);
     const [footerMenus, setFooterMenus] = useState({});
@@ -42,6 +45,10 @@ export default function MenuSettings() {
         contactType: '',
         socialPlatform: ''
     });
+    const [checkingPermission, setCheckingPermission] = useState(true);
+    const [hasReadPermission, setHasReadPermission] = useState(false);
+    const [permissionError, setPermissionError] = useState(null);
+    const [hasUpdatePermission, setHasUpdatePermission] = useState(false);
 
     // Get admin token from localStorage
     const getAdminToken = () => {
@@ -123,12 +130,27 @@ export default function MenuSettings() {
     };
 
     useEffect(() => {
-        fetchMenus();
-    }, []);
+        if (contextLoading) return;
+        const canRead = hasPermission('settings', 'read');
+        const canUpdate = hasPermission('settings', 'update');
+        setHasReadPermission(canRead);
+        setHasUpdatePermission(!!canUpdate);
+        setCheckingPermission(false);
+        if (canRead) {
+            fetchMenus();
+        } else {
+            setLoading(false);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [contextLoading]);
 
     // Handle form submission
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!hasUpdatePermission) {
+            toast.error("You don't have permission to update settings");
+            return;
+        }
         try {
             const token = getAdminToken();
             if (!token) {
@@ -231,6 +253,10 @@ export default function MenuSettings() {
     // Handle delete confirmation
     const handleDeleteConfirm = async () => {
         if (!menuToDelete) return;
+        if (!hasUpdatePermission) {
+            toast.error("You don't have permission to update settings");
+            return;
+        }
 
         try {
             setDeleting(true);
@@ -277,6 +303,10 @@ export default function MenuSettings() {
     // Handle contact data save
     const handleContactSave = async () => {
         try {
+            if (!hasUpdatePermission) {
+                toast.error("You don't have permission to update settings");
+                return;
+            }
             const token = getAdminToken();
             if (!token) {
                 toast.error('Admin authentication required');
@@ -324,6 +354,10 @@ export default function MenuSettings() {
     // Handle social media save
     const handleSocialMediaSave = async () => {
         try {
+            if (!hasUpdatePermission) {
+                toast.error("You don't have permission to update settings");
+                return;
+            }
             const token = getAdminToken();
             if (!token) {
                 toast.error('Admin authentication required');
@@ -460,6 +494,25 @@ export default function MenuSettings() {
         }));
     };
 
+    if (checkingPermission || contextLoading) {
+        return (
+            <div className="flex items-center justify-center h-64">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
+            </div>
+        );
+    }
+
+    if (!hasReadPermission || permissionError) {
+        return (
+            <PermissionDenied
+                title="Access Denied"
+                message={permissionError || "You don't have permission to access menu settings"}
+                action="Contact your administrator for access"
+                showBackButton={true}
+            />
+        );
+    }
+
     return (
         <div className="p-6">
             <div className="mb-6">
@@ -499,17 +552,19 @@ export default function MenuSettings() {
             {/* Add New Button */}
             <div className="mb-6">
                 {activeTab === 'header' ? (
-                    <button
-                        onClick={handleNewMenu}
-                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500"
-                    >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add New Header Menu Item
-                    </button>
+                    hasUpdatePermission && (
+                        <button
+                            onClick={handleNewMenu}
+                            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500"
+                        >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add New Header Menu Item
+                        </button>
+                    )
                 ) : (
                     <div className="flex flex-wrap gap-2">
                         <span className="text-sm text-gray-600 self-center mr-2">Add new menu item to:</span>
-                        {getFooterSections().map((section) => (
+                        {hasUpdatePermission && getFooterSections().map((section) => (
                             <button
                                 key={section.key}
                                 onClick={() => handleNewMenuForSection(section.key)}
@@ -556,18 +611,22 @@ export default function MenuSettings() {
                                         </div>
                                     </div>
                                     <div className="flex items-center space-x-2">
+                                        {hasUpdatePermission && (
                                         <button
                                             onClick={() => handleEdit(menu)}
                                             className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 border border-gray-300 hover:border-blue-300 rounded-full transition-all duration-200 cursor-pointer"
                                         >
                                             <Edit className="w-4 h-4" />
                                         </button>
+                                        )}
+                                        {hasUpdatePermission && (
                                         <button
                                             onClick={() => handleDeleteClick(menu)}
                                             className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 border border-gray-300 hover:border-red-300 rounded-full transition-all duration-200 cursor-pointer"
                                         >
                                             <Trash2 className="w-4 h-4" />
                                         </button>
+                                        )}
                                     </div>
                                 </div>
                             </li>
@@ -610,6 +669,7 @@ export default function MenuSettings() {
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center space-x-2">
+                                                    {hasUpdatePermission && (
                                                     <button
                                                         onClick={() => {
                                                             setFormData(prev => ({ ...prev, section: section.key }));
@@ -619,12 +679,15 @@ export default function MenuSettings() {
                                                     >
                                                         <Edit className="w-4 h-4" />
                                                     </button>
+                                                    )}
+                                                    {hasUpdatePermission && (
                                                     <button
                                                         onClick={() => handleDeleteClick(menu)}
                                                         className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 border border-gray-300 hover:border-red-300 rounded-full transition-all duration-200 cursor-pointer"
                                                     >
                                                         <Trash2 className="w-4 h-4" />
                                                     </button>
+                                                    )}
                                                 </div>
                                             </div>
                                         </li>
@@ -633,12 +696,14 @@ export default function MenuSettings() {
                             ) : (
                                 <div className="px-6 py-8 text-center text-gray-500">
                                     <p>No menu items in this section</p>
+                                    {hasUpdatePermission && (
                                     <button
                                         onClick={() => handleNewMenuForSection(section.key)}
                                         className="mt-2 text-pink-600 hover:text-pink-700 text-sm font-medium"
                                     >
                                         Add first menu item
                                     </button>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -647,7 +712,7 @@ export default function MenuSettings() {
             )}
 
             {/* Form Modal */}
-            {showForm && (
+            {showForm && hasUpdatePermission && (
                 <div className="fixed inset-0 bg-gray-600/50 backdrop-blur-sm overflow-y-auto h-full w-full z-50">
                     <div className="relative top-10 mx-auto p-6 border w-full max-w-md shadow-xl rounded-lg bg-white">
                         <div className="mt-3">
@@ -866,14 +931,16 @@ export default function MenuSettings() {
                             </div>
                         </div>
                         
-                        <div className="mt-6 flex justify-end">
-                            <button
-                                onClick={handleContactSave}
-                                className="px-6 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 transition-colors cursor-pointer"
-                            >
-                                Save Contact Information
-                            </button>
-                        </div>
+                        {hasUpdatePermission && (
+                            <div className="mt-6 flex justify-end">
+                                <button
+                                    onClick={handleContactSave}
+                                    className="px-6 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 transition-colors cursor-pointer"
+                                >
+                                    Save Contact Information
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -953,14 +1020,16 @@ export default function MenuSettings() {
                             ))}
                         </div>
                         
-                        <div className="mt-6 flex justify-end">
-                            <button
-                                onClick={handleSocialMediaSave}
-                                className="px-6 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 transition-colors cursor-pointer"
-                            >
-                                Save Social Media Links
-                            </button>
-                        </div>
+                        {hasUpdatePermission && (
+                            <div className="mt-6 flex justify-end">
+                                <button
+                                    onClick={handleSocialMediaSave}
+                                    className="px-6 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 transition-colors cursor-pointer"
+                                >
+                                    Save Social Media Links
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

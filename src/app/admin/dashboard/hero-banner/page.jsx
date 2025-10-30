@@ -6,10 +6,20 @@ import { heroBannerAPI } from '@/services/api';
 import DeleteConfirmationModal from '@/components/Common/DeleteConfirmationModal';
 import { toast } from 'react-hot-toast';
 import { getCookie } from 'cookies-next';
+import { useAppContext } from '@/context/AppContext';
+import PermissionDenied from '@/components/Common/PermissionDenied';
+import ImageUpload from '@/components/Common/ImageUpload';
 
 export default function HeroBannerManagement() {
+    const { hasPermission, contextLoading } = useAppContext();
     const [banners, setBanners] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [checkingPermission, setCheckingPermission] = useState(true);
+    const [hasReadPermission, setHasReadPermission] = useState(false);
+    const [hasUpdatePermission, setHasUpdatePermission] = useState(false);
+    const [hasCreatePermission, setHasCreatePermission] = useState(false);
+    const [hasDeletePermission, setHasDeletePermission] = useState(false);
+    const [permissionError, setPermissionError] = useState(null);
     const [showModal, setShowModal] = useState(false);
     const [editingBanner, setEditingBanner] = useState(null);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -43,8 +53,23 @@ export default function HeroBannerManagement() {
     ];
 
     useEffect(() => {
-        fetchBanners();
-    }, []);
+        if (contextLoading) return;
+        const canRead = hasPermission('banner', 'read');
+        const canUpdate = hasPermission('banner', 'update');
+        const canCreate = hasPermission('banner', 'create');
+        const canDelete = hasPermission('banner', 'delete');
+        setHasReadPermission(canRead);
+        setHasUpdatePermission(!!canUpdate);
+        setHasCreatePermission(!!canCreate);
+        setHasDeletePermission(!!canDelete);
+        setCheckingPermission(false);
+        if (canRead) {
+            fetchBanners();
+        } else {
+            setLoading(false);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [contextLoading]);
 
     const fetchBanners = async () => {
         try {
@@ -55,11 +80,19 @@ export default function HeroBannerManagement() {
             if (response.success) {
                 setBanners(response.data || []);
             } else {
-                toast.error(response.message || 'Failed to fetch banners');
+                if (response.status === 403) {
+                    setPermissionError(response.message || "You don't have permission to read hero banners");
+                } else {
+                    toast.error(response.message || 'Failed to fetch banners');
+                }
             }
         } catch (error) {
             console.error('Error fetching banners:', error);
-            toast.error('Error fetching banners');
+            if (error?.status === 403) {
+                setPermissionError(error?.data?.message || "You don't have permission to read hero banners");
+            } else {
+                toast.error('Error fetching banners');
+            }
         } finally {
             setLoading(false);
         }
@@ -106,6 +139,10 @@ export default function HeroBannerManagement() {
 
     const handleDeleteConfirm = async () => {
         if (!bannerToDelete) return;
+        if (!hasDeletePermission) {
+            toast.error("You don't have permission to delete hero banners");
+            return;
+        }
 
         try {
             setDeleting(true);
@@ -143,6 +180,10 @@ export default function HeroBannerManagement() {
             if (editingBanner) {
                 response = await heroBannerAPI.updateHeroBanner(editingBanner._id, formData, token);
             } else {
+                if (!hasCreatePermission) {
+                    toast.error("You don't have permission to create hero banners");
+                    return;
+                }
                 response = await heroBannerAPI.createHeroBanner(formData, token);
             }
 
@@ -168,8 +209,12 @@ export default function HeroBannerManagement() {
     };
 
     const toggleBannerStatus = async (banner) => {
+        if (!hasUpdatePermission) {
+            toast.error("You don't have permission to update hero banners");
+            return;
+        }
         try {
-            const token = getCookie('adminToken');
+            const token = getCookie('token');
             const updatedData = { ...banner, isActive: !banner.isActive };
             const response = await heroBannerAPI.updateHeroBanner(banner._id, updatedData, token);
             
@@ -185,11 +230,22 @@ export default function HeroBannerManagement() {
         }
     };
 
-    if (loading) {
+    if (checkingPermission || contextLoading || loading) {
         return (
             <div className="flex items-center justify-center h-64">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500"></div>
             </div>
+        );
+    }
+
+    if (!hasReadPermission || permissionError) {
+        return (
+            <PermissionDenied
+                title="Access Denied"
+                message={permissionError || "You don't have permission to access hero banners"}
+                action="Contact your administrator for access"
+                showBackButton={true}
+            />
         );
     }
 
@@ -201,13 +257,15 @@ export default function HeroBannerManagement() {
                     <h1 className="text-2xl font-bold text-gray-900">Hero Banner Management</h1>
                     <p className="text-gray-600">Manage your homepage hero banners</p>
                 </div>
-                <button
-                    onClick={handleAddNew}
-                    className="bg-pink-500 text-white px-4 py-2 rounded-lg hover:bg-pink-600 transition-colors duration-200 flex items-center gap-2"
-                >
-                    <Plus className="w-4 h-4" />
-                    Add New Banner
-                </button>
+                {(hasUpdatePermission || hasCreatePermission) && (
+                    <button
+                        onClick={handleAddNew}
+                        className="bg-pink-500 text-white px-4 py-2 rounded-lg hover:bg-pink-600 transition-colors duration-200 flex items-center gap-2"
+                    >
+                        <Plus className="w-4 h-4" />
+                        Add New Banner
+                    </button>
+                )}
             </div>
 
             {/* Banners List */}
@@ -289,18 +347,22 @@ export default function HeroBannerManagement() {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                             <div className="flex items-center space-x-2">
-                                                <button
-                                                    onClick={() => handleEdit(banner)}
-                                                    className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 border border-gray-300 hover:border-blue-300 rounded-full transition-all duration-200 cursor-pointer"
-                                                >
-                                                    <Edit className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDeleteClick(banner)}
-                                                    className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 border border-gray-300 hover:border-red-300 rounded-full transition-all duration-200 cursor-pointer"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
+                                                {hasUpdatePermission && (
+                                                    <button
+                                                        onClick={() => handleEdit(banner)}
+                                                        className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 border border-gray-300 hover:border-blue-300 rounded-full transition-all duration-200 cursor-pointer"
+                                                    >
+                                                        <Edit className="w-4 h-4" />
+                                                    </button>
+                                                )}
+                                                {hasDeletePermission && (
+                                                    <button
+                                                        onClick={() => handleDeleteClick(banner)}
+                                                        className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 border border-gray-300 hover:border-red-300 rounded-full transition-all duration-200 cursor-pointer"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
@@ -360,17 +422,11 @@ export default function HeroBannerManagement() {
                                 </div>
 
                                 <div className="md:col-span-2">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Model Image URL *
-                                    </label>
-                                    <input
-                                        type="url"
-                                        name="modelImage"
-                                        value={formData.modelImage}
-                                        onChange={handleInputChange}
-                                        required
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500"
-                                        placeholder="https://example.com/image.jpg"
+                                    <ImageUpload
+                                        onImageUpload={(url) => setFormData(prev => ({ ...prev, modelImage: url }))}
+                                        onImageRemove={() => setFormData(prev => ({ ...prev, modelImage: '' }))}
+                                        currentImage={formData.modelImage}
+                                        label="Model Image"
                                     />
                                 </div>
 

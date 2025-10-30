@@ -25,11 +25,14 @@ import toast from 'react-hot-toast'
 import { userAPI, orderAPI } from '@/services/api'
 import { getCookie } from 'cookies-next'
 import LoyaltyPointsSection from '@/components/Admin/LoyaltyPointsSection'
+import { useAppContext } from '@/context/AppContext'
+import PermissionDenied from '@/components/Common/PermissionDenied'
 
 export default function CustomerDetailPage() {
     const router = useRouter()
     const params = useParams()
     const customerId = params.id
+    const { hasPermission, contextLoading } = useAppContext()
 
     const [customer, setCustomer] = useState(null)
     const [loyaltyData, setLoyaltyData] = useState(null)
@@ -39,6 +42,9 @@ export default function CustomerDetailPage() {
     const [isEditing, setIsEditing] = useState(false)
     const [editData, setEditData] = useState({})
     const [saving, setSaving] = useState(false)
+    const [checkingPermission, setCheckingPermission] = useState(true)
+    const [hasReadPermission, setHasReadPermission] = useState(false)
+    const [permissionError, setPermissionError] = useState(null)
     const [ordersPagination, setOrdersPagination] = useState({
         currentPage: 1,
         totalPages: 1,
@@ -49,12 +55,23 @@ export default function CustomerDetailPage() {
     })
 
     useEffect(() => {
-        if (customerId) {
+        if (!customerId) return
+        if (contextLoading) return
+        const canRead = hasPermission('user', 'read')
+        setHasReadPermission(canRead)
+        setCheckingPermission(false)
+        if (canRead) {
             fetchCustomerDetails()
             fetchLoyaltyData()
             fetchCustomerOrders()
+        } else {
+            // Ensure loading spinner doesn't block when no permission
+            setLoading(false)
+            setOrdersLoading(false)
         }
-    }, [customerId])
+        // Intentionally exclude hasPermission from deps to avoid re-renders on function identity change
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [customerId, contextLoading])
 
     const fetchCustomerDetails = async () => {
         try {
@@ -72,12 +89,20 @@ export default function CustomerDetailPage() {
                     role: data.data.role
                 })
             } else {
-                toast.error('Customer not found')
-                router.push('/admin/dashboard/customers')
+                if (data.status === 403) {
+                    setPermissionError(data.message || "You don't have permission to read users")
+                } else {
+                    toast.error('Customer not found')
+                    router.push('/admin/dashboard/customers')
+                }
             }
         } catch (error) {
             console.error('Error fetching customer:', error)
-            toast.error('Error fetching customer details')
+            if (error?.status === 403) {
+                setPermissionError(error?.data?.message || "You don't have permission to read users")
+            } else {
+                toast.error('Error fetching customer details')
+            }
         } finally {
             setLoading(false)
         }
@@ -125,6 +150,7 @@ export default function CustomerDetailPage() {
     }
 
     const handleEdit = () => {
+        if (!hasPermission('user','update')) return
         setIsEditing(true)
     }
 
@@ -160,11 +186,19 @@ export default function CustomerDetailPage() {
                 setCustomer(prev => ({ ...prev, ...updateData }))
                 setIsEditing(false)
             } else {
-                toast.error('Failed to update customer: ' + data.message)
+                if (data.status === 403) {
+                    setPermissionError(data.message || "You don't have permission to update users")
+                } else {
+                    toast.error('Failed to update customer: ' + data.message)
+                }
             }
         } catch (error) {
             console.error('Error updating customer:', error)
-            toast.error('Error updating customer')
+            if (error?.status === 403) {
+                setPermissionError(error?.data?.message || "You don't have permission to update users")
+            } else {
+                toast.error('Error updating customer')
+            }
         } finally {
             setSaving(false)
         }
@@ -246,11 +280,22 @@ export default function CustomerDetailPage() {
         }).format(amount)
     }
 
-    if (loading) {
+    if (checkingPermission || contextLoading || loading) {
         return (
             <div className="flex items-center justify-center h-64">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
             </div>
+        )
+    }
+
+    if (!hasReadPermission || permissionError) {
+        return (
+            <PermissionDenied 
+                title="Access Denied"
+                message={permissionError || "You don't have permission to view this customer"}
+                action="Contact your administrator for access"
+                showBackButton={true}
+            />
         )
     }
 
@@ -291,12 +336,14 @@ export default function CustomerDetailPage() {
                         </div>
                         <div className="flex items-center space-x-3">
                             {!isEditing ? (
-                                <Link href={`/admin/dashboard/customers/${customerId}/edit`}
-                                    className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                                >
-                                    <Edit className="h-4 w-4 mr-2" />
-                                    Edit Customer
-                                </Link>
+                                hasPermission('user','update') && (
+                                    <Link href={`/admin/dashboard/customers/${customerId}/edit`}
+                                        className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                                    >
+                                        <Edit className="h-4 w-4 mr-2" />
+                                        Edit Customer
+                                    </Link>
+                                )
                             ) : (
                                 <div className="flex space-x-2">
                                     <button
@@ -513,8 +560,8 @@ export default function CustomerDetailPage() {
                                                                 {order.items.length} item(s)
                                                             </div>
                                                             <div className="text-xs text-gray-500">
-                                                                {order.items[0]?.product.title}
-                                                                {order.items.length > 1 && ` +${order.items.length - 1} more`}
+                                                                {order?.items[0]?.product?.title}
+                                                                {order?.items?.length > 1 && ` +${order?.items?.length - 1} more`}
                                                             </div>
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap">

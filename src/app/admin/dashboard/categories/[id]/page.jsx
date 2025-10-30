@@ -19,39 +19,60 @@ import { getCookie } from 'cookies-next'
 import toast from 'react-hot-toast'
 import { categoryAPI } from '@/services/api'
 import DeleteConfirmationModal from '@/components/Common/DeleteConfirmationModal'
+import { useAppContext } from '@/context/AppContext'
+import PermissionDenied from '@/components/Common/PermissionDenied'
 
 export default function CategoryDetailPage() {
     const params = useParams()
     const router = useRouter()
     const categoryId = params.id
+    const { hasPermission, contextLoading } = useAppContext()
 
     const [category, setCategory] = useState(null)
     const [loading, setLoading] = useState(true)
     const [deleteLoading, setDeleteLoading] = useState(false)
     const [showDeleteModal, setShowDeleteModal] = useState(false)
+    const [checkingPermission, setCheckingPermission] = useState(true)
+    const [hasReadPermission, setHasReadPermission] = useState(false)
+    const [permissionError, setPermissionError] = useState(null)
 
     useEffect(() => {
-        if (categoryId) {
+        if (!categoryId) return
+        if (contextLoading) return
+        const canRead = hasPermission('category', 'read')
+        setHasReadPermission(canRead)
+        setCheckingPermission(false)
+        if (canRead) {
             fetchCategoryDetails()
+        } else {
+            setLoading(false)
         }
-    }, [categoryId])
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [categoryId, contextLoading])
 
     const fetchCategoryDetails = async () => {
         try {
             setLoading(true)
-            const token = getCookie('token')
             const data = await categoryAPI.getCategoryById(categoryId)
 
             if (data.success) {
                 setCategory(data.data)
             } else {
-                toast.error(data.message || 'Failed to fetch category details')
-                router.push('/admin/dashboard/categories')
+                if (data.status === 403) {
+                    setPermissionError(data.message || "You don't have permission to read categories")
+                } else {
+                    toast.error(data.message || 'Failed to fetch category details')
+                    router.push('/admin/dashboard/categories')
+                }
             }
         } catch (error) {
             console.error('Error fetching category details:', error)
-            toast.error('Error fetching category details')
-            router.push('/admin/dashboard/categories')
+            if (error?.status === 403) {
+                setPermissionError(error?.data?.message || "You don't have permission to read categories")
+            } else {
+                toast.error('Error fetching category details')
+                router.push('/admin/dashboard/categories')
+            }
         } finally {
             setLoading(false)
         }
@@ -88,7 +109,7 @@ export default function CategoryDetailPage() {
         })
     }
 
-    if (loading) {
+    if (checkingPermission || contextLoading || loading) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
                 <div className="flex flex-col items-center space-y-4">
@@ -96,6 +117,17 @@ export default function CategoryDetailPage() {
                     <p className="text-gray-600 font-medium">Loading category details...</p>
                 </div>
             </div>
+        )
+    }
+
+    if (!hasReadPermission || permissionError) {
+        return (
+            <PermissionDenied 
+                title="Access Denied"
+                message={permissionError || "You don't have permission to view this category"}
+                action="Contact your administrator for access"
+                showBackButton={true}
+            />
         )
     }
 
@@ -140,20 +172,24 @@ export default function CategoryDetailPage() {
                             </div>
                         </div>
                         <div className="flex items-center space-x-3">
-                            <Link
-                                href={`/admin/dashboard/categories/${categoryId}/edit`}
-                                className="inline-flex items-center px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 font-medium shadow-sm hover:shadow-md"
-                            >
-                                <Edit className="h-4 w-4 mr-2" />
-                                Edit Category
-                            </Link>
-                            <button
-                                onClick={() => setShowDeleteModal(true)}
-                                className="inline-flex items-center px-5 py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all duration-200 font-medium shadow-sm hover:shadow-md cursor-pointer"
-                            >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Delete
-                            </button>
+                            {hasPermission('category','update') && (
+                                <Link
+                                    href={`/admin/dashboard/categories/${categoryId}/edit`}
+                                    className="inline-flex items-center px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 font-medium shadow-sm hover:shadow-md"
+                                >
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Edit Category
+                                </Link>
+                            )}
+                            {hasPermission('category','delete') && (
+                                <button
+                                    onClick={() => setShowDeleteModal(true)}
+                                    className="inline-flex items-center px-5 py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all duration-200 font-medium shadow-sm hover:shadow-md cursor-pointer"
+                                >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Delete
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>

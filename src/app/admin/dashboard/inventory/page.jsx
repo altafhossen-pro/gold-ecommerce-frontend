@@ -19,9 +19,12 @@ import StockHistoryModal from '@/components/Admin/StockHistoryModal';
 import { getCookie } from 'cookies-next';
 import VariantStockCard from '@/components/Admin/VariantStockCard';
 import MainProductStockForm from '@/components/Admin/MainProductStockForm';
+import { useAppContext } from '@/context/AppContext';
+import PermissionDenied from '@/components/Common/PermissionDenied';
 
 const InventoryPage = () => {
     const router = useRouter();
+    const { hasPermission, contextLoading } = useAppContext();
     const [inventory, setInventory] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -45,6 +48,10 @@ const InventoryPage = () => {
         endDate: ''
     });
     const token = getCookie('token');
+    const [checkingPermission, setCheckingPermission] = useState(true);
+    const [hasReadPermission, setHasReadPermission] = useState(false);
+    const [hasUpdatePermission, setHasUpdatePermission] = useState(false);
+    const [permissionError, setPermissionError] = useState(null);
 
     // Fetch inventory data
     const fetchInventory = async () => {
@@ -82,11 +89,26 @@ const InventoryPage = () => {
     };
 
     useEffect(() => {
-        fetchInventory();
-    }, [currentPage, searchTerm, stockFilter, sortBy]);
+        if (contextLoading) return;
+        const canRead = hasPermission('inventory', 'read');
+        const canUpdate = hasPermission('inventory', 'update');
+        setHasReadPermission(canRead);
+        setHasUpdatePermission(!!canUpdate);
+        setCheckingPermission(false);
+        if (canRead) {
+            fetchInventory();
+        } else {
+            setLoading(false);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [contextLoading, currentPage, searchTerm, stockFilter, sortBy]);
 
     // Handle stock update
     const handleStockUpdate = async (productId, variantSku = null) => {
+        if (!hasUpdatePermission) {
+            toast.error("You don't have permission to update inventory");
+            return;
+        }
         try {
             if (!updateForm.quantity || updateForm.quantity === '0') {
                 toast.error('Please enter a valid quantity');
@@ -197,6 +219,25 @@ const InventoryPage = () => {
                 return 'Unknown';
         }
     };
+
+    if (checkingPermission || contextLoading) {
+        return (
+            <div className="flex items-center justify-center h-64">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+        );
+    }
+
+    if (!hasReadPermission || permissionError) {
+        return (
+            <PermissionDenied
+                title="Access Denied"
+                message={permissionError || "You don't have permission to access inventory"}
+                action="Contact your administrator for access"
+                showBackButton={true}
+            />
+        );
+    }
 
     return (
         <div className="space-y-6">
@@ -481,6 +522,7 @@ const InventoryPage = () => {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                             <div className="flex space-x-2">
+                                                {hasUpdatePermission && (
                                                 <button
                                                     onClick={() => {
                                                         setSelectedProduct(product);
@@ -491,6 +533,7 @@ const InventoryPage = () => {
                                                 >
                                                     <Edit3 className="w-4 h-4" />
                                                 </button>
+                                                )}
                                                 <button
                                                     onClick={() => {
                                                         setSelectedProduct(product);

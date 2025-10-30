@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { analyticsAPI } from '@/services/api'
 import { useAppContext } from '@/context/AppContext'
+import PermissionDenied from '@/components/Common/PermissionDenied'
 import toast from 'react-hot-toast'
 import {
     LineChart,
@@ -55,11 +56,14 @@ const getStatusColor = (status) => {
 }
 
 export default function DashboardPage() {
-    const { user, token } = useAppContext()
+    const { user, token, hasPermission, contextLoading } = useAppContext()
     const [loading, setLoading] = useState(true)
     const [refreshing, setRefreshing] = useState(false)
     const [dashboardData, setDashboardData] = useState(null)
     const [selectedPeriod, setSelectedPeriod] = useState('30d')
+    const [checkingPermission, setCheckingPermission] = useState(true)
+    const [hasReadPermission, setHasReadPermission] = useState(false)
+    const [permissionError, setPermissionError] = useState(null)
 
     // Fetch dashboard data
     const fetchDashboardData = async (period = selectedPeriod) => {
@@ -94,10 +98,17 @@ export default function DashboardPage() {
     }
 
     useEffect(() => {
-        if (token) {
+        if (!token || contextLoading) return
+        const canRead = hasPermission('analytics', 'read')
+        setHasReadPermission(canRead)
+        setCheckingPermission(false)
+        if (canRead) {
             fetchDashboardData()
+        } else {
+            setLoading(false)
         }
-    }, [token])
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [token, contextLoading])
 
     // Format currency
     const formatCurrency = (amount) => {
@@ -154,7 +165,7 @@ export default function DashboardPage() {
         }
     }
 
-    if (loading) {
+    if (checkingPermission || contextLoading || loading) {
         return (
             <div className="flex items-center justify-center h-64">
                 <div className="flex items-center space-x-2">
@@ -162,6 +173,17 @@ export default function DashboardPage() {
                     <span className="text-gray-600">Loading dashboard...</span>
                 </div>
             </div>
+        )
+    }
+
+    if (!hasReadPermission || permissionError) {
+        return (
+            <PermissionDenied
+                title="Access Denied"
+                message={permissionError || "You don't have permission to view analytics"}
+                action="Contact your administrator for access"
+                showBackButton={true}
+            />
         )
     }
 

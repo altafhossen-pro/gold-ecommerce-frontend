@@ -1,28 +1,28 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Settings as SettingsIcon, 
   Coins, 
-  Store,
-  CreditCard,
-  Truck,
-  Globe,
-  Bell,
-  Shield,
-  Palette,
   Menu,
-  Database,
-  Users,
-  BarChart3,
-  FileText,
-  Mail,
-  Smartphone
 } from 'lucide-react';
+import { useAppContext } from '@/context/AppContext';
+import PermissionDenied from '@/components/Common/PermissionDenied';
 
 export default function AdminSettingsPage() {
   const router = useRouter();
+  const { hasPermission, contextLoading } = useAppContext();
+  const [checkingPermission, setCheckingPermission] = useState(true);
+  const [hasReadPermission, setHasReadPermission] = useState(false);
+  const [permissionError, setPermissionError] = useState(null);
+
+  useEffect(() => {
+    if (contextLoading) return;
+    const canRead = hasPermission('settings', 'read');
+    setHasReadPermission(canRead);
+    setCheckingPermission(false);
+  }, [contextLoading, hasPermission]);
 
   const settingsMenus = [
     {
@@ -46,6 +46,27 @@ export default function AdminSettingsPage() {
   const handleMenuClick = (href) => {
     router.push(href);
   };
+
+  if (checkingPermission || contextLoading) {
+    return (
+      <div className="p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!hasReadPermission || permissionError) {
+    return (
+      <PermissionDenied
+        title="Access Denied"
+        message={permissionError || "You don't have permission to access settings"}
+        action="Contact your administrator for access"
+        showBackButton={true}
+      />
+    );
+  }
 
   return (
     <div className="p-6">

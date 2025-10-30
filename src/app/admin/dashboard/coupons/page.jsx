@@ -20,8 +20,12 @@ import {
   Filter,
   MoreVertical
 } from 'lucide-react';
+import { useAppContext } from '@/context/AppContext';
+import PermissionDenied from '@/components/Common/PermissionDenied';
+import DeleteConfirmationModal from '@/components/Common/DeleteConfirmationModal';
 
 export default function CouponsPage() {
+  const { hasPermission, contextLoading } = useAppContext();
   const [coupons, setCoupons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -32,6 +36,11 @@ export default function CouponsPage() {
   const [selectedCoupon, setSelectedCoupon] = useState(null);
   const [pagination, setPagination] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
+  const [checkingPermission, setCheckingPermission] = useState(true);
+  const [hasReadPermission, setHasReadPermission] = useState(false);
+  const [permissionError, setPermissionError] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [couponToDelete, setCouponToDelete] = useState(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -48,8 +57,17 @@ export default function CouponsPage() {
   });
 
   useEffect(() => {
-    fetchCoupons();
-  }, [currentPage, statusFilter, searchTerm]);
+    if (contextLoading) return;
+    const canRead = hasPermission('coupon', 'read');
+    setHasReadPermission(canRead);
+    setCheckingPermission(false);
+    if (canRead) {
+      fetchCoupons();
+    } else {
+      setLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contextLoading, currentPage, statusFilter, searchTerm]);
 
   const fetchCoupons = async () => {
     try {
@@ -66,8 +84,14 @@ export default function CouponsPage() {
       if (response.success) {
         setCoupons(response.data.coupons);
         setPagination(response.data.pagination);
+        setPermissionError(null);
+      } else if (response.status === 403) {
+        setPermissionError(response.message || "You don't have permission to read coupons");
       }
     } catch (error) {
+      if (error?.status === 403) {
+        setPermissionError(error?.data?.message || "You don't have permission to read coupons");
+      }
     } finally {
       setLoading(false);
     }
@@ -84,11 +108,17 @@ export default function CouponsPage() {
         setShowCreateModal(false);
         resetForm();
         fetchCoupons();
+      } else if (response.status === 403) {
+        setPermissionError(response.message || "You don't have permission to create coupons");
       } else {
         toast.error(response.message || 'Failed to create coupon');
       }
     } catch (error) {
-      toast.error('Failed to create coupon. Please try again.');
+      if (error?.status === 403) {
+        setPermissionError(error?.data?.message || "You don't have permission to create coupons");
+      } else {
+        toast.error('Failed to create coupon. Please try again.');
+      }
     } finally {
       setSaving(false);
     }
@@ -105,28 +135,41 @@ export default function CouponsPage() {
         setShowEditModal(false);
         resetForm();
         fetchCoupons();
+      } else if (response.status === 403) {
+        setPermissionError(response.message || "You don't have permission to update coupons");
       } else {
         toast.error(response.message || 'Failed to update coupon');
       }
     } catch (error) {
-      toast.error('Failed to update coupon. Please try again.');
+      if (error?.status === 403) {
+        setPermissionError(error?.data?.message || "You don't have permission to update coupons");
+      } else {
+        toast.error('Failed to update coupon. Please try again.');
+      }
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDeleteCoupon = async (id) => {
-    if (window.confirm('Are you sure you want to delete this coupon?')) {
-      try {
-        const token = getCookie('token');
-        const response = await couponAPI.deleteCoupon(id, token);
-        if (response.success) {
-          toast.success('Coupon deleted successfully!');
-          fetchCoupons();
-        } else {
-          toast.error(response.message || 'Failed to delete coupon');
-        }
-      } catch (error) {
+  const handleDeleteCoupon = async () => {
+    if (!couponToDelete) return;
+    try {
+      const token = getCookie('token');
+      const response = await couponAPI.deleteCoupon(couponToDelete._id, token);
+      if (response.success) {
+        toast.success('Coupon deleted successfully!');
+        setShowDeleteModal(false);
+        setCouponToDelete(null);
+        fetchCoupons();
+      } else if (response.status === 403) {
+        setPermissionError(response.message || "You don't have permission to delete coupons");
+      } else {
+        toast.error(response.message || 'Failed to delete coupon');
+      }
+    } catch (error) {
+      if (error?.status === 403) {
+        setPermissionError(error?.data?.message || "You don't have permission to delete coupons");
+      } else {
         toast.error('Failed to delete coupon. Please try again.');
       }
     }
@@ -139,11 +182,17 @@ export default function CouponsPage() {
       if (response.success) {
         toast.success(response.message || 'Coupon status updated successfully!');
         fetchCoupons();
+      } else if (response.status === 403) {
+        setPermissionError(response.message || "You don't have permission to update coupons");
       } else {
         toast.error(response.message || 'Failed to update coupon status');
       }
     } catch (error) {
-      toast.error('Failed to update coupon status. Please try again.');
+      if (error?.status === 403) {
+        setPermissionError(error?.data?.message || "You don't have permission to update coupons");
+      } else {
+        toast.error('Failed to update coupon status. Please try again.');
+      }
     }
   };
 
@@ -195,6 +244,27 @@ export default function CouponsPage() {
     });
   };
 
+  if (checkingPermission || contextLoading) {
+    return (
+      <div className="p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!hasReadPermission || permissionError) {
+    return (
+      <PermissionDenied
+        title="Access Denied"
+        message={permissionError || "You don't have permission to access coupons"}
+        action="Contact your administrator for access"
+        showBackButton={true}
+      />
+    );
+  }
+
   return (
     <div className="p-6">
       {/* Header */}
@@ -203,13 +273,15 @@ export default function CouponsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Coupon Management</h1>
           <p className="text-gray-600">Manage discount coupons and promotional codes</p>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Create Coupon
-        </button>
+        {hasPermission('coupon','create') && (
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Create Coupon
+          </button>
+        )}
       </div>
 
       {/* Filters */}
@@ -328,6 +400,7 @@ export default function CouponsPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex items-center space-x-2">
+                            {hasPermission('coupon','update') && (
                             <button
                               onClick={() => handleToggleStatus(coupon._id)}
                               className="text-gray-400 hover:text-gray-600"
@@ -338,18 +411,23 @@ export default function CouponsPage() {
                                 <ToggleLeft className="h-5 w-5" />
                               )}
                             </button>
+                            )}
+                            {hasPermission('coupon','update') && (
                             <button
                               onClick={() => openEditModal(coupon)}
                               className="text-blue-600 hover:text-blue-900"
                             >
                               <Edit className="h-4 w-4" />
                             </button>
+                            )}
+                            {hasPermission('coupon','delete') && (
                             <button
-                              onClick={() => handleDeleteCoupon(coupon._id)}
+                              onClick={() => { setCouponToDelete(coupon); setShowDeleteModal(true); }}
                               className="text-red-600 hover:text-red-900"
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -702,6 +780,19 @@ export default function CouponsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <DeleteConfirmationModal
+          isOpen={showDeleteModal}
+          title="Delete Coupon"
+          message={`Are you sure you want to delete ${couponToDelete?.code}? This action cannot be undone.`}
+          confirmText="Delete"
+          onClose={() => { setShowDeleteModal(false); setCouponToDelete(null); }}
+          onConfirm={handleDeleteCoupon}
+          isLoading={false}
+        />
       )}
     </div>
   );
