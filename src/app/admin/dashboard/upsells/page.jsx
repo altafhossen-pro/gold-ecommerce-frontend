@@ -49,17 +49,38 @@ export default function UpsellsPage() {
             const response = await productAPI.getProducts(params.toString(), token);
             
             if (response.success) {
-                // Get upsell count for each product
-                const productsWithUpsellCount = await Promise.all(
+                // Get upsell count for each product using Promise.allSettled for better error handling
+                // This handles 404 (no upsells found) gracefully without treating them as errors
+                const productsWithUpsellCount = await Promise.allSettled(
                     response.data.map(async (product) => {
                         try {
                             const upsellResponse = await upsellAPI.getUpsellsByMainProduct(product._id, token);
-                            return {
-                                ...product,
-                                upsellCount: upsellResponse.success && upsellResponse.data ? 
-                                    upsellResponse.data.linkedProducts?.length || 0 : 0
-                            };
+                            
+                            // Handle both success and 404 responses
+                            if (upsellResponse.success && upsellResponse.data) {
+                                return {
+                                    ...product,
+                                    upsellCount: upsellResponse.data.linkedProducts?.length || 0
+                                };
+                            } else {
+                                // 404 or no upsells found - this is normal, not an error
+                                return {
+                                    ...product,
+                                    upsellCount: 0
+                                };
+                            }
                         } catch (error) {
+                            // Network errors or other issues - default to 0
+                            // 404 errors from API are caught here too
+                            const is404 = error?.status === 404 || 
+                                         error?.response?.status === 404 ||
+                                         error?.message?.toLowerCase().includes('no upsells found');
+                            
+                            if (!is404) {
+                                // Only log non-404 errors
+                                console.warn(`Error fetching upsell for product ${product._id}:`, error.message);
+                            }
+                            
                             return {
                                 ...product,
                                 upsellCount: 0
@@ -68,7 +89,21 @@ export default function UpsellsPage() {
                     })
                 );
                 
-                setProducts(productsWithUpsellCount);
+                // Extract values from Promise.allSettled results
+                const finalProducts = productsWithUpsellCount.map((result) => {
+                    if (result.status === 'fulfilled') {
+                        return result.value;
+                    } else {
+                        // This shouldn't happen due to our try-catch, but handle it anyway
+                        const product = response.data.find(p => p._id === result.reason?.productId) || response.data[productsWithUpsellCount.indexOf(result)];
+                        return {
+                            ...product,
+                            upsellCount: 0
+                        };
+                    }
+                });
+                
+                setProducts(finalProducts);
                 setPagination(response.pagination);
             } else {
                 toast.error(response.message || 'Failed to fetch products');

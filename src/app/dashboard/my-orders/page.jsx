@@ -77,6 +77,17 @@ export default function MyOrders() {
 
         const statusInfo = statusMap[order.status] || statusMap['pending']
 
+        // Calculate items subtotal
+        const itemsSubtotal = order.items?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0
+        
+        // Calculate final total: subtotal + shipping - all discounts
+        const finalTotal = itemsSubtotal 
+            + (order.shippingCost || 0)
+            - (order.discount || 0)
+            - (order.couponDiscount || 0)
+            - (order.upsellDiscount || 0)
+            - (order.loyaltyDiscount || 0)
+
         return {
             id: order._id,
             orderId: order.orderId,
@@ -97,7 +108,7 @@ export default function MyOrders() {
             statusColor: statusInfo.color,
             statusBg: statusInfo.bg,
             statusIcon: statusInfo.icon,
-            amount: `৳${order.total?.toLocaleString() || '0'}`,
+            amount: `৳${Math.max(0, finalTotal).toLocaleString()}`,
             items: order.items || []
         }
     }

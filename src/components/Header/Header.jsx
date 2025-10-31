@@ -176,38 +176,40 @@ function Header({ isTrackingShow = true }) {
 
               {/* Icons */}
               <div className="flex items-center space-x-1 sm:space-x-3">
-                {/* User */}
-                {
-                  user?.email ? user?.role === 'admin' ? (
-                    <Link href={`/admin/dashboard`} className="p-1 bg-gray-100 hover:bg-gray-200 cursor-pointer rounded-full transition-colors border border-gray-200" aria-label="Admin Dashboard">
-                      {user?.avatar ? (
-                        <img
-                          src={user.avatar}
-                          alt="Admin Profile"
-                          className="w-6 h-6 sm:w-7 sm:h-7 rounded-full object-cover"
-                        />
-                      ) : (
+                {/* User - Hidden on mobile, shown on desktop */}
+                <div className="hidden lg:block">
+                  {
+                    user?.email ? user?.role === 'admin' ? (
+                      <Link href={`/admin/dashboard`} className="p-1 bg-gray-100 hover:bg-gray-200 cursor-pointer rounded-full transition-colors border border-gray-200" aria-label="Admin Dashboard">
+                        {user?.avatar ? (
+                          <img
+                            src={user.avatar}
+                            alt="Admin Profile"
+                            className="w-6 h-6 sm:w-7 sm:h-7 rounded-full object-cover"
+                          />
+                        ) : (
+                          <User className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700" />
+                        )}
+                      </Link>
+                    ) : (
+                      <Link href={`/dashboard`} className="p-1 bg-gray-100 hover:bg-gray-200 cursor-pointer rounded-full transition-colors border border-gray-200" aria-label="User Dashboard">
+                        {user?.avatar ? (
+                          <img
+                            src={user.avatar}
+                            alt="User Profile"
+                            className="w-6 h-6 sm:w-7 sm:h-7 rounded-full object-cover"
+                          />
+                        ) : (
+                          <User className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700" />
+                        )}
+                      </Link>
+                    ) : (
+                      <Link href="/login" className="p-2 hover:bg-gray-100 rounded-full transition-colors" aria-label="Login">
                         <User className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700" />
-                      )}
-                    </Link>
-                  ) : (
-                    <Link href={`/dashboard`} className="p-1 bg-gray-100 hover:bg-gray-200 cursor-pointer rounded-full transition-colors border border-gray-200" aria-label="User Dashboard">
-                      {user?.avatar ? (
-                        <img
-                          src={user.avatar}
-                          alt="User Profile"
-                          className="w-6 h-6 sm:w-7 sm:h-7 rounded-full object-cover"
-                        />
-                      ) : (
-                        <User className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700" />
-                      )}
-                    </Link>
-                  ) : (
-                    <Link href="/login" className="p-2 hover:bg-gray-100 rounded-full transition-colors" aria-label="Login">
-                      <User className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700" />
-                    </Link>
-                  )
-                }
+                      </Link>
+                    )
+                  }
+                </div>
 
                 {/* Wishlist with badge */}
                 <button
@@ -221,10 +223,10 @@ function Header({ isTrackingShow = true }) {
                   </span>
                 </button>
 
-                {/* Cart with badge */}
+                {/* Cart with badge - Hidden on mobile, shown on desktop */}
                 <button
                   onClick={() => setIsCartOpen(true)}
-                  className="relative p-2 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
+                  className="hidden lg:flex relative p-2 hover:bg-gray-100 rounded-full transition-colors cursor-pointer items-center"
                   aria-label={`Shopping cart with ${cartCount} items`}
                 >
                   <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700" />
@@ -301,42 +303,51 @@ function Header({ isTrackingShow = true }) {
 
         {/* Mobile Search Bar */}
         {isSearchOpen && (
-          <div className="md:hidden mt-4">
-            <SearchBar
-              isMobile={true}
-              onSearchSubmit={() => setIsSearchOpen(false)}
-            />
+          <div className="md:hidden mt-4 px-4 pb-4">
+            <div className="max-w-screen-2xl mx-auto">
+              <SearchBar
+                isMobile={true}
+                onSearchSubmit={() => setIsSearchOpen(false)}
+              />
+            </div>
           </div>
         )}
 
         {/* Mobile Navigation Menu */}
         {isMobileMenuOpen && (
-          <div className="lg:hidden mt-4 border-t border-gray-200 pt-4">
-            <nav className="flex flex-col space-y-3">
-              {menuLoading ? (
-                <div className="space-y-3">
-                  {[...Array(6)].map((_, index) => (
-                    <div key={index} className="h-6 bg-gray-200 rounded animate-pulse w-24"></div>
-                  ))}
-                </div>
-              ) : (
-                navigationMenu.map((item) => {
-                  const isActive = isMenuItemActive(item.href);
-                  return (
-                    <Link
-                      key={item.id}
-                      href={item.href}
-                      target={item.target}
-                      className={`font-medium py-2 transition-colors ${isActive
-                        ? 'text-pink-500'
-                        : 'text-gray-700 hover:text-pink-500'
+          <div className="lg:hidden border-t border-gray-200 bg-white">
+            <nav className="px-4 py-4 max-w-screen-2xl mx-auto">
+              <div className="flex flex-col space-y-1">
+                {menuLoading ? (
+                  <div className="space-y-3">
+                    {[...Array(6)].map((_, index) => (
+                      <div key={index} className="h-8 bg-gray-200 rounded animate-pulse" style={{ width: `${60 + index * 10}%` }}></div>
+                    ))}
+                  </div>
+                ) : (
+                  navigationMenu.map((item, index) => {
+                    const isActive = isMenuItemActive(item.href);
+                    return (
+                      <Link
+                        key={item.id}
+                        href={item.href}
+                        target={item.target}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className={`mobile-menu-item px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
+                          isActive
+                            ? 'bg-[#EF3D6A] text-white shadow-sm'
+                            : 'text-gray-700 hover:bg-pink-50 hover:text-[#EF3D6A]'
                         }`}
-                    >
-                      {item.name}
-                    </Link>
-                  );
-                })
-              )}
+                        style={{ 
+                          animationDelay: `${index * 0.05}s`
+                        }}
+                      >
+                        {item.name}
+                      </Link>
+                    );
+                  })
+                )}
+              </div>
             </nav>
           </div>
         )}
@@ -353,6 +364,7 @@ function Header({ isTrackingShow = true }) {
         isOpen={isWishlistOpen}
         onClose={() => setIsWishlistOpen(false)}
       />
+
     </>
   );
 }

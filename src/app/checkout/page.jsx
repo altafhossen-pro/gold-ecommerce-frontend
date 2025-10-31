@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, ArrowRight, MessageCircle, Minus, Plus, Trash2, Check, AlertTriangle } from 'lucide-react';
 import { useAppContext } from '@/context/AppContext';
-import { orderAPI, productAPI, loyaltyAPI, couponAPI, addressAPI } from '@/services/api';
+import { orderAPI, productAPI, loyaltyAPI, couponAPI, addressAPI, upsellAPI } from '@/services/api';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import { getCookie } from 'cookies-next';
@@ -61,11 +61,34 @@ export default function Checkout() {
     useEffect(() => {
         if (cart.length > 0) {
             checkStockAvailability();
+            calculateUpsellDiscount();
         } else {
             setStockData({});
             setOutOfStockItems([]);
+            setUpsellDiscount(0);
         }
     }, [cart]);
+
+    // Calculate upsell discounts
+    const calculateUpsellDiscount = async () => {
+        if (cart.length === 0) {
+            setUpsellDiscount(0);
+            return;
+        }
+
+        try {
+            const response = await upsellAPI.calculateCartDiscounts(cart);
+            
+            if (response.success && response.data) {
+                setUpsellDiscount(response.data.totalDiscount || 0);
+            } else {
+                setUpsellDiscount(0);
+            }
+        } catch (error) {
+            console.error('Error calculating upsell discounts:', error);
+            setUpsellDiscount(0);
+        }
+    };
 
     // Fetch loyalty data when user is available
     useEffect(() => {
@@ -252,6 +275,9 @@ export default function Checkout() {
     const [couponLoading, setCouponLoading] = useState(false);
     const [couponError, setCouponError] = useState('');
 
+    // Upsell discount state
+    const [upsellDiscount, setUpsellDiscount] = useState(0);
+
     // Stock validation state
     const [stockData, setStockData] = useState({});
     const [stockLoading, setStockLoading] = useState(false);
@@ -292,7 +318,9 @@ export default function Checkout() {
     
     const shippingCost = calculateDeliveryCharge();
     const discount = 0; // General discount (not coupon discount)
-    const totalCost = useLoyaltyPoints ? 0 : (subtotal + shippingCost - discount - loyaltyDiscount - couponDiscount);
+    // Combine normal discount with upsell discount for UI display
+    const totalDiscountForUI = discount + upsellDiscount;
+    const totalCost = useLoyaltyPoints ? 0 : (subtotal + shippingCost - discount - upsellDiscount - loyaltyDiscount - couponDiscount);
     
     // Auto-select delivery type when division/district is selected
     useEffect(() => {
@@ -641,6 +669,7 @@ export default function Checkout() {
                         paymentStatus: 'pending',
                         total: useLoyaltyPoints ? 0 : calculatedTotal, // If using loyalty points, total is 0
                         discount: discount,
+                        upsellDiscount: upsellDiscount, // Separate field for upsell discount
                         loyaltyDiscount: useLoyaltyPoints ? calculatedTotal : loyaltyDiscount,
                         loyaltyPointsUsed: useLoyaltyPoints ? coinsNeeded : 0,
                         shippingCost: shippingCost,
@@ -674,6 +703,7 @@ export default function Checkout() {
                             ...(order.couponDiscount > 0 && { couponDiscount: order.couponDiscount }),
                             ...(order.loyaltyDiscount > 0 && { loyaltyDiscount: order.loyaltyDiscount }),
                             ...(order.discount > 0 && { discount: order.discount }),
+                            ...(order.upsellDiscount > 0 && { upsellDiscount: order.upsellDiscount }),
                             ...(order.coupon && { coupon: order.coupon }),
                             ...(order.isGuestOrder && { isGuestOrder: 'true' })
                         });
@@ -1480,7 +1510,7 @@ export default function Checkout() {
                                 
                                 <div className="flex justify-between">
                                     <span className="text-gray-600">Discount</span>
-                                    <span className="text-orange-500">{discount} ৳</span>
+                                    <span className="text-orange-500">{totalDiscountForUI} ৳</span>
                                 </div>
                                 
                                 {/* Coupon Discount */}

@@ -28,22 +28,14 @@ const UpsellProducts = ({ currentProductId }) => {
             const response = await upsellAPI.getUpsellsByMainProductPublic(currentProductId);
             
             if (response.success && response.data && response.data.linkedProducts?.length > 0) {
-                console.log('Upsell data received:', response.data);
-                console.log('Linked products details:', response.data.linkedProducts.map(link => ({
-                    title: link.product.title,
-                    priceRange: link.product.priceRange,
-                    variants: link.product.variants?.map(v => ({
-                        currentPrice: v.currentPrice,
-                        originalPrice: v.originalPrice
-                    }))
-                })));
+                
                 setUpsellData(response.data);
                 // Pre-select all products by default
                 const allProductIds = response.data.linkedProducts.map(link => link.product._id);
                 setSelectedProducts(allProductIds);
             }
         } catch (error) {
-            console.error('Error fetching upsell data:', error);
+            // console.error('Error fetching upsell data:', error);
         } finally {
             setLoading(false);
         }
@@ -106,7 +98,7 @@ const UpsellProducts = ({ currentProductId }) => {
                             
                             // If no variant has stock, skip this product
                             if (!selectedVariantData) {
-                                console.warn(`Product ${product.title} is out of stock`);
+                                // console.warn(`Product ${product.title} is out of stock`);
                                 failedCount++;
                                 continue;
                             }
@@ -115,6 +107,7 @@ const UpsellProducts = ({ currentProductId }) => {
                             const sizeAttr = selectedVariantData.attributes?.find(attr => attr.name === 'Size');
                             const colorAttr = selectedVariantData.attributes?.find(attr => attr.name === 'Color');
                             
+                            // Don't apply discount here - discount is applied to total, not individual products
                             selectedVariant = {
                                 size: sizeAttr?.value || 'Default',
                                 color: colorAttr?.value || null,
@@ -131,11 +124,12 @@ const UpsellProducts = ({ currentProductId }) => {
                             const isProductOutOfStock = productStock <= 0;
                             
                             if (isProductOutOfStock) {
-                                console.warn(`Product ${product.title} is out of stock (totalStock: ${productStock})`);
+                                // console.warn(`Product ${product.title} is out of stock (totalStock: ${productStock})`);
                                 failedCount++;
                                 continue;
                             }
                             
+                            // Don't apply discount here - discount is applied to total, not individual products
                             selectedVariant = {
                                 size: 'Default',
                                 color: null,
@@ -153,7 +147,7 @@ const UpsellProducts = ({ currentProductId }) => {
                         addedCount++;
                         
                     } catch (productError) {
-                        console.error(`Error preparing product ${link.product.title}:`, productError);
+                        // console.error(`Error preparing product ${link.product.title}:`, productError);
                         failedCount++;
                     }
                 }
@@ -171,23 +165,67 @@ const UpsellProducts = ({ currentProductId }) => {
                 toast.error('Failed to add products to cart');
             }
         } catch (error) {
-            console.error('Error adding products to cart:', error);
+            // console.error('Error adding products to cart:', error);
             toast.error('Failed to add products to cart');
         } finally {
             setAddingToCart(false);
         }
     };
 
+    // Check if all products are selected (required for discount)
+    const areAllProductsSelected = () => {
+        if (!upsellData?.linkedProducts) return false;
+        return selectedProducts.length === upsellData.linkedProducts.length &&
+               upsellData.linkedProducts.every(link => selectedProducts.includes(link.product._id));
+    };
+
     // Calculate total price
     const calculateTotalPrice = () => {
         if (!upsellData) return 0;
         
-        return upsellData.linkedProducts
+        // Calculate total of selected products (without discount)
+        const totalPrice = upsellData.linkedProducts
             .filter(link => selectedProducts.includes(link.product._id))
             .reduce((total, link) => {
                 const price = link.product.priceRange?.min || 0;
                 return total + price;
             }, 0);
+        
+        // Apply discount only if all products are selected and discount is enabled
+        if (areAllProductsSelected() && upsellData.hasDiscount && upsellData.discountValue) {
+            const { discountType, discountValue } = upsellData;
+            
+            if (discountType === 'percentage') {
+                const discountAmount = (totalPrice * discountValue) / 100;
+                return totalPrice - discountAmount;
+            } else {
+                // Fixed discount
+                return Math.max(0, totalPrice - discountValue);
+            }
+        }
+        
+        return totalPrice;
+    };
+
+    // Calculate discount amount
+    const calculateDiscountAmount = () => {
+        if (!upsellData || !areAllProductsSelected() || !upsellData.hasDiscount || !upsellData.discountValue) {
+            return 0;
+        }
+
+        const totalPrice = upsellData.linkedProducts
+            .reduce((total, link) => {
+                const price = link.product.priceRange?.min || 0;
+                return total + price;
+            }, 0);
+
+        const { discountType, discountValue } = upsellData;
+        
+        if (discountType === 'percentage') {
+            return (totalPrice * discountValue) / 100;
+        } else {
+            return discountValue;
+        }
     };
 
     if (loading) {
@@ -265,13 +303,16 @@ const UpsellProducts = ({ currentProductId }) => {
                                         </span>
                                         {/* Check if any variant has originalPrice different from currentPrice */}
                                         {(() => {
-                                            const hasDiscount = link.product.variants?.some(variant => 
+                                            const hasVariantDiscount = link.product.variants?.some(variant => 
                                                 variant.originalPrice && 
                                                 variant.originalPrice > variant.currentPrice
                                             );
                                             
-                                            if (hasDiscount) {
-                                                // Find the variant with the highest original price for display
+                                            // Fallback to priceRange check
+                                            const hasRangeDiscount = link.product.priceRange?.max && 
+                                                link.product.priceRange?.max > link.product.priceRange?.min;
+                                            
+                                            if (hasVariantDiscount) {
                                                 const variantWithDiscount = link.product.variants.find(variant => 
                                                     variant.originalPrice && 
                                                     variant.originalPrice > variant.currentPrice
@@ -284,8 +325,7 @@ const UpsellProducts = ({ currentProductId }) => {
                                                 );
                                             }
                                             
-                                            // Fallback to priceRange check
-                                            if (link.product.priceRange?.max && link.product.priceRange?.max > link.product.priceRange?.min) {
+                                            if (hasRangeDiscount) {
                                                 return (
                                                     <span className="text-sm text-gray-500 line-through">
                                                         ৳{link.product.priceRange.max}
@@ -312,14 +352,60 @@ const UpsellProducts = ({ currentProductId }) => {
                             </div>
                             
                             <div className="space-y-2 mb-4">
+                                {/* Subtotal */}
                                 <div className="bg-white rounded-lg p-2 shadow-sm">
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-gray-600 font-medium text-sm">Total:</span>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="text-gray-600 font-medium text-sm">Subtotal:</span>
+                                        <span className="text-lg font-semibold text-gray-900">
+                                            ৳{upsellData.linkedProducts
+                                                .filter(link => selectedProducts.includes(link.product._id))
+                                                .reduce((total, link) => total + (link.product.priceRange?.min || 0), 0)
+                                                .toFixed(2)}
+                                        </span>
+                                    </div>
+                                    
+                                    {/* Discount (only if all products selected) */}
+                                    {areAllProductsSelected() && upsellData.hasDiscount && upsellData.discountValue > 0 && (
+                                        <div className="flex justify-between items-center pt-2 border-t border-gray-200">
+                                            <span className="text-green-600 font-medium text-sm flex items-center gap-1">
+                                                Discount
+                                                <span className="text-xs">
+                                                    ({upsellData.discountType === 'percentage' 
+                                                        ? `${upsellData.discountValue}%` 
+                                                        : `৳${upsellData.discountValue}`})
+                                                </span>
+                                            </span>
+                                            <span className="text-lg font-semibold text-green-600">
+                                                -৳{calculateDiscountAmount().toFixed(2)}
+                                            </span>
+                                        </div>
+                                    )}
+                                    
+                                    {/* Total */}
+                                    <div className="flex justify-between items-center pt-2 border-t border-gray-200 mt-2">
+                                        <span className="text-gray-900 font-bold text-base">Total:</span>
                                         <span className="text-xl font-bold text-pink-600">
                                             ৳{calculateTotalPrice().toFixed(2)}
                                         </span>
                                     </div>
                                 </div>
+                                
+                                {/* Discount info message */}
+                                {upsellData.hasDiscount && upsellData.discountValue > 0 && (
+                                    <div className="bg-green-50 border border-green-200 rounded-lg p-2">
+                                        <p className="text-xs text-green-700 text-center">
+                                            {areAllProductsSelected() ? (
+                                                <>🎉 Discount Applied!</>
+                                            ) : (
+                                                <>Select all {upsellData.linkedProducts.length} products to get{' '}
+                                                    {upsellData.discountType === 'percentage' 
+                                                        ? `${upsellData.discountValue}%` 
+                                                        : `৳${upsellData.discountValue}`} discount
+                                                </>
+                                            )}
+                                        </p>
+                                    </div>
+                                )}
                             </div>
 
                             <button

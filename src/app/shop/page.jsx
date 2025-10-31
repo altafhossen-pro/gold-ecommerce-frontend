@@ -12,6 +12,7 @@ import { ChevronDown, ChevronUp, Filter, X, Flame, TrendingUp, Clock, BarChart3 
 import Pagination from '@/components/Common/Pagination';
 import toast from 'react-hot-toast';
 import Footer from '@/components/Footer/Footer';
+import OwnAds from '@/components/Common/OwnAds';
 
 function ShopPageContent() {
     const { addToCart, addToWishlist, removeFromWishlist, wishlist } = useAppContext();
@@ -468,6 +469,9 @@ function ShopPageContent() {
 
                         {/* Right Side - Product Grid */}
                         <div className="flex-1">
+                            {/* Own Ads Banner */}
+                            <OwnAds position="shop-page" />
+                            
                             {/* Sorting Bar */}
                             <div className="mb-6">
                                 <div className="bg-white rounded-lg shadow-sm border border-gray-300 p-4">

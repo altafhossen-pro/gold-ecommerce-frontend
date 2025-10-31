@@ -5,7 +5,7 @@ import { X, Minus, Plus, Trash2, ShoppingBag } from 'lucide-react';
 import { useAppContext } from '@/context/AppContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { productAPI } from '@/services/api';
+import { productAPI, upsellAPI } from '@/services/api';
 import toast from 'react-hot-toast';
     
 export default function CartModal({ isOpen, onClose }) {
@@ -15,13 +15,22 @@ export default function CartModal({ isOpen, onClose }) {
     // State for stock validation
     const [stockData, setStockData] = useState({});
     const [stockLoading, setStockLoading] = useState(false);
+    
+    // State for upsell discounts
+    const [upsellDiscount, setUpsellDiscount] = useState({
+        totalDiscount: 0,
+        discounts: []
+    });
+    const [discountLoading, setDiscountLoading] = useState(false);
 
     // Check stock availability when cart changes or modal opens
     useEffect(() => {
         if (cart.length > 0) {
             checkStockAvailability();
+            calculateDiscounts();
         } else {
             setStockData({});
+            setUpsellDiscount({ totalDiscount: 0, discounts: [] });
         }
     }, [cart]);
 
@@ -29,8 +38,36 @@ export default function CartModal({ isOpen, onClose }) {
     useEffect(() => {
         if (isOpen && cart.length > 0) {
             checkStockAvailability();
+            calculateDiscounts();
         }
     }, [isOpen]);
+
+    // Calculate upsell discounts
+    const calculateDiscounts = async () => {
+        if (cart.length === 0) {
+            setUpsellDiscount({ totalDiscount: 0, discounts: [] });
+            return;
+        }
+
+        try {
+            setDiscountLoading(true);
+            const response = await upsellAPI.calculateCartDiscounts(cart);
+            
+            if (response.success && response.data) {
+                setUpsellDiscount({
+                    totalDiscount: response.data.totalDiscount || 0,
+                    discounts: response.data.discounts || []
+                });
+            } else {
+                setUpsellDiscount({ totalDiscount: 0, discounts: [] });
+            }
+        } catch (error) {
+            console.error('Error calculating discounts:', error);
+            setUpsellDiscount({ totalDiscount: 0, discounts: [] });
+        } finally {
+            setDiscountLoading(false);
+        }
+    };
 
     // Real-time stock checking function
     const checkStockAvailability = async () => {
@@ -375,6 +412,25 @@ export default function CartModal({ isOpen, onClose }) {
                             </div>
                         ) : (
                             <>
+                                {/* Upsell Discount - Single Line */}
+                                {upsellDiscount.totalDiscount > 0 && (
+                                    <div className="mb-3 ">
+                                        <div className="flex justify-between items-center text-sm">
+                                            <span className="text-green-600 font-medium">
+                                                Upsell Discount
+                                                {upsellDiscount.discounts.length > 0 && (
+                                                    <span className="text-xs ml-1">
+                                                        ({upsellDiscount.discounts.length} {upsellDiscount.discounts.length === 1 ? 'offer' : 'offers'})
+                                                    </span>
+                                                )}
+                                            </span>
+                                            <span className="font-semibold text-green-600">
+                                                -{upsellDiscount.totalDiscount.toFixed(2)} ৳
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Delivery Charge Display */}
                                 {deliveryChargeSettings && (
                                     <div className="mb-3 bg-gray-50 rounded-lg p-3">
@@ -398,7 +454,11 @@ export default function CartModal({ isOpen, onClose }) {
                                     className="w-full bg-[#EF3D6A] text-white py-3 px-4 rounded-lg font-semibold hover:bg-[#D63447] transition-all duration-200 flex items-center justify-between cursor-pointer hover:scale-[1.02] hover:shadow-lg"
                                 >
                                     <span>Proceed To Checkout</span>
-                                    <span>{cartTotal} ৳</span>
+                                    <span>
+                                        {upsellDiscount.totalDiscount > 0 
+                                            ? (cartTotal - upsellDiscount.totalDiscount).toFixed(2) 
+                                            : cartTotal} ৳
+                                    </span>
                                 </Link>
                             </>
                         )}

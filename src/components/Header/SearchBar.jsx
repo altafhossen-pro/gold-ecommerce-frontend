@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { Search } from 'lucide-react';
 import { productAPI } from '@/services/api';
 import Link from 'next/link';
@@ -13,6 +13,7 @@ export default function SearchBar({ isMobile = false, onSearchSubmit, className 
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false); // Track if search has been performed
   const router = useRouter();
+  const pathname = usePathname();
   const searchRef = useRef(null);
   const suggestionsRef = useRef(null);
 
@@ -42,6 +43,12 @@ export default function SearchBar({ isMobile = false, onSearchSubmit, className 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Close suggestions when route changes
+  useEffect(() => {
+    setShowSuggestions(false);
+    setSuggestions([]);
+  }, [pathname]);
 
   const fetchSuggestions = async (query) => {
     if (query.length < 1) return;
@@ -80,9 +87,16 @@ export default function SearchBar({ isMobile = false, onSearchSubmit, className 
   };
 
   const handleSuggestionClick = (product) => {
-    setSearchQuery(product.title || product.name);
+    // Close suggestions immediately before navigation
     setShowSuggestions(false);
+    setSuggestions([]);
+    setSearchQuery(product.title || product.name);
+    // Navigate to product page
     router.push(`/product/${product.slug}`);
+    // Call onSearchSubmit if provided (for mobile search)
+    if (onSearchSubmit) {
+      onSearchSubmit();
+    }
   };
 
   const handleInputChange = (e) => {

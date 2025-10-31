@@ -1651,6 +1651,17 @@ export const upsellAPI = {
             },
         });
     },
+
+    // Calculate cart discounts (Public - no auth required)
+    calculateCartDiscounts: (cartItems) => {
+        return apiCall(`/upsell/calculate-discount`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ cartItems }),
+        });
+    },
 };
 
 // Role API functions
@@ -1729,6 +1740,98 @@ export const roleAPI = {
     },
 };
 
+// Ads API functions
+export const adsAPI = {
+    // Get all ads (Admin)
+    getAllAds: (params = {}, token) => {
+        const queryParams = new URLSearchParams();
+        Object.keys(params).forEach(key => {
+            if (params[key] !== undefined && params[key] !== null && params[key] !== '') {
+                queryParams.append(key, params[key]);
+            }
+        });
+        const queryString = queryParams.toString();
+        return apiCall(`/ads?${queryString}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+    },
+
+    // Get single ad by ID (Admin)
+    getAdById: (id, token) => {
+        return apiCall(`/ads/${id}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+    },
+
+    // Create new ad (Admin)
+    createAd: (adData, token) => {
+        return apiCall('/ads', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(adData),
+        });
+    },
+
+    // Update ad (Admin)
+    updateAd: (id, adData, token) => {
+        return apiCall(`/ads/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(adData),
+        });
+    },
+
+    // Delete ad (Admin)
+    deleteAd: (id, token) => {
+        return apiCall(`/ads/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+    },
+
+    // Toggle ad status (Admin)
+    toggleAdStatus: (id, token) => {
+        return apiCall(`/ads/${id}/toggle-status`, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+    },
+
+    // Get ads statistics (Admin)
+    getAdsStats: (token) => {
+        return apiCall('/ads/stats', {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+    },
+
+    // Get active ads (Public)
+    getActiveAds: (position = null) => {
+        const params = position ? `?position=${position}` : '';
+        return apiCall(`/ads/active${params}`);
+    },
+};
+
 export default {
     productAPI,
     categoryAPI,
@@ -1751,5 +1854,6 @@ export default {
     inventoryAPI,
     upsellAPI,
     roleAPI,
+    adsAPI,
     transformProductData,
 };

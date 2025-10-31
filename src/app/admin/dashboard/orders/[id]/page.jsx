@@ -190,7 +190,7 @@ export default function OrderDetailsPage() {
     };
 
     const copyOrderId = () => {
-        navigator.clipboard.writeText(order._id);
+        navigator.clipboard.writeText(order?.orderId || "Order ID not found");
         toast.success('Order ID copied!');
     };
 
@@ -374,7 +374,7 @@ export default function OrderDetailsPage() {
                             <div className="h-6 w-px bg-slate-300"></div>
                             <div>
                                 <h1 className="text-xl font-bold text-slate-900 flex items-center">
-                                    Order #{order._id.slice(-8).toUpperCase()}
+                                    Order #{order?.orderId || "Order ID not found"}
                                     <button 
                                         onClick={copyOrderId}
                                         className="ml-2 p-1 hover:bg-slate-100 rounded transition-colors"
@@ -669,6 +669,12 @@ export default function OrderDetailsPage() {
                                         <span className="font-bold text-blue-600">-৳{order.couponDiscount}</span>
                                     </div>
                                 )}
+                                {order.upsellDiscount > 0 && (
+                                    <div className="flex justify-between items-center py-3 border-b border-slate-100">
+                                        <span className="text-slate-600 font-medium">Upsell Discount</span>
+                                        <span className="font-bold text-green-600">-৳{order.upsellDiscount}</span>
+                                    </div>
+                                )}
                                 {order.discount > 0 && order.couponDiscount === 0 && (
                                     <div className="flex justify-between items-center py-3 border-b border-slate-100">
                                         <span className="text-slate-600 font-medium">Discount</span>
@@ -684,7 +690,7 @@ export default function OrderDetailsPage() {
                                 <div className="pt-4">
                                     <div className="flex justify-between items-center">
                                         <span className="text-lg font-bold text-slate-900">Total</span>
-                                        <span className="text-2xl font-bold text-slate-900">৳{order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0) + order.shippingCost - (order.discount || 0) - (order.couponDiscount || 0) - (order.loyaltyDiscount || 0)}</span>
+                                        <span className="text-2xl font-bold text-slate-900">৳{order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0) + order.shippingCost - (order.discount || 0) - (order.couponDiscount || 0) - (order.upsellDiscount || 0) - (order.loyaltyDiscount || 0)}</span>
                                     </div>
                                 </div>
                                 {order.loyaltyPointsUsed > 0 && (

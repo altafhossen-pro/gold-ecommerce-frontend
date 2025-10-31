@@ -248,11 +248,13 @@ export default function RoleManagementPage() {
         user: 'Users',
         category: 'Categories',
         coupon: 'Coupons',
+        ads: 'Ads',
         settings: 'Settings',
         content: 'Content',
         analytics: 'Analytics',
         system: 'System',
-        admin: 'Admin',
+        admin: 'Admin'
+        
     }
 
     if (checkingPermission || contextLoading || loading) {

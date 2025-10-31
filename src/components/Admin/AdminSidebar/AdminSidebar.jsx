@@ -35,7 +35,8 @@ import {
     Database,
     Bell,
     KeyRound,
-    Printer
+    Printer,
+    Presentation
 } from 'lucide-react'
 
 const navigation = [
@@ -98,6 +99,7 @@ const navigation = [
         children: [
             { name: 'Coupons', href: '/admin/dashboard/coupons', icon: Ticket },
             { name: 'Upsells', href: '/admin/dashboard/upsells', icon: Link2 },
+            { name: 'Own Products Ads', href: '/admin/dashboard/own-ads', icon: Presentation },
         ]
     },
     { 
@@ -146,6 +148,9 @@ export default function AdminSidebar({ onMobileMenuClose }) {
         if (child.href === '/admin/dashboard/settings/label-print') {
             return pathname === '/admin/dashboard/settings/label-print' || pathname.startsWith('/admin/dashboard/settings/label-print/')
         }
+        if (child.href === '/admin/dashboard/own-ads') {
+            return pathname === '/admin/dashboard/own-ads' || pathname.startsWith('/admin/dashboard/own-ads/')
+        }
         // For other routes, use exact match or startsWith for sub-routes
         return pathname === child.href || pathname.startsWith(child.href + '/')
     }
@@ -180,6 +185,9 @@ export default function AdminSidebar({ onMobileMenuClose }) {
                     }
                     if (child.href === '/admin/dashboard/settings/label-print') {
                         return pathname === '/admin/dashboard/settings/label-print' || pathname.startsWith('/admin/dashboard/settings/label-print/')
+                    }
+                    if (child.href === '/admin/dashboard/own-ads') {
+                        return pathname === '/admin/dashboard/own-ads' || pathname.startsWith('/admin/dashboard/own-ads/')
                     }
                     return pathname === child.href || pathname.startsWith(child.href + '/')
                 })

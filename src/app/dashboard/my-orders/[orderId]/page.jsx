@@ -461,6 +461,12 @@ export default function OrderDetails() {
                                                     <span className="text-green-600">-৳{order.discount.toLocaleString()}</span>
                                                 </div>
                                             )}
+                                            {order.upsellDiscount > 0 && (
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-gray-600">Upsell Discount</span>
+                                                    <span className="text-green-600">-৳{order.upsellDiscount.toLocaleString()}</span>
+                                                </div>
+                                            )}
                                             {order.loyaltyDiscount > 0 && (
                                                 <div className="flex justify-between text-sm">
                                                     <span className="text-gray-600">Loyalty Points Discount</span>
@@ -470,7 +476,7 @@ export default function OrderDetails() {
                                             <div className="border-t border-gray-300 pt-2">
                                                 <div className="flex justify-between text-base font-bold">
                                                     <span className="text-gray-900">Total</span>
-                                                    <span className="text-pink-600">৳{order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0) + order.shippingCost - (order.discount || 0) - (order.loyaltyDiscount || 0) - (order.couponDiscount || 0)}</span>
+                                                    <span className="text-pink-600">৳{(order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0) + order.shippingCost - (order.discount || 0) - (order.upsellDiscount || 0) - (order.loyaltyDiscount || 0) - (order.couponDiscount || 0)).toLocaleString()}</span>
                                                 </div>
                                             </div>
                                             {order.loyaltyPointsUsed > 0 && (

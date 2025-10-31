@@ -16,6 +16,7 @@ function OrderConfirmation() {
     const couponDiscount = searchParams.get('couponDiscount');
     const loyaltyDiscount = searchParams.get('loyaltyDiscount');
     const discount = searchParams.get('discount');
+    const upsellDiscount = searchParams.get('upsellDiscount');
     const coupon = searchParams.get('coupon');
     const isGuestOrder = searchParams.get('isGuestOrder') === 'true';
 
@@ -25,6 +26,7 @@ function OrderConfirmation() {
         if (couponDiscount) finalTotal -= parseFloat(couponDiscount);
         if (loyaltyDiscount) finalTotal -= parseFloat(loyaltyDiscount);
         if (discount) finalTotal -= parseFloat(discount);
+        if (upsellDiscount) finalTotal -= parseFloat(upsellDiscount);
         return Math.max(0, finalTotal); // Ensure total doesn't go below 0
     };
 
@@ -163,11 +165,11 @@ function OrderConfirmation() {
                                 </div>
                                 {finalTotal !== parseFloat(total) ? (
                                     <div className="text-center">
-                                        <p className="text-sm font-bold text-gray-900">৳{finalTotal}</p>
-                                        <p className="text-xs text-gray-500 line-through">৳{total}</p>
+                                        <p className="text-sm font-bold text-gray-900">৳{finalTotal.toFixed(2)}</p>
+                                        <p className="text-xs text-gray-500 line-through">৳{parseFloat(total).toFixed(2)}</p>
                                     </div>
                                 ) : (
-                                    <p className="text-sm font-bold text-gray-900">৳{finalTotal}</p>
+                                    <p className="text-sm font-bold text-gray-900">৳{finalTotal.toFixed(2)}</p>
                                 )}
                             </div>
                         )}
@@ -185,7 +187,7 @@ function OrderConfirmation() {
                     </div>
 
                     {/* Discount Breakdown */}
-                    {(couponDiscount || loyaltyDiscount || discount) && (
+                    {(couponDiscount || loyaltyDiscount || discount || upsellDiscount) && (
                         <div className="bg-gray-50 rounded-lg p-3 mb-4">
                             <h3 className="text-sm font-semibold text-gray-700 mb-2">Savings Applied</h3>
                             <div className="space-y-2">
@@ -195,7 +197,7 @@ function OrderConfirmation() {
                                             Coupon Discount {coupon && `(${coupon})`}
                                         </span>
                                         <span className="font-semibold text-blue-600">
-                                            -৳{couponDiscount}
+                                            -৳{parseFloat(couponDiscount).toFixed(2)}
                                         </span>
                                     </div>
                                 )}
@@ -203,7 +205,15 @@ function OrderConfirmation() {
                                     <div className="flex justify-between items-center text-sm">
                                         <span className="text-gray-600">Loyalty Points Discount</span>
                                         <span className="font-semibold text-pink-600">
-                                            -৳{loyaltyDiscount}
+                                            -৳{parseFloat(loyaltyDiscount).toFixed(2)}
+                                        </span>
+                                    </div>
+                                )}
+                                {upsellDiscount && (
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-gray-600">Upsell Discount</span>
+                                        <span className="font-semibold text-green-600">
+                                            -৳{parseFloat(upsellDiscount).toFixed(2)}
                                         </span>
                                     </div>
                                 )}
@@ -211,7 +221,7 @@ function OrderConfirmation() {
                                     <div className="flex justify-between items-center text-sm">
                                         <span className="text-gray-600">General Discount</span>
                                         <span className="font-semibold text-green-600">
-                                            -৳{discount}
+                                            -৳{parseFloat(discount).toFixed(2)}
                                         </span>
                                     </div>
                                 )}

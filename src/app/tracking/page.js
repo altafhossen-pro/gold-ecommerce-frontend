@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, Suspense } from 'react';
-import { Search, Package, CheckCircle, Clock, Truck, Home, XCircle } from 'lucide-react';
+import { Search, Package, CheckCircle, Clock, Truck, Home, XCircle, RotateCcw } from 'lucide-react';
 import { orderAPI } from '@/services/api';
 import { useSearchParams } from 'next/navigation';
 
@@ -90,8 +90,10 @@ function TrackingPageContent() {
   };
 
   const getStatusIcon = (status, completed) => {
-    if (status === 'cancelled' && completed) {
-      return <XCircle className="w-6 h-6 text-red-500" />;
+    if ((status === 'cancelled' || status === 'returned') && completed) {
+      return status === 'cancelled' 
+        ? <XCircle className="w-6 h-6 text-red-500" />
+        : <RotateCcw className="w-6 h-6 text-orange-500" />;
     }
     
     if (completed) {
@@ -111,6 +113,8 @@ function TrackingPageContent() {
         return <Home className="w-6 h-6 text-gray-400" />;
       case 'cancelled':
         return <XCircle className="w-6 h-6 text-gray-400" />;
+      case 'returned':
+        return <RotateCcw className="w-6 h-6 text-gray-400" />;
       default:
         return <Clock className="w-6 h-6 text-gray-400" />;
     }
@@ -172,17 +176,30 @@ function TrackingPageContent() {
         )}
 
         {/* Order Details */}
-        {orderData && (
+        {orderData && (() => {
+          const order = orderData.order;
+          // Calculate items subtotal from order.total (which is items total)
+          const itemsSubtotal = order.total || 0;
+          const shippingCost = order.shippingCost || 0;
+          const discount = order.discount || 0;
+          const couponDiscount = order.couponDiscount || 0;
+          const upsellDiscount = order.upsellDiscount || 0;
+          const loyaltyDiscount = order.loyaltyDiscount || 0;
+          
+          // Calculate final total: items + shipping - all discounts
+          const finalTotal = itemsSubtotal + shippingCost - discount - couponDiscount - upsellDiscount - loyaltyDiscount;
+          
+          return (
           <div className="space-y-6">
             {/* Order Summary */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <div className="flex justify-between items-center">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Order ID: {orderData.order.orderId}</h3>
-                  <p className="text-gray-600">Status: <span className="font-medium capitalize">{orderData.order.status}</span></p>
+                  <h3 className="text-lg font-semibold text-gray-900">Order ID: {order.orderId}</h3>
+                  <p className="text-gray-600">Status: <span className="font-medium capitalize">{order.status}</span></p>
                 </div>
                 <div className="text-right">
-                  <p className="text-lg font-semibold text-gray-900">{orderData.order.total} ৳</p>
+                  <p className="text-lg font-semibold text-gray-900">{finalTotal.toFixed(2)} ৳</p>
                   <p className="text-sm text-gray-600">Total Amount</p>
                 </div>
               </div>
@@ -202,8 +219,10 @@ function TrackingPageContent() {
                         {/* Icon */}
                         <div className="mr-4">
                           <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                            step.status === 'cancelled' && step.completed
-                              ? 'bg-red-100 border-2 border-red-500'
+                            (step.status === 'cancelled' || step.status === 'returned') && step.completed
+                              ? step.status === 'cancelled'
+                                ? 'bg-red-100 border-2 border-red-500'
+                                : 'bg-orange-100 border-2 border-orange-500'
                               : step.completed 
                                 ? 'bg-green-100 border-2 border-green-500' 
                                 : 'bg-gray-100 border-2 border-gray-300'
@@ -215,8 +234,10 @@ function TrackingPageContent() {
                         {/* Label and Description */}
                         <div>
                           <h4 className={`font-medium ${
-                            step.status === 'cancelled' && step.completed
-                              ? 'text-red-700'
+                            (step.status === 'cancelled' || step.status === 'returned') && step.completed
+                              ? step.status === 'cancelled'
+                                ? 'text-red-700'
+                                : 'text-orange-700'
                               : step.completed 
                                 ? 'text-green-700' 
                                 : 'text-gray-500'
@@ -226,8 +247,10 @@ function TrackingPageContent() {
                           {step.completed && (
                             <p className={`text-sm mt-1 ${
                               step.status === 'cancelled' 
-                                ? 'text-red-600' 
-                                : 'text-gray-600'
+                                ? 'text-red-600'
+                                : step.status === 'returned'
+                                  ? 'text-orange-600'
+                                  : 'text-gray-600'
                             }`}>
                               {step.description}
                             </p>
@@ -253,31 +276,31 @@ function TrackingPageContent() {
             </div>
 
             {/* Shipping Address */}
-            {orderData.order.shippingAddress && (
+            {order.shippingAddress && (
               <div className="bg-white rounded-lg shadow-md p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Shipping Address</h3>
                 <div className="bg-gray-50 rounded-lg p-4">
                   <div className="space-y-2 text-gray-700">
                     <div className="flex items-start">
                       <span className="font-medium text-gray-600 w-20">Address:</span>
-                      <span>{orderData.order.shippingAddress.street}</span>
+                      <span>{order.shippingAddress.street}</span>
                     </div>
                     <div className="flex items-start">
                       <span className="font-medium text-gray-600 w-20">City:</span>
-                      <span>{orderData.order.shippingAddress.city}</span>
+                      <span>{order.shippingAddress.city}</span>
                     </div>
                     <div className="flex items-start">
                       <span className="font-medium text-gray-600 w-20">State:</span>
-                      <span>{orderData.order.shippingAddress.state}</span>
+                      <span>{order.shippingAddress.state}</span>
                     </div>
                     <div className="flex items-start">
                       <span className="font-medium text-gray-600 w-20">Country:</span>
-                      <span>{orderData.order.shippingAddress.country}</span>
+                      <span>{order.shippingAddress.country}</span>
                     </div>
-                    {orderData.order.shippingAddress.postalCode && (
+                    {order.shippingAddress.postalCode && (
                       <div className="flex items-start">
                         <span className="font-medium text-gray-600 w-20">Postal:</span>
-                        <span>{orderData.order.shippingAddress.postalCode}</span>
+                        <span>{order.shippingAddress.postalCode}</span>
                       </div>
                     )}
                   </div>
@@ -285,7 +308,8 @@ function TrackingPageContent() {
               </div>
             )}
           </div>
-        )}
+          );
+        })()}
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import { Toaster } from "react-hot-toast";
 import { AppProvider } from "@/context/AppContext";
 import { generateStaticMetadata, generateViewport } from "@/utils/metadata";
 import ConditionalHeader from "@/components/Common/ConditionalHeader";
+import MobileBottomNavigation from "@/components/Common/MobileBottomNavigation";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,6 +31,7 @@ export default function RootLayout({ children }) {
         <AppProvider>
           <ConditionalHeader />
           {children}
+          <MobileBottomNavigation />
           <Toaster />
         </AppProvider>
         

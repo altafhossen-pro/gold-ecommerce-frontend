@@ -15,6 +15,10 @@ export default function UpsellDetailsModal({ isOpen, onClose, product, onSuccess
     const [selectedProducts, setSelectedProducts] = useState([]);
     const [adding, setAdding] = useState(false);
     const [searchPerformed, setSearchPerformed] = useState(false);
+    const [hasDiscount, setHasDiscount] = useState(false);
+    const [discountType, setDiscountType] = useState('percentage');
+    const [discountValue, setDiscountValue] = useState(0);
+    const [savingDiscount, setSavingDiscount] = useState(false);
 
     // Get admin token
     const getAdminToken = () => {
@@ -30,17 +34,37 @@ export default function UpsellDetailsModal({ isOpen, onClose, product, onSuccess
             
             if (response.success && response.data) {
                 setUpsellData(response.data);
+                // Set discount values from existing upsell
+                setHasDiscount(response.data.hasDiscount || false);
+                setDiscountType(response.data.discountType || 'percentage');
+                setDiscountValue(response.data.discountValue || 0);
             } else {
-                // Create new upsell if none exists
+                // Create new upsell if none exists (no upsells found is normal)
                 setUpsellData({
                     mainProduct: product,
                     linkedProducts: [],
                     isActive: true
                 });
+                // Reset discount fields for new upsell
+                setHasDiscount(false);
+                setDiscountType('percentage');
+                setDiscountValue(0);
             }
         } catch (error) {
             console.error('Error fetching upsell data:', error);
-            toast.error('Failed to fetch upsell data');
+            // Check if error message indicates no upsells found (normal case)
+            const errorMessage = error.message || error.response?.data?.message || '';
+            if (errorMessage.toLowerCase().includes('no upsells found')) {
+                // This is a normal case, not an error - just create empty upsell
+                setUpsellData({
+                    mainProduct: product,
+                    linkedProducts: [],
+                    isActive: true
+                });
+            } else {
+                // Only show toast for actual errors
+                toast.error('Failed to fetch upsell data');
+            }
         } finally {
             setLoading(false);
         }
@@ -119,7 +143,7 @@ export default function UpsellDetailsModal({ isOpen, onClose, product, onSuccess
             setAdding(true);
             const token = getAdminToken();
             
-            if (!upsellData._id) {
+            if (!upsellData?._id) {
                 // Create new upsell first
                 const createResponse = await upsellAPI.createUpsell({
                     mainProduct: product._id,
@@ -188,6 +212,52 @@ export default function UpsellDetailsModal({ isOpen, onClose, product, onSuccess
         }
     };
 
+    // Save discount settings
+    const saveDiscountSettings = async () => {
+        if (!upsellData._id) {
+            toast.error('Please add products first');
+            return;
+        }
+
+        // Validate discount value
+        if (hasDiscount) {
+            if (discountValue < 0) {
+                toast.error('Discount value cannot be negative');
+                return;
+            }
+            if (discountType === 'percentage' && discountValue > 100) {
+                toast.error('Percentage discount cannot exceed 100%');
+                return;
+            }
+        }
+
+        try {
+            setSavingDiscount(true);
+            const token = getAdminToken();
+            const response = await upsellAPI.updateUpsell(
+                upsellData._id,
+                {
+                    hasDiscount,
+                    discountType: hasDiscount ? discountType : 'percentage',
+                    discountValue: hasDiscount ? discountValue : 0
+                },
+                token
+            );
+
+            if (response.success) {
+                toast.success('Discount settings saved successfully');
+                fetchUpsellData();
+            } else {
+                toast.error(response.message || 'Failed to save discount settings');
+            }
+        } catch (error) {
+            console.error('Error saving discount settings:', error);
+            toast.error('Failed to save discount settings');
+        } finally {
+            setSavingDiscount(false);
+        }
+    };
+
 
     // Reset modal state
     const resetModal = () => {
@@ -195,6 +265,9 @@ export default function UpsellDetailsModal({ isOpen, onClose, product, onSuccess
         setSearchResults([]);
         setSelectedProducts([]);
         setSearchPerformed(false);
+        setHasDiscount(false);
+        setDiscountType('percentage');
+        setDiscountValue(0);
     };
 
     // Handle modal close
@@ -242,6 +315,94 @@ export default function UpsellDetailsModal({ isOpen, onClose, product, onSuccess
                         </div>
                     ) : (
                         <div className="space-y-6">
+                            {/* Discount Settings */}
+                            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div>
+                                        <h3 className="text-lg font-medium text-gray-900">Upsell Discount</h3>
+                                        <p className="text-sm text-gray-500 mt-1">Apply discount to all upsell products</p>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={hasDiscount}
+                                            onChange={(e) => setHasDiscount(e.target.checked)}
+                                            className="sr-only peer"
+                                            disabled={!upsellData?._id || savingDiscount}
+                                        />
+                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-600"></div>
+                                    </label>
+                                </div>
+
+                                {hasDiscount && (
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Discount Type
+                                            </label>
+                                            <select
+                                                value={discountType}
+                                                onChange={(e) => setDiscountType(e.target.value)}
+                                                disabled={savingDiscount || !upsellData?._id}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                                            >
+                                                <option value="percentage">Percentage (%)</option>
+                                                <option value="fixed">Fixed Amount (৳)</option>
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Discount Value
+                                                {discountType === 'percentage' ? ' (%)' : ' (৳)'}
+                                            </label>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                max={discountType === 'percentage' ? 100 : undefined}
+                                                step={discountType === 'percentage' ? 0.01 : 1}
+                                                value={discountValue}
+                                                onChange={(e) => {
+                                                    const value = parseFloat(e.target.value) || 0;
+                                                    if (discountType === 'percentage') {
+                                                        setDiscountValue(Math.min(100, Math.max(0, value)));
+                                                    } else {
+                                                        setDiscountValue(Math.max(0, value));
+                                                    }
+                                                }}
+                                                disabled={savingDiscount || !upsellData?._id}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                                                placeholder={discountType === 'percentage' ? '0-100' : '0'}
+                                            />
+                                            {discountType === 'percentage' && (
+                                                <p className="text-xs text-gray-500 mt-1">Enter a value between 0 and 100</p>
+                                            )}
+                                        </div>
+
+                                        {upsellData?._id && (
+                                            <button
+                                                onClick={saveDiscountSettings}
+                                                disabled={savingDiscount}
+                                                className="w-full px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2"
+                                            >
+                                                {savingDiscount ? (
+                                                    <>
+                                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                                        <span>Saving...</span>
+                                                    </>
+                                                ) : (
+                                                    <span>Save Discount Settings</span>
+                                                )}
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+
+                                {!upsellData?._id && (
+                                    <p className="text-sm text-gray-500 mt-2">Add products first to enable discount settings</p>
+                                )}
+                            </div>
+
                             {/* Current Linked Products */}
                             <div>
                                 <h3 className="text-lg font-medium text-gray-900 mb-4">
@@ -250,7 +411,7 @@ export default function UpsellDetailsModal({ isOpen, onClose, product, onSuccess
                                 
                                 {upsellData?.linkedProducts?.length > 0 ? (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {upsellData.linkedProducts.map((link, index) => (
+                                        {upsellData?.linkedProducts?.map((link, index) => (
                                             <div
                                                 key={link.product._id}
                                                 className="border border-gray-200 rounded-lg p-4"

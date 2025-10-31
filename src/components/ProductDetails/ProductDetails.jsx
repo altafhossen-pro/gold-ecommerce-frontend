@@ -87,7 +87,7 @@ export default function ProductDetails({ productSlug }) {
                 setProduct(null);
             }
         } catch (error) {
-            console.error('Error fetching product:', error);
+            // console.error('Error fetching product:', error);
             setProduct(null);
         } finally {
             setLoading(false);
@@ -603,11 +603,10 @@ export default function ProductDetails({ productSlug }) {
                             )}
                         </div>
 
-                        <div className='mb-2'>
+                        {/* <div className='mb-2'>
                             <label className="block text-sm font-medium text-gray-700">Offer time</label>
                         </div>
                         <div className='flex items-center justify-between gap-4'>
-                            {/* Offer Timer */}
                             <div className="space-y-2">
                                 <CountdownTimer endDate={new Date(Date.now() + 2 * 24 * 60 * 60 * 1000 + 12 * 60 * 60 * 1000 + 45 * 60 * 1000 + 5 * 1000)} />
                             </div>
@@ -621,7 +620,7 @@ export default function ProductDetails({ productSlug }) {
                             >
                                 <Heart className={`w-5 h-5 ${isWishlisted ? 'fill-current' : ''}`} />
                             </button>
-                        </div>
+                        </div> */}
 
                         {/* Action Buttons */}
                         <div className="flex gap-3 flex-wrap">
@@ -637,11 +636,11 @@ export default function ProductDetails({ productSlug }) {
                             ) : (
                                 <button
                                     onClick={handleAddToCart}
-                                    className="flex-1 bg-white text-[#EF3D6A] py-3 px-1 lg:px-6 rounded cursor-pointer font-semibold border-[1.5px] border-[#EF3D6A] hover:bg-pink-50 transition-colors flex items-center justify-center gap-2"
+                                    className="add-to-cart-btn flex-1 bg-white text-[#EF3D6A] py-3 px-1 lg:px-6 rounded cursor-pointer font-semibold border-[1.5px] border-[#EF3D6A] flex items-center justify-center gap-2 relative overflow-hidden"
                                     aria-label={`Add ${product?.title} to cart`}
                                 >
-                                    <ShoppingCart className="w-5 h-5" />
-                                    Add to cart
+                                    <ShoppingCart className="w-5 h-5 relative z-10" />
+                                    <span className="relative z-10">Add to cart</span>
                                 </button>
                             )}
 
@@ -656,10 +655,10 @@ export default function ProductDetails({ productSlug }) {
                             ) : (
                                 <button
                                     onClick={handleBuyNow}
-                                    className="flex-1 rounded bg-[#EF3D6A] text-white py-3 px-1 lg:px-6 cursor-pointer font-semibold hover:bg-[#C1274F] transition-colors"
+                                    className="buy-now-btn flex-1 rounded bg-[#EF3D6A] border-[1.5px] border-[#EF3D6A] text-white py-3 px-1 lg:px-6 cursor-pointer font-semibold relative overflow-hidden"
                                     aria-label={`Buy ${product?.title} now`}
                                 >
-                                    Buy Now
+                                    <span className="relative z-10">Buy Now</span>
                                 </button>
                             )}
                         </div>
@@ -880,6 +879,57 @@ export default function ProductDetails({ productSlug }) {
                 }
                 .swiper-pagination-bullet-active {
                     background: #ef3d6a;
+                }
+
+                /* Add to Cart Button Animation */
+                .add-to-cart-btn {
+                    transition: all 0.3s ease;
+                }
+                .add-to-cart-btn::before {
+                    content: '';
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: #EF3D6A;
+                    transform: translateX(-100%);
+                    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                    z-index: 0;
+                }
+                .add-to-cart-btn:hover::before {
+                    transform: translateX(0);
+                }
+                .add-to-cart-btn:hover {
+                    color: white;
+                    border-color: #EF3D6A;
+                }
+                .add-to-cart-btn:hover svg {
+                    color: white;
+                }
+
+                /* Buy Now Button Animation */
+                .buy-now-btn {
+                    transition: all 0.3s ease;
+                }
+                .buy-now-btn::before {
+                    content: '';
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: white;
+                    transform: translateX(-100%);
+                    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                    z-index: 0;
+                }
+                .buy-now-btn:hover::before {
+                    transform: translateX(0);
+                }
+                .buy-now-btn:hover {
+                    color: #EF3D6A;
+                    border: 1.5px solid #EF3D6A;
                 }
             `}</style>
         </div>
