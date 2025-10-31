@@ -180,7 +180,7 @@ function Header({ isTrackingShow = true }) {
                 <div className="hidden lg:block">
                   {
                     user?.email ? user?.role === 'admin' ? (
-                      <Link href={`/admin/dashboard`} className="p-1 bg-gray-100 hover:bg-gray-200 cursor-pointer rounded-full transition-colors border border-gray-200" aria-label="Admin Dashboard">
+                      <Link href={`/admin/dashboard`} className="p-1 block bg-gray-100 hover:bg-gray-200 cursor-pointer rounded-full transition-colors border border-gray-200" aria-label="Admin Dashboard">
                         {user?.avatar ? (
                           <img
                             src={user.avatar}
@@ -192,7 +192,7 @@ function Header({ isTrackingShow = true }) {
                         )}
                       </Link>
                     ) : (
-                      <Link href={`/dashboard`} className="p-1 bg-gray-100 hover:bg-gray-200 cursor-pointer rounded-full transition-colors border border-gray-200" aria-label="User Dashboard">
+                      <Link href={`/dashboard`} className="p-1 block  bg-gray-100 hover:bg-gray-200 cursor-pointer rounded-full transition-colors border border-gray-200" aria-label="User Dashboard">
                         {user?.avatar ? (
                           <img
                             src={user.avatar}
@@ -204,7 +204,7 @@ function Header({ isTrackingShow = true }) {
                         )}
                       </Link>
                     ) : (
-                      <Link href="/login" className="p-2 hover:bg-gray-100 rounded-full transition-colors" aria-label="Login">
+                      <Link href="/login" className="p-2 block hover:bg-gray-100 rounded-full transition-colors" aria-label="Login">
                         <User className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700" />
                       </Link>
                     )
