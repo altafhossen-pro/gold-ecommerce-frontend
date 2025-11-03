@@ -18,7 +18,7 @@ const fallbackNavigationMenu = [
   { id: 3, name: "Shop", href: "/shop", isActive: false },
   { id: 4, name: "New Arrivals", href: "/shop?sort=new-arrivals", isActive: false },
   { id: 5, name: "Offers", href: "/offers", isActive: false },
-  { id: 6, name: "Contact", href: "/contact-us", isActive: false }
+  { id: 6, name: "Contact", href: "/contact-us", isActive: false },
 ];
 
 function Header({ isTrackingShow = true }) {

@@ -111,6 +111,11 @@ export const productAPI = {
         return apiCall(`/product/similar/${productId}?limit=${limit}&minRequired=${minRequired}`);
     },
 
+    // Get products with videos
+    getProductVideos: () => {
+        return apiCall('/product/product-videos');
+    },
+
     // Admin: Create product
     createProduct: (productData, token) => {
         return apiCall('/product', {

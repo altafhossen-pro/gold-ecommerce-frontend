@@ -43,12 +43,14 @@ export default function EditProductPage() {
         featuredImage: '',
         gallery: [],
         specifications: [],
+        productVideos: [],
         variants: []
     })
 
     const [customBraceletSize, setCustomBraceletSize] = useState('');
     const [customRingSize, setCustomRingSize] = useState('');
     const [tagInput, setTagInput] = useState('');
+    const [videoInput, setVideoInput] = useState({ platform: 'youtube', url: '' });
 
     const [variantForm, setVariantForm] = useState({
         image: '',
@@ -116,6 +118,7 @@ export default function EditProductPage() {
                     featuredImage: product.featuredImage || '',
                     gallery: product.gallery || [],
                     specifications: product.specifications || [],
+                    productVideos: product.productVideos || [],
                     variants: product.variants || []
                 })
             } else {
@@ -185,6 +188,98 @@ export default function EditProductPage() {
                 i === index ? { ...spec, [field]: value } : spec
             )
         }))
+    }
+
+    const addProductVideo = () => {
+        const trimmedUrl = videoInput.url.trim()
+        if (!trimmedUrl) {
+            toast.error('Please enter a video URL')
+            return
+        }
+
+        // Validate URL format based on platform
+        const platform = videoInput.platform.toLowerCase()
+        let isValid = false
+        let processedUrl = trimmedUrl
+
+        switch(platform) {
+            case 'youtube':
+                // Accept both watch?v= and embed URLs
+                if (trimmedUrl.includes('youtube.com/watch?v=') || trimmedUrl.includes('youtu.be/')) {
+                    isValid = true
+                    // Convert to embed format
+                    const videoId = trimmedUrl.includes('youtu.be/') 
+                        ? trimmedUrl.split('youtu.be/')[1].split('?')[0]
+                        : trimmedUrl.split('watch?v=')[1].split('&')[0]
+                    processedUrl = `https://www.youtube.com/embed/${videoId}`
+                } else if (trimmedUrl.includes('youtube.com/embed/')) {
+                    isValid = true
+                    processedUrl = trimmedUrl
+                }
+                break
+            case 'tiktok':
+                if (trimmedUrl.includes('tiktok.com/') || trimmedUrl.includes('vm.tiktok.com/')) {
+                    isValid = true
+                    processedUrl = trimmedUrl
+                }
+                break
+            case 'vimeo':
+                if (trimmedUrl.includes('vimeo.com/')) {
+                    isValid = true
+                    const videoId = trimmedUrl.split('vimeo.com/')[1].split('?')[0]
+                    processedUrl = `https://player.vimeo.com/video/${videoId}`
+                } else if (trimmedUrl.includes('player.vimeo.com/video/')) {
+                    isValid = true
+                    processedUrl = trimmedUrl
+                }
+                break
+            case 'facebook':
+                if (trimmedUrl.includes('facebook.com/') || trimmedUrl.includes('fb.watch/')) {
+                    isValid = true
+                    processedUrl = trimmedUrl
+                }
+                break
+            case 'instagram':
+                if (trimmedUrl.includes('instagram.com/')) {
+                    isValid = true
+                    processedUrl = trimmedUrl
+                }
+                break
+            default:
+                isValid = true // Allow other platforms
+        }
+
+        if (!isValid) {
+            toast.error(`Invalid ${videoInput.platform} URL format`)
+            return
+        }
+
+        if (!formData.productVideos.includes(processedUrl)) {
+            setFormData(prev => ({
+                ...prev,
+                productVideos: [...prev.productVideos, processedUrl]
+            }))
+            setVideoInput({ platform: 'youtube', url: '' })
+            toast.success('Video URL added successfully')
+        } else {
+            toast.error('This video URL is already added')
+        }
+    }
+
+    const removeProductVideo = (urlToRemove) => {
+        setFormData(prev => ({
+            ...prev,
+            productVideos: prev.productVideos.filter(url => url !== urlToRemove)
+        }))
+    }
+
+    const getVideoPlatformName = (url) => {
+        if (url.includes('youtube.com') || url.includes('youtu.be')) return 'YouTube'
+        if (url.includes('tiktok.com') || url.includes('vm.tiktok.com')) return 'TikTok'
+        if (url.includes('vimeo.com')) return 'Vimeo'
+        if (url.includes('facebook.com') || url.includes('fb.watch')) return 'Facebook'
+        if (url.includes('instagram.com')) return 'Instagram'
+        return 'Other'
     }
 
     const handleVariantInputChange = (e) => {
@@ -823,6 +918,124 @@ export default function EditProductPage() {
                             </div>
                         ))}
                     </div>
+                </div>
+
+                {/* Product Videos */}
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <div className="flex items-center justify-between mb-6">
+                        <div>
+                            <h2 className="text-lg font-medium text-gray-900">Product Videos</h2>
+                            <p className="text-sm text-gray-500 mt-1">Add video URLs from different platforms</p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={addProductVideo}
+                            className="inline-flex items-center px-3 py-1 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"
+                        >
+                            <Plus className="h-4 w-4 mr-1" />
+                            Add Video
+                        </button>
+                    </div>
+
+                    {/* Add Video Form */}
+                    <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Platform
+                                </label>
+                                <select
+                                    value={videoInput.platform}
+                                    onChange={(e) => setVideoInput(prev => ({ ...prev, platform: e.target.value }))}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                >
+                                    <option value="youtube">YouTube</option>
+                                    <option value="tiktok">TikTok</option>
+                                    <option value="vimeo">Vimeo</option>
+                                    <option value="facebook">Facebook</option>
+                                    <option value="instagram">Instagram</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Video URL
+                                </label>
+                                <div className="flex space-x-2">
+                                    <input
+                                        type="text"
+                                        value={videoInput.url}
+                                        onChange={(e) => setVideoInput(prev => ({ ...prev, url: e.target.value }))}
+                                        onKeyPress={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault()
+                                                addProductVideo()
+                                            }
+                                        }}
+                                        placeholder={
+                                            videoInput.platform === 'youtube' 
+                                                ? 'https://www.youtube.com/watch?v=... or https://youtu.be/...'
+                                                : videoInput.platform === 'tiktok'
+                                                ? 'https://www.tiktok.com/@username/video/...'
+                                                : videoInput.platform === 'vimeo'
+                                                ? 'https://vimeo.com/...'
+                                                : videoInput.platform === 'facebook'
+                                                ? 'https://www.facebook.com/watch/?v=...'
+                                                : videoInput.platform === 'instagram'
+                                                ? 'https://www.instagram.com/p/...'
+                                                : 'Enter video URL'
+                                        }
+                                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={addProductVideo}
+                                        className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        Add
+                                    </button>
+                                </div>
+                                <p className="text-xs text-gray-500 mt-1">
+                                    {videoInput.platform === 'youtube' && 'Example: https://www.youtube.com/watch?v=dQw4w9WgXcQ'}
+                                    {videoInput.platform === 'tiktok' && 'Example: https://www.tiktok.com/@username/video/1234567890'}
+                                    {videoInput.platform === 'vimeo' && 'Example: https://vimeo.com/123456789'}
+                                    {videoInput.platform === 'facebook' && 'Example: https://www.facebook.com/watch/?v=123456789'}
+                                    {videoInput.platform === 'instagram' && 'Example: https://www.instagram.com/p/ABC123/'}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Existing Videos */}
+                    {formData.productVideos.length > 0 ? (
+                        <div className="space-y-3">
+                            {formData.productVideos.map((videoUrl, index) => (
+                                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center space-x-2 mb-1">
+                                            <span className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded">
+                                                {getVideoPlatformName(videoUrl)}
+                                            </span>
+                                        </div>
+                                        <p className="text-sm text-gray-700 truncate" title={videoUrl}>
+                                            {videoUrl}
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => removeProductVideo(videoUrl)}
+                                        className="ml-4 p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors"
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-8 text-gray-500">
+                            <p className="text-sm">No videos added yet. Add your first video URL above.</p>
+                        </div>
+                    )}
                 </div>
 
                 {/* Existing Variants */}
