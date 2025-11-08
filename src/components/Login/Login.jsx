@@ -549,7 +549,7 @@ function LoginPage() {
                             className="text-sm text-gray-600 hover:text-gray-900 flex items-center justify-center mx-auto group"
                         >
                             <ArrowLeft className="mr-2 h-4 w-4 group-hover:-translate-x-1 transition-transform" />
-                            Don't have an account? Sign up
+                            Don't have an account? <span className="text-pink-600 hover:text-pink-700 font-medium ms-2">Sign up</span>
                         </Link>
                     </div>
 

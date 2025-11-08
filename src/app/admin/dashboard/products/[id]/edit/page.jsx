@@ -1085,9 +1085,13 @@ export default function EditProductPage() {
                                             <input
                                                 type="number"
                                                 value={variant.stockQuantity}
-                                                onChange={(e) => updateVariant(index, 'stockQuantity', parseInt(e.target.value))}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                readOnly
+                                                disabled
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed"
                                             />
+                                            <p className="mt-1 text-xs text-gray-500">
+                                                To update stock, please use the Inventory Management menu
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
@@ -1214,10 +1218,14 @@ export default function EditProductPage() {
                                 type="number"
                                 name="stock"
                                 value={variantForm.stock}
-                                onChange={handleVariantInputChange}
+                                readOnly
+                                disabled
                                 placeholder="100"
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed"
                             />
+                            <p className="mt-1 text-xs text-gray-500">
+                                To update stock, please use the Inventory Management menu
+                            </p>
                         </div>
                         
                         <div className="flex items-end">

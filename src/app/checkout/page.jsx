@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, ArrowRight, MessageCircle, Minus, Plus, Trash2, Check, AlertTriangle } from 'lucide-react';
 import { useAppContext } from '@/context/AppContext';
-import { orderAPI, productAPI, loyaltyAPI, couponAPI, addressAPI, upsellAPI } from '@/services/api';
+import { orderAPI, productAPI, loyaltyAPI, couponAPI, addressAPI, upsellAPI, settingsAPI } from '@/services/api';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import { getCookie } from 'cookies-next';
@@ -90,6 +90,11 @@ export default function Checkout() {
         }
     };
 
+    // Fetch loyalty settings on mount
+    useEffect(() => {
+        fetchLoyaltySettings();
+    }, []);
+
     // Fetch loyalty data when user is available
     useEffect(() => {
         if (user && user._id) {
@@ -163,6 +168,18 @@ export default function Checkout() {
             setOutOfStockItems(fallbackOutOfStock);
         } finally {
             setStockLoading(false);
+        }
+    };
+
+    // Fetch loyalty settings
+    const fetchLoyaltySettings = async () => {
+        try {
+            const response = await settingsAPI.getLoyaltySettings();
+            if (response.success) {
+                setLoyaltySettings(response.data);
+            }
+        } catch (error) {
+            console.error('Error fetching loyalty settings:', error);
         }
     };
 
@@ -267,6 +284,7 @@ export default function Checkout() {
     const [useLoyaltyPoints, setUseLoyaltyPoints] = useState(false);
     const [loyaltyDiscount, setLoyaltyDiscount] = useState(0);
     const [loyaltyLoading, setLoyaltyLoading] = useState(false);
+    const [loyaltySettings, setLoyaltySettings] = useState(null);
 
     // Coupon state
     const [couponCode, setCouponCode] = useState('');
@@ -357,6 +375,15 @@ export default function Checkout() {
             return;
         }
 
+        // Check minimum redeem amount (based on subtotal, not including shipping)
+        const minRedeemAmount = loyaltySettings?.minRedeemAmount || 1;
+        if (subtotal < minRedeemAmount) {
+            toast.error(`Minimum ৳${minRedeemAmount} items order required to use loyalty coins. Your order total is ৳${subtotal}.`);
+            setUseLoyaltyPoints(false);
+            setLoyaltyDiscount(0);
+            return;
+        }
+
         // Check if user has enough coins to cover the entire order
         if (loyaltyData.coins >= coinsNeeded) {
             // User can pay with loyalty points only
@@ -380,7 +407,7 @@ export default function Checkout() {
         } else {
             setLoyaltyDiscount(0);
         }
-    }, [useLoyaltyPoints, loyaltyData, subtotal]);
+    }, [useLoyaltyPoints, loyaltyData, subtotal, loyaltySettings]);
 
     // Coupon functions
     const applyCoupon = async () => {
@@ -682,6 +709,13 @@ export default function Checkout() {
                     // Create order based on checkout type
                     let response;
                     if (isGuestCheckout) {
+                        // Add guest info (name and phone) for guest orders
+                        orderData.guestInfo = {
+                            name: formData.fullName,
+                            phone: formData.mobileNumber,
+                            email: '', // Guest checkout doesn't require email
+                            address: formData.deliveryAddress
+                        };
                         // Create guest order (no authentication required)
                         response = await orderAPI.createGuestOrder(orderData);
                     } else {
@@ -749,18 +783,18 @@ export default function Checkout() {
             {/* Sub Navigation */}
             
             {/* Main Content */}
-            <div className="max-w-screen-2xl mx-auto px-4 py-4">
-                <h1 className="text-3xl font-bold text-center text-gray-900 mb-8">Checkout</h1>
+            <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+                <h1 className="text-2xl sm:text-3xl font-bold text-center text-gray-900 mb-6 sm:mb-8">Checkout</h1>
 
-                <div className="flex flex-col lg:flex-row gap-6">
+                <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
 
                     {/* Left Column - Checkout Form */}
-                    <div className="space-y-6 w-[60%]">
+                    <div className="space-y-4 sm:space-y-6 w-full lg:w-[60%]">
                         {/* Customer Information */}
-                        <div className="bg-white border border-gray-300 shadow rounded-lg p-6">
-                            <h2 className="text-lg font-semibold text-gray-900 mb-6">01. Fill in the following information:</h2>
+                        <div className="bg-white border border-gray-300 shadow rounded-lg p-4 sm:p-6">
+                            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4 sm:mb-6">01. Fill in the following information:</h2>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                                 {/* Full Name */}
                                 <div>
                                     <label className="block text-sm text-gray-700 mb-2">
@@ -794,7 +828,7 @@ export default function Checkout() {
 
                             {/* Address Selection - Division, District, Upazila in one row */}
                             <div className="mb-4">
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                     {/* Division */}
                                     <div>
                                         <label className="block text-sm text-gray-700 mb-2">
@@ -895,7 +929,7 @@ export default function Checkout() {
                                                         </option>
                                                         {dhakaAreas.map((area) => (
                                                             <option key={area._id} value={area.name}>
-                                                                {area.name} ({area.city_corporation})
+                                                                {area.name}
                                                             </option>
                                                         ))}
                                                     </select>
@@ -912,14 +946,14 @@ export default function Checkout() {
                                 <label className="block text-sm text-gray-700 mb-2">
                                     Delivery Address / ডেলিভারি এড্রেসঃ <span className="text-red-500">*</span>
                                 </label>
-                                <input
-                                    type="text"
+                                <textarea
                                     name="deliveryAddress"
                                     value={formData.deliveryAddress}
                                     onChange={handleInputChange}
                                     placeholder="Delivery Address"
+                                    rows={3}
                                     required
-                                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-pink-500 focus:border-pink-500"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-pink-500 focus:border-pink-500 resize-none"
                                 />
                             </div>
 
@@ -940,10 +974,10 @@ export default function Checkout() {
                         </div>
 
                         {/* Delivery Type Selection */}
-                        <div className="bg-white border border-gray-300 shadow rounded-lg p-6">
-                            <h2 className="text-lg font-semibold text-gray-900 mb-6">02. Delivery Type <span className="text-red-500">*</span></h2>
+                        <div className="bg-white border border-gray-300 shadow rounded-lg p-4 sm:p-6">
+                            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4 sm:mb-6">02. Delivery Type <span className="text-red-500">*</span></h2>
                             
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                 <label className={`flex items-center p-3 border rounded cursor-pointer transition-colors ${
                                     formData.deliveryType === 'insideDhaka' 
                                         ? 'border-pink-500 bg-pink-50' 
@@ -1017,8 +1051,8 @@ export default function Checkout() {
                         </div>
 
                         {/* Payment Method */}
-                        <div className="bg-white border border-gray-300 shadow rounded-lg p-6">
-                            <h2 className="text-lg font-semibold text-gray-900 mb-6">03. Payment Method <span className="text-red-500">*</span></h2>
+                        <div className="bg-white border border-gray-300 shadow rounded-lg p-4 sm:p-6">
+                            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4 sm:mb-6">03. Payment Method <span className="text-red-500">*</span></h2>
 
                             <div className="space-y-3">
                                 <label className="flex items-center space-x-3 cursor-pointer">
@@ -1124,8 +1158,8 @@ export default function Checkout() {
 
                         {/* Loyalty Points Section - Only for logged-in users */}
                         {!isGuestCheckout && loyaltyData && loyaltyData.coins > 0 && (
-                            <div className="bg-white border border-gray-300 shadow rounded-lg p-6">
-                                <h2 className="text-lg font-semibold text-gray-900 mb-6">04. Loyalty Points</h2>
+                            <div className="bg-white border border-gray-300 shadow rounded-lg p-4 sm:p-6">
+                                <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4 sm:mb-6">04. Loyalty Points</h2>
                                 
                                 {appliedCoupon && (
                                     <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
@@ -1147,52 +1181,82 @@ export default function Checkout() {
                                         <div className="text-2xl">🪙</div>
                                     </div>
 
-                                    {/* Check if user can pay with loyalty points */}
-                                    {loyaltyData.coins >= coinsNeeded ? (
-                                        <div className="space-y-3">
-                                            <div className="flex items-center space-x-3">
-                                                <input
-                                                    type="checkbox"
-                                                    id="useLoyaltyPoints"
-                                                    checked={useLoyaltyPoints}
-                                                    onChange={(e) => setUseLoyaltyPoints(e.target.checked)}
-                                                    className="w-4 h-4 text-pink-500"
-                                                />
-                                                <label htmlFor="useLoyaltyPoints" className="text-sm font-medium text-gray-700">
-                                                    Pay with {coinsNeeded} coins (৳{subtotal})
-                                                </label>
-                                            </div>
-                                            
-                                            
-                                            {useLoyaltyPoints && loyaltyData && (
-                                                <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                                                    <div className="space-y-2">
-                                                        <div className="flex justify-between items-center">
-                                                            <span className="text-sm font-medium text-green-800">Coins to Use:</span>
-                                                            <span className="font-semibold text-green-800">{coinsNeeded} coins</span>
-                                                        </div>
-                                                        <div className="flex justify-between items-center">
-                                                            <span className="text-sm font-medium text-green-800">Order Total:</span>
-                                                            <span className="font-semibold text-green-800">৳{subtotal}</span>
-                                                        </div>
-                                                        <div className="flex justify-between items-center">
-                                                            <span className="text-sm font-medium text-green-800">Remaining Coins:</span>
-                                                            <span className="font-semibold text-green-800">{remainingCoins} coins</span>
-                                                        </div>
-                                                        <div className="flex justify-between items-center">
-                                                            <span className="text-sm font-medium text-green-800">Final Payment:</span>
-                                                            <span className="font-semibold text-green-800">৳{totalCost} (Paid with coins)</span>
-                                                        </div>
+                                    {/* Check minimum redeem amount and coins */}
+                                    {(() => {
+                                        const minRedeemAmount = loyaltySettings?.minRedeemAmount || 1;
+                                        const meetsMinimum = subtotal >= minRedeemAmount;
+                                        const hasEnoughCoins = loyaltyData.coins >= coinsNeeded;
+
+                                        if (!meetsMinimum) {
+                                            return (
+                                                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                                    <div className="text-sm text-yellow-800">
+                                                        <p className="font-medium">Minimum order amount required</p>
+                                                        <p>You need to order at least ৳{minRedeemAmount} worth of items to use loyalty coins. Your current order total is ৳{subtotal}.</p>
                                                     </div>
                                                 </div>
-                                            )}
-                                        </div>
-                                    ) : (
-                                        <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                            <div className="text-sm text-yellow-800">
-                                                <p className="font-medium">Insufficient coins</p>
-                                                <p>You need {coinsNeeded} coins to pay for this order (৳{subtotal}), but you have {loyaltyData.coins} coins.</p>
-                                            </div>
+                                            );
+                                        }
+
+                                        if (hasEnoughCoins) {
+                                            return (
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center space-x-3">
+                                                        <input
+                                                            type="checkbox"
+                                                            id="useLoyaltyPoints"
+                                                            checked={useLoyaltyPoints}
+                                                            onChange={(e) => setUseLoyaltyPoints(e.target.checked)}
+                                                            className="w-4 h-4 text-pink-500 cursor-pointer"
+                                                        />
+                                                        <label htmlFor="useLoyaltyPoints" className="text-sm font-medium text-gray-700 cursor-pointer">
+                                                            Pay with {coinsNeeded} coins (৳{subtotal})
+                                                        </label>
+                                                    </div>
+                                                    
+                                                    
+                                                    {useLoyaltyPoints && loyaltyData && (
+                                                        <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                                                            <div className="space-y-2">
+                                                                <div className="flex justify-between items-center">
+                                                                    <span className="text-sm font-medium text-green-800">Coins to Use:</span>
+                                                                    <span className="font-semibold text-green-800">{coinsNeeded} coins</span>
+                                                                </div>
+                                                                <div className="flex justify-between items-center">
+                                                                    <span className="text-sm font-medium text-green-800">Order Total:</span>
+                                                                    <span className="font-semibold text-green-800">৳{subtotal}</span>
+                                                                </div>
+                                                                <div className="flex justify-between items-center">
+                                                                    <span className="text-sm font-medium text-green-800">Remaining Coins:</span>
+                                                                    <span className="font-semibold text-green-800">{remainingCoins} coins</span>
+                                                                </div>
+                                                                <div className="flex justify-between items-center">
+                                                                    <span className="text-sm font-medium text-green-800">Final Payment:</span>
+                                                                    <span className="font-semibold text-green-800">৳{totalCost} (Paid with coins)</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        } else {
+                                            return (
+                                                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                                    <div className="text-sm text-yellow-800">
+                                                        <p className="font-medium">Insufficient coins</p>
+                                                        <p>You need {coinsNeeded} coins to pay for this order (৳{subtotal}), but you have {loyaltyData.coins} coins.</p>
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
+                                    })()}
+
+                                    {/* Minimum redeem amount info message */}
+                                    {loyaltySettings && (
+                                        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                            <p className="text-xs text-blue-800">
+                                                💡 <strong>Note:</strong> To use loyalty coins, you need to order at least ৳{loyaltySettings.minRedeemAmount} worth of items. 
+                                            </p>
                                         </div>
                                     )}
                                 </div>
@@ -1230,11 +1294,11 @@ export default function Checkout() {
                             </div>
                         )}
 
-                        {/* Action Buttons */}
-                        <div className="flex gap-4">
+                        {/* Action Buttons - Desktop only (hidden on mobile) */}
+                        <div className="hidden lg:flex flex-col sm:flex-row gap-3 sm:gap-4">
                             <button 
                                 onClick={() => router.push('/')}
-                                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 border border-gray-300 text-gray-700 rounded hover:bg-gray-50"
+                                className="flex-1 flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 border border-gray-300 text-gray-700 rounded hover:bg-gray-50 text-sm sm:text-base"
                             >
                                 <ArrowLeft className="w-4 h-4" />
                                 Back to Shopping
@@ -1242,7 +1306,7 @@ export default function Checkout() {
                             <button 
                                 onClick={handleConfirmOrder}
                                 disabled={cartLoading || cart.length === 0 || outOfStockItems.length > 0 || stockLoading}
-                                className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded font-semibold ${
+                                className={`flex-1 flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded font-semibold text-sm sm:text-base ${
                                     cartLoading || cart.length === 0 || outOfStockItems.length > 0 || stockLoading
                                         ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
                                         : 'bg-pink-500 text-white hover:bg-pink-600'
@@ -1252,17 +1316,15 @@ export default function Checkout() {
                                  cartLoading ? 'Loading...' :
                                  cart.length === 0 ? 'Cart Empty' :
                                  outOfStockItems.length > 0 ? 'Remove Out of Stock Items' :
-                                 paymentMethod === 'cash' ? 'Confirm Order' : 
-                                 paymentMethod === 'bkash' ? 'Process to Bkash Payment' : 
-                                 'Confirm Manual Payment'}
+                                 'Confirm Order'}
                                 <ArrowRight className="w-4 h-4" />
                             </button>
                         </div>
                     </div>
 
                     {/* Right Column - Order Summary */}
-                    <div className="bg-white border border-gray-300 shadow rounded-lg h-fit p-6 w-[40%]">
-                        <h2 className="text-lg font-semibold text-gray-900 mb-6">Order Summary</h2>
+                    <div className="bg-white border border-gray-300 shadow rounded-lg h-fit p-4 sm:p-6 w-full lg:w-[40%]">
+                        <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4 sm:mb-6">Order Summary</h2>
 
                         {/* Cart Items */}
                         <div className="space-y-4">
@@ -1299,93 +1361,100 @@ export default function Checkout() {
                                 cart.map((item) => {
                                     const isOutOfStock = stockData[item.id] && !stockData[item.id].isAvailable;
                                     return (
-                                    <div key={item.id} className={`flex items-center space-x-4 p-3 border rounded ${
+                                    <div key={item.id} className={`flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 p-3 border rounded ${
                                         isOutOfStock ? 'border-red-200 bg-red-50' : 'border-gray-200'
                                     }`}>
-                                        {/* Product Image */}
-                                        <div className="w-12 h-12 rounded overflow-hidden flex-shrink-0">
-                                            <img 
-                                                src={item.image} 
-                                                alt={item.name}
-                                                className="w-full h-full object-cover"
-                                            />
-                                        </div>
-
-                                        <div className="flex-1 min-w-0">
-                                            <h3 className="font-medium text-gray-900 text-sm truncate">{item.name}</h3>
-                                            {isOutOfStock && (
-                                                <div className="text-xs text-red-600 font-medium mb-1">
-                                                    {stockData[item.id]?.reason === 'Insufficient stock' 
-                                                        ? `Only ${stockData[item.id]?.availableStock || 0} available`
-                                                        : 'Out of Stock'
-                                                    }
-                                                </div>
-                                            )}
-                                            {item.size && (
-                                                <p className="text-xs text-gray-600">Size: {item.size}</p>
-                                            )}
-                                            {item.color && (
-                                                <div className="flex items-center gap-1 mt-1">
-                                                    <span className="text-xs text-gray-600">Color:</span>
-                                                    <div 
-                                                        className="w-3 h-3 rounded-full border border-gray-300"
-                                                        style={{ 
-                                                            backgroundColor: item.colorHexCode,
-                                                            border: item.colorHexCode?.toLowerCase() === '#ffffff' || item.colorHexCode?.toLowerCase() === '#fff' 
-                                                                ? '1px solid #d1d5db' 
-                                                                : 'none'
-                                                        }}
-                                                        title={item.color}
-                                                    ></div>
-                                                </div>
-                                            )}
-                                            <p className="text-xs text-gray-600">Item Price: {item.price} ৳</p>
-                                        </div>
-
-                                        {/* Quantity Controls */}
-                                        {isOutOfStock ? (
-                                            <div className="text-xs text-red-600 font-medium">
-                                                Remove from cart
+                                        {/* Product Image and Info */}
+                                        <div className="flex items-start gap-3 flex-1 min-w-0 w-full sm:w-auto">
+                                            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded overflow-hidden flex-shrink-0">
+                                                <img 
+                                                    src={item.image} 
+                                                    alt={item.name}
+                                                    className="w-full h-full object-cover"
+                                                />
                                             </div>
-                                        ) : (
-                                            <div className="flex items-center space-x-2">
+
+                                            <div className="flex-1 min-w-0">
+                                                <h3 className="font-medium text-gray-900 text-sm truncate">{item.name}</h3>
+                                                {isOutOfStock && (
+                                                    <div className="text-xs text-red-600 font-medium mb-1">
+                                                        {stockData[item.id]?.reason === 'Insufficient stock' 
+                                                            ? `Only ${stockData[item.id]?.availableStock || 0} available`
+                                                            : 'Out of Stock'
+                                                        }
+                                                    </div>
+                                                )}
+                                                {item.size && (
+                                                    <p className="text-xs text-gray-600">Size: {item.size}</p>
+                                                )}
+                                                {item.color && (
+                                                    <div className="flex items-center gap-1 mt-1">
+                                                        <span className="text-xs text-gray-600">Color:</span>
+                                                        <div 
+                                                            className="w-3 h-3 rounded-full border border-gray-300"
+                                                            style={{ 
+                                                                backgroundColor: item.colorHexCode,
+                                                                border: item.colorHexCode?.toLowerCase() === '#ffffff' || item.colorHexCode?.toLowerCase() === '#fff' 
+                                                                    ? '1px solid #d1d5db' 
+                                                                    : 'none'
+                                                            }}
+                                                            title={item.color}
+                                                        ></div>
+                                                    </div>
+                                                )}
+                                                <p className="text-xs text-gray-600">Price: {item.price} ৳</p>
+                                            </div>
+                                        </div>
+
+                                        {/* Quantity Controls and Actions */}
+                                        <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
+                                            {/* Quantity Controls */}
+                                            {isOutOfStock ? (
+                                                <div className="text-xs text-red-600 font-medium">
+                                                    Remove from cart
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center space-x-2">
+                                                    <button
+                                                        onClick={() => handleQuantityChange(item.id, -1)}
+                                                        className="w-7 h-7 sm:w-6 sm:h-6 flex items-center justify-center border border-gray-300 rounded text-sm hover:bg-gray-50"
+                                                    >
+                                                        <Minus className="w-3 h-3" />
+                                                    </button>
+                                                    <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
+                                                    <button
+                                                        onClick={() => handleQuantityChange(item.id, 1)}
+                                                        disabled={item.quantity >= (stockData[item.id]?.availableStock || item.stockQuantity || 0)}
+                                                        className={`w-7 h-7 sm:w-6 sm:h-6 flex items-center justify-center border border-gray-300 rounded text-sm hover:bg-gray-50 ${
+                                                            item.quantity >= (stockData[item.id]?.availableStock || item.stockQuantity || 0)
+                                                                ? 'opacity-50 cursor-not-allowed'
+                                                                : 'cursor-pointer'
+                                                        }`}
+                                                    >
+                                                        <Plus className="w-3 h-3" />
+                                                    </button>
+                                                </div>
+                                            )}
+
+                                            {/* Total Price and Remove Button */}
+                                            <div className="flex items-center gap-3">
+                                                <div className="text-right">
+                                                    <p className="font-semibold text-gray-900 text-sm sm:text-base">{item.total} ৳</p>
+                                                </div>
+
+                                                {/* Remove Button */}
                                                 <button
-                                                    onClick={() => handleQuantityChange(item.id, -1)}
-                                                    className="w-6 h-6 flex items-center justify-center border border-gray-300 rounded text-sm hover:bg-gray-50"
-                                                >
-                                                    <Minus className="w-3 h-3" />
-                                                </button>
-                                                <span className="w-8 text-center text-sm">{item.quantity}</span>
-                                                <button
-                                                    onClick={() => handleQuantityChange(item.id, 1)}
-                                                    disabled={item.quantity >= (stockData[item.id]?.availableStock || item.stockQuantity || 0)}
-                                                    className={`w-6 h-6 flex items-center justify-center border border-gray-300 rounded text-sm hover:bg-gray-50 ${
-                                                        item.quantity >= (stockData[item.id]?.availableStock || item.stockQuantity || 0)
-                                                            ? 'opacity-50 cursor-not-allowed'
-                                                            : 'cursor-pointer'
+                                                    onClick={() => handleRemoveItem(item.id)}
+                                                    className={`p-1.5 sm:p-1 ${
+                                                        isOutOfStock 
+                                                            ? 'text-red-500 hover:text-red-700' 
+                                                            : 'text-pink-500 hover:text-pink-700'
                                                     }`}
                                                 >
-                                                    <Plus className="w-3 h-3" />
+                                                    <Trash2 className="w-4 h-4 sm:w-4 sm:h-4" />
                                                 </button>
                                             </div>
-                                        )}
-
-                                        {/* Total Price */}
-                                        <div className="text-right">
-                                            <p className="font-semibold text-gray-900 text-sm">{item.total} ৳</p>
                                         </div>
-
-                                        {/* Remove Button */}
-                                        <button
-                                            onClick={() => handleRemoveItem(item.id)}
-                                            className={`p-1 ${
-                                                isOutOfStock 
-                                                    ? 'text-red-500 hover:text-red-700' 
-                                                    : 'text-pink-500 hover:text-pink-700'
-                                            }`}
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
                                     </div>
                                     );
                                 })
@@ -1410,7 +1479,7 @@ export default function Checkout() {
                                 </div>
                             )}
                             
-                            <div className="flex gap-2">
+                            <div className="flex flex-col sm:flex-row gap-2">
                                 <input
                                     type="text"
                                     value={couponCode}
@@ -1423,12 +1492,13 @@ export default function Checkout() {
                                 <button
                                     onClick={handleApplyCoupon}
                                     disabled={couponLoading || !couponCode.trim() || useLoyaltyPoints || isGuestCheckout}
-                                    className="px-4 py-2 bg-pink-500 text-white rounded hover:bg-pink-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center"
+                                    className="w-full sm:w-auto px-4 py-2 bg-pink-500 text-white rounded hover:bg-pink-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center justify-center"
                                 >
                                     {couponLoading ? (
                                         <>
                                             <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1"></div>
-                                            Applying...
+                                            <span className="hidden sm:inline">Applying...</span>
+                                            <span className="sm:hidden">Applying</span>
                                         </>
                                     ) : (
                                         'Apply'
@@ -1546,6 +1616,33 @@ export default function Checkout() {
                                 </div>
                             </div>
                         )}
+                    </div>
+
+                    {/* Action Buttons - Mobile only (below order summary) */}
+                    <div className="lg:hidden flex flex-col gap-3 mt-4">
+                        <button 
+                            onClick={() => router.push('/')}
+                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 text-gray-700 rounded hover:bg-gray-50 text-sm"
+                        >
+                            <ArrowLeft className="w-4 h-4" />
+                            Back
+                        </button>
+                        <button 
+                            onClick={handleConfirmOrder}
+                            disabled={cartLoading || cart.length === 0 || outOfStockItems.length > 0 || stockLoading}
+                            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded font-semibold text-sm ${
+                                cartLoading || cart.length === 0 || outOfStockItems.length > 0 || stockLoading
+                                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                                    : 'bg-pink-500 text-white hover:bg-pink-600'
+                            }`}
+                        >
+                            {stockLoading ? 'Checking...' :
+                             cartLoading ? 'Loading...' :
+                             cart.length === 0 ? 'Cart Empty' :
+                             outOfStockItems.length > 0 ? 'Remove Items' :
+                             'Confirm Order'}
+                            <ArrowRight className="w-4 h-4" />
+                        </button>
                     </div>
                 </div>
             </div>

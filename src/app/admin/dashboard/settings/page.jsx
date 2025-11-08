@@ -6,6 +6,8 @@ import {
   Settings as SettingsIcon, 
   Coins, 
   Menu,
+  MapPin,
+  Mail,
 } from 'lucide-react';
 import { useAppContext } from '@/context/AppContext';
 import PermissionDenied from '@/components/Common/PermissionDenied';
@@ -40,6 +42,22 @@ export default function AdminSettingsPage() {
       icon: Menu,
       color: 'bg-gray-100 text-gray-600',
       href: '/admin/dashboard/settings/menu'
+    },
+    {
+      id: 'address',
+      title: 'Address Settings',
+      description: 'Division, District, Upazila',
+      icon: MapPin,
+      color: 'bg-blue-100 text-blue-600',
+      href: '/admin/dashboard/settings/address'
+    },
+    {
+      id: 'email-sms',
+      title: 'Email & SMS Settings',
+      description: 'Order confirmation',
+      icon: Mail,
+      color: 'bg-green-100 text-green-600',
+      href: '/admin/dashboard/settings/email-sms'
     }
   ];
 
@@ -70,7 +88,7 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="p-6">
-      <div className="max-w-7xl mx-auto">
+      <div className=" mx-auto">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center space-x-3 mb-2">

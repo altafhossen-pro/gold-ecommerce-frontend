@@ -1287,6 +1287,23 @@ export const settingsAPI = {
         return apiCall('/settings/delivery-charge');
     },
 
+    // Get email & SMS settings only
+    getEmailSMSSettings: () => {
+        return apiCall('/settings/email-sms');
+    },
+
+    // Update email & SMS settings only (Admin only)
+    updateEmailSMSSettings: (emailSMSData, token) => {
+        return apiCall('/settings/email-sms', {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(emailSMSData),
+        });
+    },
+
     // Update delivery charge settings only (Admin only)
     updateDeliveryChargeSettings: (deliveryChargeData, token) => {
         return apiCall('/settings/delivery-charge', {
@@ -1335,6 +1352,108 @@ export const addressAPI = {
     // Get all Dhaka city areas
     getAllDhakaCityAreas: () => {
         return apiCall('/address/dhaka-city');
+    },
+
+    // Admin: Get divisions with pagination and filters
+    adminGetDivisions: (params, token) => {
+        const queryString = new URLSearchParams(params).toString();
+        return apiCall(`/address/admin/divisions?${queryString}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+
+    // Admin: Get districts with pagination and filters
+    adminGetDistricts: (params, token) => {
+        const queryString = new URLSearchParams(params).toString();
+        return apiCall(`/address/admin/districts?${queryString}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+
+    // Admin: Get upazilas with pagination and filters
+    adminGetUpazilas: (params, token) => {
+        const queryString = new URLSearchParams(params).toString();
+        return apiCall(`/address/admin/upazilas?${queryString}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+
+    // Admin: Get Dhaka city areas with pagination and filters
+    adminGetDhakaCityAreas: (params, token) => {
+        const queryString = new URLSearchParams(params).toString();
+        return apiCall(`/address/admin/dhaka-city?${queryString}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+
+    // Admin: Update division
+    adminUpdateDivision: (id, data, token) => {
+        return apiCall(`/address/admin/divisions/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+    },
+
+    // Admin: Update district
+    adminUpdateDistrict: (id, data, token) => {
+        return apiCall(`/address/admin/districts/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+    },
+
+    // Admin: Update upazila
+    adminUpdateUpazila: (id, data, token) => {
+        return apiCall(`/address/admin/upazilas/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+    },
+
+    // Admin: Update Dhaka city area
+    adminUpdateDhakaCityArea: (id, data, token) => {
+        return apiCall(`/address/admin/dhaka-city/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+    },
+
+    // Admin: Delete Dhaka city area
+    adminDeleteDhakaCityArea: (id, token) => {
+        return apiCall(`/address/admin/dhaka-city/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
     },
 };
 
@@ -1506,6 +1625,78 @@ export const inventoryAPI = {
                 },
             }
         );
+    },
+
+    // Create a new purchase
+    createPurchase: (purchaseData, token) => {
+        return apiCall('/inventory/purchases', {
+            method: 'POST',
+            body: JSON.stringify(purchaseData),
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+    },
+
+    // Get all purchases
+    getPurchases: (params = {}, token) => {
+        const queryString = new URLSearchParams(params).toString();
+        return apiCall(`/inventory/purchases?${queryString}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+
+    // Get single purchase by ID
+    getPurchaseById: (id, token) => {
+        return apiCall(`/inventory/purchases/${id}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+    // Create a new stock adjustment
+    createStockAdjustment: (adjustmentData, token) => {
+        return apiCall('/inventory/stock-adjustments', {
+            method: 'POST',
+            body: JSON.stringify(adjustmentData),
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+    },
+    // Get all stock adjustments
+    getStockAdjustments: (params = {}, token) => {
+        const queryString = new URLSearchParams(params).toString();
+        return apiCall(`/inventory/stock-adjustments?${queryString}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+    // Get single stock adjustment by ID
+    getStockAdjustmentById: (id, token) => {
+        return apiCall(`/inventory/stock-adjustments/${id}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+    // Get product stock history
+    getProductStockHistory: (productId, token, page = 1, limit = 50, variantPages = {}) => {
+        let url = `/inventory/product-stock-history/${productId}?page=${page}&limit=${limit}`;
+        // Add pagination params for each variant
+        Object.keys(variantPages).forEach(sku => {
+            url += `&variant_${sku}_page=${variantPages[sku]}`;
+        });
+        return apiCall(url, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
     },
 };
 

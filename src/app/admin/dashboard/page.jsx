@@ -16,12 +16,15 @@ import {
     BarChart3,
     PieChart,
     Activity,
-    Edit
+    Edit,
+    Mail,
+    Calendar
 } from 'lucide-react'
 import { analyticsAPI } from '@/services/api'
 import { useAppContext } from '@/context/AppContext'
 import PermissionDenied from '@/components/Common/PermissionDenied'
 import toast from 'react-hot-toast'
+import { formatDateForTable } from '@/utils/formatDate'
 import {
     LineChart,
     Line,
@@ -60,7 +63,7 @@ export default function DashboardPage() {
     const [loading, setLoading] = useState(true)
     const [refreshing, setRefreshing] = useState(false)
     const [dashboardData, setDashboardData] = useState(null)
-    const [selectedPeriod, setSelectedPeriod] = useState('30d')
+    const [selectedPeriod, setSelectedPeriod] = useState('today')
     const [checkingPermission, setCheckingPermission] = useState(true)
     const [hasReadPermission, setHasReadPermission] = useState(false)
     const [permissionError, setPermissionError] = useState(null)
@@ -163,6 +166,37 @@ export default function DashboardPage() {
             default:
                 return status
         }
+    }
+
+    // Get payment status color
+    const getPaymentStatusColor = (status) => {
+        switch (status) {
+            case 'pending':
+                return 'bg-yellow-100 text-yellow-800'
+            case 'paid':
+                return 'bg-green-100 text-green-800'
+            case 'failed':
+                return 'bg-red-100 text-red-800'
+            default:
+                return 'bg-gray-100 text-gray-800'
+        }
+    }
+
+    // Get order source label
+    const getOrderSourceLabel = (source) => {
+        if (!source) return 'N/A'
+        const labels = {
+            'website': 'Website',
+            'facebook': 'Facebook',
+            'whatsapp': 'WhatsApp',
+            'phone': 'Phone Call',
+            'email': 'Email',
+            'walk-in': 'Walk-in',
+            'instagram': 'Instagram',
+            'manual': 'Manual',
+            'other': 'Other'
+        }
+        return labels[source] || source
     }
 
     if (checkingPermission || contextLoading || loading) {
@@ -280,6 +314,8 @@ export default function DashboardPage() {
                         onChange={(e) => handlePeriodChange(e.target.value)}
                         className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500"
                     >
+                        <option value="today">Today</option>
+                        <option value="yesterday">Yesterday</option>
                         <option value="7d">Last 7 days</option>
                         <option value="30d">Last 30 days</option>
                         <option value="90d">Last 90 days</option>
@@ -435,10 +471,13 @@ export default function DashboardPage() {
                 <div className="px-6 py-4 border-b border-gray-200">
                     <div className="flex items-center justify-between">
                         <h2 className="text-lg font-semibold text-gray-900">Recent Orders</h2>
-                        <button className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center">
+                        <Link 
+                            href="/admin/dashboard/orders"
+                            className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center"
+                        >
                             <Eye className="h-4 w-4 mr-1" />
                             View All
-                        </button>
+                        </Link>
                     </div>
                 </div>
                 <div className="overflow-x-auto">
@@ -449,19 +488,25 @@ export default function DashboardPage() {
                                     Order ID
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Customer
+                                    Email/Phone
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Items
+                                    Date
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Amount
+                                    Total
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Discount
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Status
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Date
+                                    Payment
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Order Source
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Action
@@ -473,35 +518,88 @@ export default function DashboardPage() {
                                 recentOrders.map((order, index) => (
                                     <tr key={index} className="hover:bg-gray-50 transition-colors">
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                            #{order.orderId}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {order.user ? order.user.name : 'Guest'}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {order.items ? order.items.length : 0} items
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                            {formatCurrency(order.total)}
+                                            #{order.orderId || order._id?.slice(-8).toUpperCase()}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.status)}`}>
-                                                {getStatusText(order.status)}
+                                            <div className="flex items-center">
+                                                <Mail className="h-4 w-4 text-gray-400 mr-2" />
+                                                <div className="text-sm text-gray-900">
+                                                    {order.orderType === 'manual' && order.manualOrderInfo?.phone 
+                                                        ? order.manualOrderInfo.phone 
+                                                        : order.user?.email || order.user?.phone || 'N/A'}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="flex items-center">
+                                                <Calendar className="h-4 w-4 text-gray-400 mr-2" />
+                                                <div className="text-sm text-gray-900">
+                                                    {formatDateForTable(order.createdAt)}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                            ৳{order.total}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="text-sm text-gray-900">
+                                                {(order.couponDiscount > 0 || order.loyaltyDiscount > 0 || order.discount > 0) ? (
+                                                    <div className="space-y-1">
+                                                        {order.couponDiscount > 0 && (
+                                                            <div className="text-blue-600 font-medium">
+                                                                -৳{order.couponDiscount} {order.coupon && `(${order.coupon})`}
+                                                            </div>
+                                                        )}
+                                                        {order.loyaltyDiscount > 0 && (
+                                                            <div className="text-pink-600 font-medium">
+                                                                -৳{order.loyaltyDiscount} (Loyalty)
+                                                            </div>
+                                                        )}
+                                                        {order.discount > 0 && order.couponDiscount === 0 && (
+                                                            <div className="text-green-600 font-medium">
+                                                                -৳{order.discount}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-gray-400">No discount</span>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
+                                                {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {formatDate(order.createdAt)}
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="flex flex-col space-y-1">
+                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPaymentStatusColor(order.paymentStatus)}`}>
+                                                    {order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1)}
+                                                </span>
+                                                <span className="text-xs text-gray-500">
+                                                    {order.paymentMethod === 'cod' ? 'Cash on Delivery' : order.paymentMethod || 'N/A'}
+                                                </span>
+                                            </div>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            <button className="p-1 hover:bg-gray-100 rounded-md transition-colors">
-                                                <MoreHorizontal className="h-4 w-4" />
-                                            </button>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                                {getOrderSourceLabel(order.orderSource)}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                            <Link
+                                                href={`/admin/dashboard/orders/${order._id}`}
+                                                className="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-xs font-medium"
+                                            >
+                                                <Eye className="h-3 w-3 mr-1" />
+                                                View Details
+                                            </Link>
                                         </td>
                                     </tr>
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan="7" className="px-6 py-8 text-center text-gray-500">
+                                    <td colSpan="9" className="px-6 py-8 text-center text-gray-500">
                                         No recent orders found
                                     </td>
                                 </tr>

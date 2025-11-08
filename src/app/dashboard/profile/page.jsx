@@ -52,6 +52,11 @@ export default function ProfilePage() {
         newPassword: '',
         confirmPassword: ''
     })
+    const [formErrors, setFormErrors] = useState({
+        name: '',
+        phone: '',
+        address: ''
+    })
 
     // Initialize form data when user loads
     useEffect(() => {
@@ -67,10 +72,63 @@ export default function ProfilePage() {
 
     const handleInputChange = (e) => {
         const { name, value } = e.target
-        setFormData(prev => ({
-            ...prev,
-            [name]: value
-        }))
+        
+        // For phone field, only allow numbers
+        if (name === 'phone') {
+            // Remove any non-numeric characters
+            const numericValue = value.replace(/\D/g, '')
+            // Limit to 11 digits
+            const limitedValue = numericValue.slice(0, 11)
+            
+            setFormData(prev => ({
+                ...prev,
+                [name]: limitedValue
+            }))
+            
+            // Real-time validation for phone
+            if (limitedValue.length > 0) {
+                let phoneError = ''
+                
+                // Check if starts with "01"
+                if (limitedValue.length >= 1 && limitedValue[0] !== '0') {
+                    phoneError = 'Phone number must start with 0'
+                } else if (limitedValue.length >= 2 && !limitedValue.startsWith('01')) {
+                    phoneError = 'Phone number must start with 01'
+                } else if (limitedValue.length === 11 && !limitedValue.startsWith('01')) {
+                    phoneError = 'Phone number must start with 01'
+                } else if (limitedValue.length === 11 && limitedValue.startsWith('01')) {
+                    // Valid phone number - clear error
+                    phoneError = ''
+                } else if (limitedValue.length < 11 && limitedValue.startsWith('01')) {
+                    // Valid so far, but not complete - clear error for now
+                    phoneError = ''
+                }
+                
+                setFormErrors(prev => ({
+                    ...prev,
+                    phone: phoneError
+                }))
+            } else {
+                // Clear error if field is empty
+                setFormErrors(prev => ({
+                    ...prev,
+                    phone: ''
+                }))
+            }
+        } else {
+            setFormData(prev => ({
+                ...prev,
+                [name]: value
+            }))
+            
+            // Clear error for other fields when user starts typing
+            if (formErrors[name]) {
+                setFormErrors(prev => ({
+                    ...prev,
+                    [name]: ''
+                }))
+            }
+        }
     }
 
     const handlePasswordChange = (e) => {
@@ -133,7 +191,50 @@ export default function ProfilePage() {
         }))
     }
 
+    const validateForm = () => {
+        const errors = {
+            name: '',
+            phone: '',
+            address: ''
+        }
+        
+        // Validate name
+        if (!formData.name || formData.name.trim() === '') {
+            errors.name = 'Name is required'
+        }
+        
+        // Validate phone (if provided)
+        if (formData.phone && formData.phone.trim() !== '') {
+            const phoneNumber = formData.phone.trim()
+            
+            // Must be exactly 11 digits
+            if (phoneNumber.length !== 11) {
+                errors.phone = 'Phone number must be exactly 11 digits'
+            }
+            // Must start with "01" - this is mandatory
+            else if (!phoneNumber.startsWith('01')) {
+                errors.phone = 'Phone number must start with 01'
+            }
+            // Must be all digits (already handled in input, but double check)
+            else if (!/^[0-9]+$/.test(phoneNumber)) {
+                errors.phone = 'Phone number must contain only numbers'
+            }
+        } else if (formData.phone && formData.phone.trim() === '') {
+            // If phone field has only whitespace, treat as empty (no error)
+            // Phone is optional, so we don't require it
+        }
+        
+        setFormErrors(errors)
+        return !Object.values(errors).some(error => error !== '')
+    }
+
     const handleSaveProfile = async () => {
+        // Validate form before submitting
+        if (!validateForm()) {
+            toast.error('Please fix validation errors before submitting')
+            return
+        }
+
         try {
             setLoading(true)
             const token = getCookie('token')
@@ -146,12 +247,24 @@ export default function ProfilePage() {
                 updateUser(response.data)
                 toast.success('Profile updated successfully!')
                 setIsEditing(false)
+                // Clear form errors on success
+                setFormErrors({ name: '', phone: '', address: '' })
             } else {
                 toast.error(response.message || 'Failed to update profile')
             }
         } catch (error) {
             console.error('Error updating profile:', error)
-            toast.error('Failed to update profile')
+            // Extract error message from API response
+            const errorMessage = error?.response?.data?.message || error?.message || 'Failed to update profile'
+            toast.error(errorMessage)
+            
+            // If it's a phone number error, set it in form errors
+            if (errorMessage.toLowerCase().includes('phone')) {
+                setFormErrors(prev => ({
+                    ...prev,
+                    phone: errorMessage
+                }))
+            }
         } finally {
             setLoading(false)
         }
@@ -216,6 +329,7 @@ export default function ProfilePage() {
             phone: user.phone || '',
             address: user.address || ''
         })
+        setFormErrors({ name: '', phone: '', address: '' })
         setIsEditing(false)
     }
 
@@ -580,10 +694,20 @@ export default function ProfilePage() {
                                         name="name"
                                         value={formData.name}
                                         onChange={handleInputChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-pink-500 focus:border-pink-500 focus:outline-none"
+                                        className={`w-full px-3 py-2 border rounded-lg focus:ring-1 focus:outline-none ${
+                                            formErrors.name 
+                                                ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
+                                                : 'border-gray-300 focus:ring-pink-500 focus:border-pink-500'
+                                        }`}
                                         placeholder="Enter your full name"
                                         required
                                     />
+                                    {formErrors.name && (
+                                        <p className="text-red-500 text-xs mt-1 flex items-center">
+                                            <span className="mr-1">⚠️</span>
+                                            {formErrors.name}
+                                        </p>
+                                    )}
                                 </div>
 
                                 {/* Phone */}
@@ -592,13 +716,29 @@ export default function ProfilePage() {
                                         Phone Number
                                     </label>
                                     <input
-                                        type="tel"
+                                        type="text"
                                         name="phone"
                                         value={formData.phone}
                                         onChange={handleInputChange}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-pink-500 focus:border-pink-500 focus:outline-none"
-                                        placeholder="Enter your phone number"
+                                        maxLength={11}
+                                        className={`w-full px-3 py-2 border rounded-lg focus:ring-1 focus:outline-none ${
+                                            formErrors.phone 
+                                                ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
+                                                : 'border-gray-300 focus:ring-pink-500 focus:border-pink-500'
+                                        }`}
+                                        placeholder="01XXXXXXXXX (11 digits)"
                                     />
+                                    {formErrors.phone && (
+                                        <p className="text-red-500 text-xs mt-1 flex items-center">
+                                            <span className="mr-1">⚠️</span>
+                                            {formErrors.phone}
+                                        </p>
+                                    )}
+                                    {!formErrors.phone && formData.phone && (
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            {formData.phone.length}/11 digits
+                                        </p>
+                                    )}
                                 </div>
 
                                 {/* Address */}
@@ -643,7 +783,7 @@ export default function ProfilePage() {
                                 </button>
                                 <button
                                     onClick={handleSaveProfile}
-                                    disabled={loading}
+                                    disabled={loading || Object.values(formErrors).some(error => error !== '')}
                                     className="flex items-center px-6 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
                                 >
                                     {loading ? (

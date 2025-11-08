@@ -30,7 +30,9 @@ import {
     Eye,
     MessageSquare,
     Coins,
-    RotateCcw
+    RotateCcw,
+    CheckSquare,
+    Square
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { formatDateForTable } from '@/utils/formatDate';
@@ -54,6 +56,7 @@ export default function OrderDetailsPage() {
     const [updatingStatus, setUpdatingStatus] = useState(false);
     const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
     const [returnQuantities, setReturnQuantities] = useState({});
+    const [selectedItems, setSelectedItems] = useState(new Set());
 
     useEffect(() => {
         // Check permission first
@@ -69,6 +72,33 @@ export default function OrderDetailsPage() {
             }
         }
     }, [contextLoading, hasPermission, orderId]);
+
+    // Load selected items from localStorage when order loads
+    useEffect(() => {
+        if (order && order._id) {
+            const savedSelections = localStorage.getItem(`order_selections_${order._id}`);
+            if (savedSelections) {
+                try {
+                    const parsed = JSON.parse(savedSelections);
+                    setSelectedItems(new Set(parsed));
+                } catch (e) {
+                    console.error('Error loading saved selections:', e);
+                }
+            }
+        }
+    }, [order?._id]);
+
+    // Save selected items to localStorage
+    useEffect(() => {
+        if (order && order._id) {
+            if (selectedItems.size > 0) {
+                localStorage.setItem(`order_selections_${order._id}`, JSON.stringify(Array.from(selectedItems)));
+            } else {
+                // Clear localStorage if no items selected
+                localStorage.removeItem(`order_selections_${order._id}`);
+            }
+        }
+    }, [selectedItems, order?._id]);
 
     const fetchOrderDetails = async () => {
         try {
@@ -192,6 +222,29 @@ export default function OrderDetailsPage() {
     const copyOrderId = () => {
         navigator.clipboard.writeText(order?.orderId || "Order ID not found");
         toast.success('Order ID copied!');
+    };
+
+    // Handle item selection for packaging
+    const toggleItemSelection = (index) => {
+        setSelectedItems(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(index)) {
+                newSet.delete(index);
+            } else {
+                newSet.add(index);
+            }
+            return newSet;
+        });
+    };
+
+    const selectAllItems = () => {
+        if (order && order.items) {
+            setSelectedItems(new Set(order.items.map((_, index) => index)));
+        }
+    };
+
+    const clearAllItems = () => {
+        setSelectedItems(new Set());
     };
 
     // Get available status options based on current status
@@ -450,7 +503,9 @@ export default function OrderDetailsPage() {
                             </div>
                             <div className="ml-4">
                                 <p className="text-sm font-medium text-slate-600">Total Amount</p>
-                                <p className="text-2xl font-bold text-slate-900">৳{order.total}</p>
+                                <p className="text-2xl font-bold text-slate-900">
+                                    ৳{order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0) + (order.shippingCost || 0) - (order.discount || 0) - (order.couponDiscount || 0) - (order.upsellDiscount || 0) - (order.loyaltyDiscount || 0)}
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -539,88 +594,178 @@ export default function OrderDetailsPage() {
 
                         {/* Order Items */}
                         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
-                            <div className="flex items-center justify-between mb-8">
+                            <div className="flex items-center justify-between mb-6">
                                 <h2 className="text-xl font-bold text-slate-900 flex items-center">
                                     <ShoppingBag className="h-6 w-6 mr-3 text-blue-600" />
                                     Order Items
                                 </h2>
-                                <div className="bg-slate-100 px-4 py-2 rounded-xl">
-                                    <span className="text-sm font-semibold text-slate-700">
-                                        {order.items.length} item{order.items.length > 1 ? 's' : ''}
-                                    </span>
+                                <div className="flex items-center space-x-3">
+                                    <div className="bg-slate-100 px-4 py-2 rounded-xl">
+                                        <span className="text-sm font-semibold text-slate-700">
+                                            {order.items.length} item{order.items.length > 1 ? 's' : ''}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Packaging Selection Controls */}
+                            <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center space-x-3">
+                                        <Package className="h-5 w-5 text-blue-600" />
+                                        <div>
+                                            <h3 className="text-sm font-bold text-slate-900">Packaging Selection</h3>
+                                            <p className="text-xs text-slate-600">Click items to mark as packed</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <button
+                                            onClick={selectAllItems}
+                                            className="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors"
+                                        >
+                                            Select All
+                                        </button>
+                                        <button
+                                            onClick={clearAllItems}
+                                            className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                                        >
+                                            Clear All
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <div className="flex-1 bg-white rounded-lg px-3 py-2 border border-blue-200">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-xs font-medium text-slate-600">Packed Items:</span>
+                                            <span className={`text-sm font-bold ${
+                                                selectedItems.size === order.items.length 
+                                                    ? 'text-emerald-600' 
+                                                    : selectedItems.size > 0 
+                                                        ? 'text-blue-600' 
+                                                        : 'text-slate-400'
+                                            }`}>
+                                                {selectedItems.size} / {order.items.length}
+                                            </span>
+                                        </div>
+                                        <div className="mt-1 w-full bg-slate-200 rounded-full h-2">
+                                            <div 
+                                                className={`h-2 rounded-full transition-all duration-300 ${
+                                                    selectedItems.size === order.items.length 
+                                                        ? 'bg-emerald-500' 
+                                                        : 'bg-blue-500'
+                                                }`}
+                                                style={{ width: `${(selectedItems.size / order.items.length) * 100}%` }}
+                                            ></div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                             
                             <div className="space-y-6">
-                                {order.items.map((item, index) => (
-                                    <div key={index} className="group relative bg-slate-50 rounded-2xl p-6 hover:bg-slate-100 transition-all duration-300 border border-slate-100">
-                                        <div className="flex items-center space-x-6">
-                                            <div className="relative">
-                                                <img
-                                                    src={item.image}
-                                                    alt={item.name}
-                                                    className="h-24 w-24 rounded-xl object-cover border-2 border-white shadow-lg"
-                                                />
-                                                <div className="absolute -top-2 -right-2 bg-blue-600 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center">
-                                                    {item.quantity}
-                                                </div>
-                                            </div>
-                                            
-                                            <div className="flex-1 min-w-0">
-                                                <h3 className="text-lg font-bold text-slate-900 mb-3">
-                                                    {item.name}
-                                                </h3>
-                                                
-                                                <div className="flex flex-wrap gap-3 mb-4">
-                                                    <div className="flex items-center bg-blue-100 px-3 py-1.5 rounded-lg">
-                                                        <span className="text-xs font-bold text-blue-800 mr-1">QTY:</span>
-                                                        <span className="text-xs font-semibold text-blue-700">{item.quantity}</span>
-                                                    </div>
-                                                    <div className="flex items-center bg-emerald-100 px-3 py-1.5 rounded-lg">
-                                                        <span className="text-xs font-bold text-emerald-800 mr-1">PRICE:</span>
-                                                        <span className="text-xs font-semibold text-emerald-700">৳{item.price}</span>
+                                {order.items.map((item, index) => {
+                                    const isSelected = selectedItems.has(index);
+                                    return (
+                                        <div 
+                                            key={index} 
+                                            onClick={() => toggleItemSelection(index)}
+                                            className={`group relative rounded-2xl p-6 transition-all duration-300 border-2 cursor-pointer ${
+                                                isSelected 
+                                                    ? 'bg-emerald-50 border-emerald-300 hover:bg-emerald-100' 
+                                                    : 'bg-slate-50 border-slate-100 hover:bg-slate-100'
+                                            }`}
+                                        >
+                                            <div className="flex items-center space-x-6">
+                                                {/* Selection Checkbox */}
+                                                <div className="flex-shrink-0">
+                                                    <div className={`w-8 h-8 rounded-lg border-2 flex items-center justify-center transition-all ${
+                                                        isSelected 
+                                                            ? 'bg-emerald-500 border-emerald-600' 
+                                                            : 'bg-white border-slate-300 group-hover:border-blue-400'
+                                                    }`}>
+                                                        {isSelected ? (
+                                                            <CheckSquare className="h-5 w-5 text-white" />
+                                                        ) : (
+                                                            <Square className="h-5 w-5 text-slate-400" />
+                                                        )}
                                                     </div>
                                                 </div>
 
-                                                {item.variant && (
-                                                    <div className="flex flex-wrap gap-3">
-                                                        {item.variant.size && (
-                                                            <div className="flex items-center bg-purple-100 px-3 py-1.5 rounded-lg">
-                                                                <span className="text-xs font-bold text-purple-800 mr-2">SIZE:</span>
-                                                                <span className="text-xs font-semibold text-purple-700">{item.variant.size}</span>
-                                                            </div>
-                                                        )}
-                                                        {item.variant.color && (
-                                                            <div className="flex items-center bg-rose-100 px-3 py-1.5 rounded-lg">
-                                                                <span className="text-xs font-bold text-rose-800 mr-2">COLOR:</span>
-                                                                <div
-                                                                    className="w-4 h-4 rounded-full border-2 border-white shadow-sm mr-1"
-                                                                    style={{
-                                                                        backgroundColor: item.variant.colorHexCode,
-                                                                    }}
-                                                                ></div>
-                                                                <span className="text-xs font-semibold text-rose-700">{item.variant.color}</span>
-                                                            </div>
-                                                        )}
-                                                        {item.variant.sku && (
-                                                            <div className="flex items-center bg-slate-100 px-3 py-1.5 rounded-lg">
-                                                                <span className="text-xs font-bold text-slate-800 mr-2">SKU:</span>
-                                                                <span className="text-xs font-mono font-semibold text-slate-700">{item.variant.sku}</span>
-                                                            </div>
+                                                <div className="relative">
+                                                    <img
+                                                        src={item.image}
+                                                        alt={item.name}
+                                                        className="h-24 w-24 rounded-xl object-cover border-2 border-white shadow-lg"
+                                                    />
+                                                    <div className={`absolute -top-2 -right-2 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center ${
+                                                        isSelected ? 'bg-emerald-600' : 'bg-blue-600'
+                                                    }`}>
+                                                        {item.quantity}
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center space-x-2 mb-2">
+                                                        <h3 className="text-lg font-bold text-slate-900">
+                                                            {item.name}
+                                                        </h3>
+                                                        {isSelected && (
+                                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-500 text-white">
+                                                                Packed
+                                                            </span>
                                                         )}
                                                     </div>
-                                                )}
-                                            </div>
-                                            
-                                            <div className="text-right">
-                                                <p className="text-2xl font-bold text-slate-900">
-                                                    ৳{item.subtotal}
-                                                </p>
-                                                <p className="text-sm text-slate-500 mt-1">Subtotal</p>
+                                                    
+                                                    <div className="flex flex-wrap gap-3 mb-4">
+                                                        <div className="flex items-center bg-blue-100 px-3 py-1.5 rounded-lg">
+                                                            <span className="text-xs font-bold text-blue-800 mr-1">QTY:</span>
+                                                            <span className="text-xs font-semibold text-blue-700">{item.quantity}</span>
+                                                        </div>
+                                                        <div className="flex items-center bg-emerald-100 px-3 py-1.5 rounded-lg">
+                                                            <span className="text-xs font-bold text-emerald-800 mr-1">PRICE:</span>
+                                                            <span className="text-xs font-semibold text-emerald-700">৳{item.price}</span>
+                                                        </div>
+                                                    </div>
+
+                                                    {item.variant && (
+                                                        <div className="flex flex-wrap gap-3">
+                                                            {item.variant.size && (
+                                                                <div className="flex items-center bg-purple-100 px-3 py-1.5 rounded-lg">
+                                                                    <span className="text-xs font-bold text-purple-800 mr-2">SIZE:</span>
+                                                                    <span className="text-xs font-semibold text-purple-700">{item.variant.size}</span>
+                                                                </div>
+                                                            )}
+                                                            {item.variant.color && (
+                                                                <div className="flex items-center bg-rose-100 px-3 py-1.5 rounded-lg">
+                                                                    <span className="text-xs font-bold text-rose-800 mr-2">COLOR:</span>
+                                                                    <div
+                                                                        className="w-4 h-4 rounded-full border-2 border-white shadow-sm mr-1"
+                                                                        style={{
+                                                                            backgroundColor: item.variant.colorHexCode,
+                                                                        }}
+                                                                    ></div>
+                                                                    <span className="text-xs font-semibold text-rose-700">{item.variant.color}</span>
+                                                                </div>
+                                                            )}
+                                                            {item.variant.sku && (
+                                                                <div className="flex items-center bg-slate-100 px-3 py-1.5 rounded-lg">
+                                                                    <span className="text-xs font-bold text-slate-800 mr-2">SKU:</span>
+                                                                    <span className="text-xs font-mono font-semibold text-slate-700">{item.variant.sku}</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                
+                                                <div className="text-right">
+                                                    <p className="text-2xl font-bold text-slate-900">
+                                                        ৳{item.subtotal}
+                                                    </p>
+                                                    <p className="text-sm text-slate-500 mt-1">Subtotal</p>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
 

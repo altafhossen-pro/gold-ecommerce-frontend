@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Eye, Trash2, Package, Calendar, User, MapPin, CreditCard, Mail, Edit } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { Eye, Trash2, Package, Calendar, User, MapPin, CreditCard, Mail, Edit, MoreVertical, Copy } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { formatDateForTable } from '@/utils/formatDate';
@@ -24,12 +25,14 @@ export default function AdminOrdersPage() {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [orderToDelete, setOrderToDelete] = useState(null);
     const [deleting, setDeleting] = useState(false);
+    const [openDropdownId, setOpenDropdownId] = useState(null);
+    const [dropdownPosition, setDropdownPosition] = useState({});
+    const buttonRefs = useRef({});
+    const [contextMenu, setContextMenu] = useState({ open: false, orderId: null, x: 0, y: 0, hasSelection: false });
     
     // Filter states
     const [filters, setFilters] = useState({
-        orderId: '',
-        email: '', // Separate email filter
-        phone: '', // Separate phone filter
+        search: '', // Unified search for orderId, email, phone
         status: 'all'
     });
     
@@ -43,8 +46,8 @@ export default function AdminOrdersPage() {
         hasPrevPage: false
     });
 
+    // Check permission on mount
     useEffect(() => {
-        // Check permission first
         if (!contextLoading) {
             if (!hasPermission('order', 'read')) {
                 setPermissionError({
@@ -52,20 +55,24 @@ export default function AdminOrdersPage() {
                     action: 'Read Orders'
                 });
                 setLoading(false);
-            } else {
-                fetchOrders();
             }
         }
-    }, [contextLoading, hasPermission, pagination.currentPage, pagination.itemsPerPage]);
+    }, [contextLoading, hasPermission]);
 
-    // Refetch orders when any filter changes (debounced)
+    // Refetch orders when filters or pagination changes (debounced)
+    // This single useEffect handles all data fetching to prevent duplicate calls
     useEffect(() => {
+        // Don't fetch if still loading context or no permission
+        if (contextLoading || !hasPermission('order', 'read')) {
+            return;
+        }
+
         const timeoutId = setTimeout(() => {
             fetchOrders();
         }, 500); // 500ms debounce
 
         return () => clearTimeout(timeoutId);
-    }, [filters.orderId, filters.email, filters.phone, filters.status, pagination.currentPage, pagination.itemsPerPage]);
+    }, [filters.search, filters.status, pagination.currentPage, pagination.itemsPerPage, contextLoading, hasPermission]);
 
     const fetchOrders = async () => {
         try {
@@ -83,19 +90,9 @@ export default function AdminOrdersPage() {
                 params.append('status', filters.status);
             }
             
-            // Add Order ID filter
-            if (filters.orderId && filters.orderId.trim()) {
-                params.append('orderId', filters.orderId.trim());
-            }
-            
-            // Add email filter
-            if (filters.email && filters.email.trim()) {
-                params.append('email', filters.email.trim());
-            }
-            
-            // Add phone filter
-            if (filters.phone && filters.phone.trim()) {
-                params.append('phone', filters.phone.trim());
+            // Add unified search filter (searches orderId, email, phone)
+            if (filters.search && filters.search.trim()) {
+                params.append('search', filters.search.trim());
             }
             
             const data = await orderAPI.getAdminOrders(token, params.toString());
@@ -164,9 +161,7 @@ export default function AdminOrdersPage() {
 
     const clearFilters = () => {
         setFilters({
-            orderId: '',
-            email: '',
-            phone: '',
+            search: '',
             status: 'all'
         });
         setPagination(prev => ({
@@ -221,6 +216,203 @@ export default function AdminOrdersPage() {
                 return 'bg-gray-100 text-gray-800';
         }
     };
+
+    const getOrderSourceLabel = (source) => {
+        if (!source) return 'N/A';
+        const labels = {
+            'website': 'Website',
+            'facebook': 'Facebook',
+            'whatsapp': 'WhatsApp',
+            'phone': 'Phone Call',
+            'email': 'Email',
+            'walk-in': 'Walk-in',
+            'instagram': 'Instagram',
+            'manual': 'Manual',
+            'other': 'Other'
+        };
+        return labels[source] || source;
+    };
+
+    // Calculate dropdown position based on available space (floating style - fixed positioning)
+    const calculateDropdownPosition = (orderId) => {
+        const buttonElement = buttonRefs.current[orderId];
+        if (!buttonElement) return { top: 0, left: 0, position: 'fixed' };
+
+        const rect = buttonElement.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        const viewportWidth = window.innerWidth;
+        const dropdownHeight = 200; // Approximate height of dropdown
+        const dropdownWidth = 192; // w-48 = 192px
+        const gap = 8; // Gap between button and dropdown
+
+        let position = {
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            zIndex: 9999
+        };
+
+        // Vertical positioning: check if there's enough space below
+        const spaceBelow = viewportHeight - rect.bottom;
+        const spaceAbove = rect.top;
+
+        if (spaceBelow < dropdownHeight && spaceAbove > spaceBelow) {
+            // Open above - position from bottom of viewport
+            position.bottom = `${viewportHeight - rect.top + gap}px`;
+            position.top = 'auto';
+        } else {
+            // Open below (default) - position from top of viewport
+            position.top = `${rect.bottom + gap}px`;
+            position.bottom = 'auto';
+        }
+
+        // Horizontal positioning: align to right edge of button by default
+        const spaceRight = viewportWidth - rect.right;
+        
+        if (spaceRight < dropdownWidth) {
+            // Not enough space on right, align to left edge of button
+            position.left = `${rect.left}px`;
+            position.right = 'auto';
+        } else {
+            // Default: align to right edge of button
+            position.right = `${viewportWidth - rect.right}px`;
+            position.left = 'auto';
+        }
+
+        return position;
+    };
+
+    const handleDropdownToggle = (orderId) => {
+        if (openDropdownId === orderId) {
+            setOpenDropdownId(null);
+        } else {
+            setOpenDropdownId(orderId);
+            setContextMenu({ open: false, orderId: null, x: 0, y: 0, hasSelection: false });
+            // Calculate position after a small delay to ensure button is rendered
+            setTimeout(() => {
+                const position = calculateDropdownPosition(orderId);
+                setDropdownPosition(prev => ({
+                    ...prev,
+                    [orderId]: position
+                }));
+            }, 0);
+        }
+    };
+
+    // Handle right-click context menu
+    const handleContextMenu = (e, orderId) => {
+        e.preventDefault(); // Prevent browser default context menu
+        
+        // Check if text is selected
+        const selection = window.getSelection();
+        const hasSelection = selection && selection.toString().trim().length > 0;
+        
+        setContextMenu({
+            open: true,
+            orderId: orderId,
+            x: e.clientX,
+            y: e.clientY,
+            hasSelection: hasSelection
+        });
+        
+        // Close dropdown menu if open
+        if (openDropdownId) {
+            setOpenDropdownId(null);
+        }
+    };
+
+    // Handle copy to clipboard
+    const handleCopy = async () => {
+        const selection = window.getSelection();
+        if (selection && selection.toString().trim().length > 0) {
+            try {
+                await navigator.clipboard.writeText(selection.toString());
+                toast.success('Copied to clipboard');
+            } catch (err) {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = selection.toString();
+                textArea.style.position = 'fixed';
+                textArea.style.opacity = '0';
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    toast.success('Copied to clipboard');
+                } catch (err) {
+                    toast.error('Failed to copy');
+                }
+                document.body.removeChild(textArea);
+            }
+        }
+        setContextMenu({ open: false, orderId: null, x: 0, y: 0, hasSelection: false });
+    };
+
+    // Calculate context menu position
+    const getContextMenuPosition = () => {
+        if (!contextMenu.open) return {};
+        
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const menuWidth = 192; // w-48
+        const menuHeight = contextMenu.hasSelection ? 250 : 200; // Approximate
+        
+        let left = contextMenu.x;
+        let top = contextMenu.y;
+        
+        // Adjust if menu would go off screen
+        if (left + menuWidth > viewportWidth) {
+            left = viewportWidth - menuWidth - 10;
+        }
+        if (top + menuHeight > viewportHeight) {
+            top = viewportHeight - menuHeight - 10;
+        }
+        
+        return {
+            position: 'fixed',
+            left: `${left}px`,
+            top: `${top}px`,
+            zIndex: 9999
+        };
+    };
+
+    // Close dropdown and context menu when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (openDropdownId && !event.target.closest('.dropdown-menu-container')) {
+                setOpenDropdownId(null);
+            }
+            if (contextMenu.open && !event.target.closest('.context-menu-container')) {
+                setContextMenu({ open: false, orderId: null, x: 0, y: 0, hasSelection: false });
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [openDropdownId, contextMenu.open]);
+
+    // Recalculate position on scroll or resize (for relative positioning, less critical but still useful)
+    useEffect(() => {
+        if (openDropdownId) {
+            const handleResize = () => {
+                const position = calculateDropdownPosition(openDropdownId);
+                setDropdownPosition(prev => ({
+                    ...prev,
+                    [openDropdownId]: position
+                }));
+            };
+
+            window.addEventListener('resize', handleResize);
+            // For relative positioning, scroll is less critical but we'll keep it for vertical adjustment
+            window.addEventListener('scroll', handleResize, true);
+
+            return () => {
+                window.removeEventListener('resize', handleResize);
+                window.removeEventListener('scroll', handleResize, true);
+            };
+        }
+    }, [openDropdownId]);
 
     const handleDeleteOrder = (orderId) => {
         const order = orders.find(o => o._id === orderId);
@@ -355,49 +547,18 @@ export default function AdminOrdersPage() {
                 
                 {/* Filters */}
                 <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        {/* Order ID Filter */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Unified Search Filter */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Order ID
+                                Search (Order ID, Email, Phone)
                             </label>
                             <input
                                 type="text"
-                                placeholder="Search by Order ID..."
-                                value={filters.orderId}
-                                onChange={(e) => handleFilterChange('orderId', e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                            />
-                        </div>
-
-                        {/* Email Filter */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Email
-                            </label>
-                            <input
-                                type="email"
-                                placeholder="Search by email..."
-                                value={filters.email}
+                                placeholder="Search by Order ID, Email, or Phone..."
+                                value={filters.search}
                                 onChange={(e) => {
-                                    handleFilterChange('email', e.target.value);
-                                    setPagination(prev => ({ ...prev, currentPage: 1 }));
-                                }}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                            />
-                        </div>
-
-                        {/* Phone Filter */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Phone
-                            </label>
-                            <input
-                                type="tel"
-                                placeholder="Search by phone..."
-                                value={filters.phone}
-                                onChange={(e) => {
-                                    handleFilterChange('phone', e.target.value);
+                                    handleFilterChange('search', e.target.value);
                                     setPagination(prev => ({ ...prev, currentPage: 1 }));
                                 }}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
@@ -486,13 +647,20 @@ export default function AdminOrdersPage() {
                                         Payment
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Order Source
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Actions
                                     </th>
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
                                 {filteredOrders.map((order) => (
-                                    <tr key={order._id} className="hover:bg-gray-50">
+                                    <tr 
+                                        key={order._id} 
+                                        className="hover:bg-gray-50"
+                                        onContextMenu={(e) => handleContextMenu(e, order._id)}
+                                    >
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="text-sm font-medium text-gray-900">
                                                 #{order.orderId || order._id.slice(-8).toUpperCase()}
@@ -562,44 +730,20 @@ export default function AdminOrdersPage() {
                                                 </span>
                                             </div>
                                         </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                                {getOrderSourceLabel(order.orderSource)}
+                                            </span>
+                                        </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                            <div className="flex items-center space-x-2">
-                                                {hasPermission('order', 'read') && (
-                                                    <Link
-                                                        href={`/admin/dashboard/orders/${order._id}`}
-                                                        className="inline-flex items-center px-3 py-1.5 border border-blue-300 shadow-sm text-xs font-medium rounded-md text-blue-700 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                                                    >
-                                                        <Eye className="h-3 w-3 mr-1" />
-                                                        View
-                                                    </Link>
-                                                )}
-                                                {hasPermission('order', 'update') && (
-                                                    <>
-                                                        <Link
-                                                            href={`/admin/dashboard/orders/${order._id}/edit`}
-                                                            className="inline-flex items-center px-3 py-1.5 border border-purple-300 shadow-sm text-xs font-medium rounded-md text-purple-700 bg-white hover:bg-purple-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
-                                                        >
-                                                            <Edit className="h-3 w-3 mr-1" />
-                                                            Edit
-                                                        </Link>
-                                                        <button
-                                                            onClick={() => openStatusModal(order)}
-                                                            className="inline-flex items-center px-3 py-1.5 border border-green-300 shadow-sm text-xs font-medium rounded-md text-green-700 bg-white hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                                                        >
-                                                            <Edit className="h-3 w-3 mr-1" />
-                                                            Status
-                                                        </button>
-                                                    </>
-                                                )}
-                                                {hasPermission('order', 'delete') && (
-                                                    <button
-                                                        onClick={() => handleDeleteOrder(order._id)}
-                                                        className="inline-flex items-center px-3 py-1.5 border border-red-300 shadow-sm text-xs font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                                                    >
-                                                        <Trash2 className="h-3 w-3 mr-1" />
-                                                        Delete
-                                                    </button>
-                                                )}
+                                            <div className="relative dropdown-menu-container">
+                                                <button
+                                                    ref={(el) => (buttonRefs.current[order._id] = el)}
+                                                    onClick={() => handleDropdownToggle(order._id)}
+                                                    className="inline-flex items-center p-2 text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-md"
+                                                >
+                                                    <MoreVertical className="h-5 w-5" />
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -783,6 +927,141 @@ export default function AdminOrdersPage() {
                 cancelText="Cancel"
                 dangerLevel="high"
             />
+
+            {/* Floating Dropdown Menu (Portal) */}
+            {openDropdownId && typeof window !== 'undefined' && createPortal(
+                <div 
+                    className="w-48 bg-white rounded-md shadow-lg border border-gray-200"
+                    style={dropdownPosition[openDropdownId] || {}}
+                >
+                    <div className="py-1">
+                        {hasPermission('order', 'read') && (
+                            <Link
+                                href={`/admin/dashboard/orders/${openDropdownId}`}
+                                onClick={() => setOpenDropdownId(null)}
+                                className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            >
+                                <Eye className="h-4 w-4 mr-2" />
+                                View
+                            </Link>
+                        )}
+                        {hasPermission('order', 'update') && (
+                            <>
+                                <Link
+                                    href={`/admin/dashboard/orders/${openDropdownId}/edit`}
+                                    onClick={() => setOpenDropdownId(null)}
+                                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                >
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Edit
+                                </Link>
+                                <button
+                                    onClick={() => {
+                                        const order = orders.find(o => o._id === openDropdownId);
+                                        if (order) {
+                                            setOpenDropdownId(null);
+                                            openStatusModal(order);
+                                        }
+                                    }}
+                                    className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                >
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Edit Status
+                                </button>
+                            </>
+                        )}
+                        {hasPermission('order', 'delete') && (
+                            <button
+                                onClick={() => {
+                                    setOpenDropdownId(null);
+                                    handleDeleteOrder(openDropdownId);
+                                }}
+                                className="w-full flex items-center px-4 py-2 text-sm text-red-700 hover:bg-red-50"
+                            >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                            </button>
+                        )}
+                    </div>
+                </div>,
+                document.body
+            )}
+
+            {/* Right-Click Context Menu (Portal) */}
+            {contextMenu.open && contextMenu.orderId && typeof window !== 'undefined' && createPortal(
+                <div 
+                    className="context-menu-container w-48 bg-white rounded-md shadow-lg border border-gray-200"
+                    style={getContextMenuPosition()}
+                >
+                    <div className="py-1">
+                        {/* Copy option if text is selected */}
+                        {contextMenu.hasSelection && (
+                            <button
+                                onClick={handleCopy}
+                                className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            >
+                                <Copy className="h-4 w-4 mr-2" />
+                                Copy
+                            </button>
+                        )}
+                        
+                        {/* Divider if copy option is shown */}
+                        {contextMenu.hasSelection && (
+                            <div className="border-t border-gray-200 my-1"></div>
+                        )}
+
+                        {/* Order actions */}
+                        {hasPermission('order', 'read') && (
+                            <Link
+                                href={`/admin/dashboard/orders/${contextMenu.orderId}`}
+                                onClick={() => setContextMenu({ open: false, orderId: null, x: 0, y: 0, hasSelection: false })}
+                                className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            >
+                                <Eye className="h-4 w-4 mr-2" />
+                                View
+                            </Link>
+                        )}
+                        {hasPermission('order', 'update') && (
+                            <>
+                                <Link
+                                    href={`/admin/dashboard/orders/${contextMenu.orderId}/edit`}
+                                    onClick={() => setContextMenu({ open: false, orderId: null, x: 0, y: 0, hasSelection: false })}
+                                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                >
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Edit
+                                </Link>
+                                <button
+                                    onClick={() => {
+                                        const order = orders.find(o => o._id === contextMenu.orderId);
+                                        if (order) {
+                                            setContextMenu({ open: false, orderId: null, x: 0, y: 0, hasSelection: false });
+                                            openStatusModal(order);
+                                        }
+                                    }}
+                                    className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                >
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Edit Status
+                                </button>
+                            </>
+                        )}
+                        {hasPermission('order', 'delete') && (
+                            <button
+                                onClick={() => {
+                                    setContextMenu({ open: false, orderId: null, x: 0, y: 0, hasSelection: false });
+                                    handleDeleteOrder(contextMenu.orderId);
+                                }}
+                                className="w-full flex items-center px-4 py-2 text-sm text-red-700 hover:bg-red-50"
+                            >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                            </button>
+                        )}
+                    </div>
+                </div>,
+                document.body
+            )}
         </div>
     );
 }

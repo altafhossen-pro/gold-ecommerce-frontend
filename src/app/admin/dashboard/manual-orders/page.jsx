@@ -29,6 +29,11 @@ export default function ManualOrderCreation() {
         phone: '',
         address: ''
     });
+    const [existingUserInfo, setExistingUserInfo] = useState({
+        name: '',
+        phone: '',
+        address: ''
+    });
     const [orderItems, setOrderItems] = useState([]);
     const [orderNotes, setOrderNotes] = useState('');
     const [discountAmount, setDiscountAmount] = useState(0);
@@ -70,7 +75,18 @@ export default function ManualOrderCreation() {
         }
     }, [guestInfo.phone]);
 
-    // Auto-fill guest info from phone number
+    // Auto-fill existing user address when phone number is 11 digits
+    useEffect(() => {
+        if (orderType === 'existing' && selectedUser) {
+            const phoneNumber = existingUserInfo.phone.trim();
+            if (phoneNumber.length === 11 && /^\d+$/.test(phoneNumber)) {
+                autoFillAddressFromOrder(phoneNumber, 'existing');
+            }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [existingUserInfo.phone, orderType, selectedUser]);
+
+    // Auto-fill guest info from phone number (address from last order only)
     const autoFillGuestInfo = async (phoneNumber) => {
         try {
             const token = getCookie('token');
@@ -88,11 +104,11 @@ export default function ManualOrderCreation() {
                     }));
 
                     if (name && address) {
-                        toast.success('Customer info auto-filled from database');
+                        toast.success('Customer info auto-filled from last order');
                     } else if (name) {
-                        toast.success('Customer name auto-filled from user database');
+                        toast.success('Customer name auto-filled');
                     } else if (address) {
-                        toast.success('Customer address auto-filled from previous order');
+                        toast.success('Address auto-filled from last order');
                     }
                 }
             }
@@ -160,6 +176,13 @@ export default function ManualOrderCreation() {
 
                 // If SKU match found, auto-add the variant
                 if (matchingVariant && matchingProduct) {
+                    // Check stock availability
+                    const stockQuantity = matchingVariant.stockQuantity || 0;
+                    if (stockQuantity <= 0) {
+                        toast.error(`Stock out! "${matchingProduct.title}" (SKU: ${matchingVariant.sku}) is out of stock.`);
+                        setProductSearchTerm('');
+                        return;
+                    }
 
                     // Check if this SKU already exists in order items (SKU match only)
                     const existingItemIndex = orderItems.findIndex(item =>
@@ -167,6 +190,14 @@ export default function ManualOrderCreation() {
                     );
 
                     if (existingItemIndex !== -1) {
+                        // Check if adding one more would exceed stock
+                        const currentQuantity = orderItems[existingItemIndex].quantity;
+                        if (currentQuantity + 1 > stockQuantity) {
+                            toast.error(`Insufficient stock! Only ${stockQuantity} available for "${matchingProduct.title}" (SKU: ${matchingVariant.sku}).`);
+                            setProductSearchTerm('');
+                            return;
+                        }
+                        
                         // Update existing item quantity
                         setOrderItems(prev => prev.map((item, index) =>
                             index === existingItemIndex
@@ -215,10 +246,49 @@ export default function ManualOrderCreation() {
     };
 
     // Handle user selection
-    const handleUserSelect = (user) => {
+    const handleUserSelect = async (user) => {
         setSelectedUser(user);
         setUserSearchTerm(`${user.name} (${user.email})`);
         setShowUserDropdown(false);
+        
+        // Set name and phone from user
+        setExistingUserInfo({
+            name: user.name || '',
+            phone: user.phone || '',
+            address: '' // Address will be filled from last order
+        });
+
+        // Auto-fill address from last order's shippingAddress (not from user table)
+        if (user.phone) {
+            await autoFillAddressFromOrder(user.phone);
+        }
+    };
+
+    // Auto-fill address from last order's shippingAddress
+    const autoFillAddressFromOrder = async (phoneNumber, type = orderType) => {
+        try {
+            const token = getCookie('token');
+            const response = await orderAPI.getCustomerInfoByPhone(phoneNumber, token);
+
+            if (response.success && response.data && response.data.address) {
+                if (type === 'existing') {
+                    setExistingUserInfo(prev => ({
+                        ...prev,
+                        address: response.data.address
+                    }));
+                    toast.success('Address auto-filled from last order');
+                } else {
+                    setGuestInfo(prev => ({
+                        ...prev,
+                        address: response.data.address
+                    }));
+                    toast.success('Address auto-filled from last order');
+                }
+            }
+        } catch (error) {
+            console.error('Error auto-filling address from order:', error);
+            // Silent fail - don't show error to user
+        }
     };
 
     // Handle product selection
@@ -348,22 +418,63 @@ export default function ManualOrderCreation() {
             return;
         }
 
-        const newItem = {
-            productId: currentProduct._id,
-            variantId: selectedVariant._id,
-            product: currentProduct,
-            variant: {
-                ...selectedVariant,
-                size: selectedSize,
-                color: selectedColor,
-                colorHexCode: selectedVariant.attributes.find(attr => attr.name === 'Color')?.hexCode
-            },
-            quantity: quantity,
-            price: selectedVariant.currentPrice,
-            total: selectedVariant.currentPrice * quantity
-        };
+        // Check stock availability
+        const stockQuantity = selectedVariant.stockQuantity || 0;
+        if (stockQuantity <= 0) {
+            toast.error(`Stock out! This variant is out of stock.`);
+            return;
+        }
 
-        setOrderItems(prev => [...prev, newItem]);
+        // Check if quantity exceeds available stock
+        if (quantity > stockQuantity) {
+            toast.error(`Insufficient stock! Only ${stockQuantity} available.`);
+            return;
+        }
+
+        // Check if this variant already exists in order items
+        const existingItemIndex = orderItems.findIndex(item =>
+            item.variantId === selectedVariant._id
+        );
+
+        if (existingItemIndex !== -1) {
+            // Check if adding more would exceed stock
+            const currentQuantity = orderItems[existingItemIndex].quantity;
+            if (currentQuantity + quantity > stockQuantity) {
+                toast.error(`Insufficient stock! Only ${stockQuantity} available. Current in cart: ${currentQuantity}.`);
+                return;
+            }
+            
+            // Update existing item quantity
+            setOrderItems(prev => prev.map((item, index) =>
+                index === existingItemIndex
+                    ? {
+                        ...item,
+                        quantity: item.quantity + quantity,
+                        total: selectedVariant.currentPrice * (item.quantity + quantity)
+                    }
+                    : item
+            ));
+            toast.success(`Quantity updated for "${currentProduct.title}"`);
+        } else {
+            // Add new item
+            const newItem = {
+                productId: currentProduct._id,
+                variantId: selectedVariant._id,
+                product: currentProduct,
+                variant: {
+                    ...selectedVariant,
+                    size: selectedSize,
+                    color: selectedColor,
+                    colorHexCode: selectedVariant.attributes.find(attr => attr.name === 'Color')?.hexCode
+                },
+                quantity: quantity,
+                price: selectedVariant.currentPrice,
+                total: selectedVariant.currentPrice * quantity
+            };
+
+            setOrderItems(prev => [...prev, newItem]);
+            toast.success('Item added to order');
+        }
 
         // Reset selection
         setCurrentProduct(null);
@@ -371,8 +482,6 @@ export default function ManualOrderCreation() {
         setSelectedColor("");
         setQuantity(1);
         setProductSearchTerm('');
-
-        toast.success('Item added to order');
     };
 
     // Remove item from order
@@ -410,6 +519,11 @@ export default function ManualOrderCreation() {
 
         if (orderType === 'existing' && !selectedUser) {
             toast.error('Please select a user');
+            return;
+        }
+
+        if (orderType === 'existing' && (!existingUserInfo.name || !existingUserInfo.phone || !existingUserInfo.address)) {
+            toast.error('Please provide customer name, phone number, and address');
             return;
         }
 
@@ -454,9 +568,16 @@ export default function ManualOrderCreation() {
                 totalAmount: calculateTotal(), // Total with delivery charge and discount
                 status: 'confirmed', // Manual orders are confirmed by default
                 notes: orderNotes,
-                deliveryAddress: orderType === 'guest' ? guestInfo.address : deliveryAddress,
+                deliveryAddress: orderType === 'guest' ? guestInfo.address : existingUserInfo.address,
                 ...(orderType === 'existing'
-                    ? { userId: selectedUser._id }
+                    ? { 
+                        userId: selectedUser._id,
+                        guestInfo: {
+                            name: existingUserInfo.name,
+                            phone: existingUserInfo.phone,
+                            address: existingUserInfo.address
+                        }
+                    }
                     : {
                         guestInfo: {
                             name: guestInfo.name,
@@ -475,6 +596,7 @@ export default function ManualOrderCreation() {
                 setOrderItems([]);
                 setSelectedUser(null);
                 setGuestInfo({ name: '', phone: '', address: '' });
+                setExistingUserInfo({ name: '', phone: '', address: '' });
                 setOrderNotes('');
                 setDiscountAmount(0);
                 setDeliveryCharge(deliveryChargeSettings?.outsideDhaka || 150);
@@ -605,30 +727,48 @@ export default function ManualOrderCreation() {
 
                         {showProductDropdown && productResults.length > 0 && (
                             <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                                {productResults.map((product) => (
-                                    <div
-                                        key={product._id}
-                                        onClick={() => handleProductSelect(product)}
-                                        className="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
-                                    >
-                                        <div className="flex items-center space-x-3">
-                                            <img
-                                                src={product.featuredImage || '/images/placeholder.png'}
-                                                alt={product.title}
-                                                className="w-10 h-10 rounded object-cover"
-                                                onError={(e) => {
-                                                    e.target.src = '/images/placeholder.png';
-                                                }}
-                                            />
-                                            <div className="flex-1">
-                                                <h4 className="text-sm font-medium text-gray-900">{product.title}</h4>
-                                                <p className="text-xs text-gray-500">
-                                                    {product.variants?.length || 0} variants available
-                                                </p>
+                                {productResults.map((product) => {
+                                    // Check if product has any variant with stock > 0
+                                    const hasStock = product.variants?.some(v => (v.stockQuantity || 0) > 0);
+                                    
+                                    return (
+                                        <div
+                                            key={product._id}
+                                            onClick={() => {
+                                                if (hasStock) {
+                                                    handleProductSelect(product);
+                                                } else {
+                                                    toast.error(`Stock out! "${product.title}" is out of stock.`);
+                                                }
+                                            }}
+                                            className={`px-4 py-3 border-b border-gray-100 last:border-b-0 ${
+                                                hasStock 
+                                                    ? 'hover:bg-gray-50 cursor-pointer' 
+                                                    : 'bg-gray-100 opacity-60 cursor-not-allowed'
+                                            }`}
+                                        >
+                                            <div className="flex items-center space-x-3">
+                                                <img
+                                                    src={product.featuredImage || '/images/placeholder.png'}
+                                                    alt={product.title}
+                                                    className="w-10 h-10 rounded object-cover"
+                                                    onError={(e) => {
+                                                        e.target.src = '/images/placeholder.png';
+                                                    }}
+                                                />
+                                                <div className="flex-1">
+                                                    <h4 className={`text-sm font-medium ${hasStock ? 'text-gray-900' : 'text-gray-500'}`}>
+                                                        {product.title}
+                                                    </h4>
+                                                    <p className="text-xs text-gray-500">
+                                                        {product.variants?.length || 0} variants available
+                                                        {!hasStock && <span className="text-red-500 ml-2">(Stock Out)</span>}
+                                                    </p>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
@@ -659,7 +799,7 @@ export default function ManualOrderCreation() {
                                     setSelectedColor("");
                                     setQuantity(1);
                                 }}
-                                className="text-gray-400 hover:text-gray-600"
+                                className="text-gray-400 hover:text-gray-600 cursor-pointer"
                             >
                                 <X className="w-5 h-5" />
                             </button>
@@ -676,7 +816,7 @@ export default function ManualOrderCreation() {
                                                 <button
                                             key={size}
                                             onClick={() => handleSizeChange(size)}
-                                            className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${selectedSize === size
+                                            className={`px-3 py-1 rounded-md text-sm font-medium transition-colors cursor-pointer ${selectedSize === size
                                                     ? 'bg-blue-500 text-white'
                                                     : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
                                                 }`}
@@ -699,7 +839,7 @@ export default function ManualOrderCreation() {
                                         <button
                                             key={color.value}
                                             onClick={() => handleColorChange(color.value)}
-                                            className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${selectedColor === color.value
+                                            className={`px-3 py-1 rounded-md text-sm font-medium transition-colors cursor-pointer ${selectedColor === color.value
                                                 ? 'bg-blue-500 text-white'
                                                 : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
                                                 }`}
@@ -730,19 +870,38 @@ export default function ManualOrderCreation() {
                                 placeholder="Enter quantity"
                             />
                             {selectedVariant && (
-                                <p className="text-xs text-gray-500 mt-1">
-                                    Max: {selectedVariant.stockQuantity} available
+                                <p className={`text-xs mt-1 ${
+                                    (selectedVariant.stockQuantity || 0) <= 0 
+                                        ? 'text-red-600 font-semibold' 
+                                        : 'text-gray-500'
+                                }`}>
+                                    {selectedVariant.stockQuantity <= 0 
+                                        ? 'Stock Out!' 
+                                        : `Max: ${selectedVariant.stockQuantity} available`
+                                    }
                                 </p>
                             )}
                         </div>
 
+                        {/* Stock Out Warning */}
+                        {selectedVariant && (selectedVariant.stockQuantity || 0) <= 0 && (
+                            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                                <p className="text-sm text-red-800 font-medium">
+                                    ⚠️ This variant is out of stock and cannot be added to the order.
+                                </p>
+                            </div>
+                        )}
+
                         {/* Add to Order Button */}
                         <button
                             onClick={addItemToOrder}
-                            disabled={!selectedVariant || quantity < 1}
-                            className="w-full bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                            disabled={!selectedVariant || quantity < 1 || (selectedVariant?.stockQuantity || 0) <= 0}
+                            className="w-full bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed cursor-pointer"
                         >
-                            Add to Order
+                            {selectedVariant && (selectedVariant.stockQuantity || 0) <= 0 
+                                ? 'Stock Out' 
+                                : 'Add to Order'
+                            }
                         </button>
                     </div>
                 )}
@@ -831,7 +990,7 @@ export default function ManualOrderCreation() {
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                             <button
                                                 onClick={() => removeItemFromOrder(index)}
-                                                className="text-red-600 hover:text-red-900"
+                                                className="text-red-600 hover:text-red-900 cursor-pointer"
                                             >
                                                 <Trash2 className="h-4 w-4" />
                                             </button>
@@ -936,8 +1095,12 @@ export default function ManualOrderCreation() {
                     <div className="flex space-x-4">
                         <button
                             type="button"
-                            onClick={() => setOrderType('existing')}
-                            className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${orderType === 'existing'
+                            onClick={() => {
+                                setOrderType('existing');
+                                // Clear guest info when switching to existing
+                                setGuestInfo({ name: '', phone: '', address: '' });
+                            }}
+                            className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${orderType === 'existing'
                                 ? 'bg-blue-100 text-blue-700 border border-blue-300'
                                 : 'bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200'
                                 }`}
@@ -947,8 +1110,14 @@ export default function ManualOrderCreation() {
                         </button>
                         <button
                             type="button"
-                            onClick={() => setOrderType('guest')}
-                            className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${orderType === 'guest'
+                            onClick={() => {
+                                setOrderType('guest');
+                                // Clear existing user info when switching to guest
+                                setSelectedUser(null);
+                                setExistingUserInfo({ name: '', phone: '', address: '' });
+                                setUserSearchTerm('');
+                            }}
+                            className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${orderType === 'guest'
                                 ? 'bg-blue-100 text-blue-700 border border-blue-300'
                                 : 'bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200'
                                 }`}
@@ -959,80 +1128,121 @@ export default function ManualOrderCreation() {
                     </div>
                 </div>
 
-                {/* Order Source Selection */}
-                <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Order Source
-                    </label>
-                    <select
-                        value={orderSource}
-                        onChange={(e) => setOrderSource(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                        required
-                    >
-                        <option value="">Select order source</option>
-                        <option value="website">Website</option>
-                        <option value="facebook">Facebook</option>
-                        <option value="whatsapp">WhatsApp</option>
-                        <option value="phone">Phone Call</option>
-                        <option value="email">Email</option>
-                        <option value="walk-in">Walk-in</option>
-                        <option value="instagram">Instagram</option>
-                        <option value="manual">Manual</option>
-                        <option value="other">Other</option>
-                    </select>
-                </div>
-
-                {/* User Selection */}
-                {orderType === 'existing' && (
-                    <div className="mb-6">
+                {/* Order Source, Phone, Name (Guest) or Order Source, Select User (Existing) */}
+                <div className={`mb-6 grid grid-cols-1 ${orderType === 'guest' ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
+                    {/* Order Source Selection */}
+                    <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Select User
+                            Order Source
                         </label>
-                        <div className="relative">
-                            <div className="relative">
-                                {searchingUsers ? (
-                                    <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
-                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-                                    </div>
-                                ) : (
-                                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                                )}
-                                <input
-                                    type="text"
-                                    value={userSearchTerm}
-                                    onChange={(e) => setUserSearchTerm(e.target.value)}
-                                    onFocus={() => setShowUserDropdown(true)}
-                                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                                    placeholder="Search users by name or email..."
-                                />
-                            </div>
+                        <select
+                            value={orderSource}
+                            onChange={(e) => setOrderSource(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                            required
+                        >
+                            <option value="">Select order source</option>
+                            <option value="website">Website</option>
+                            <option value="facebook">Facebook</option>
+                            <option value="whatsapp">WhatsApp</option>
+                            <option value="phone">Phone Call</option>
+                            <option value="email">Email</option>
+                            <option value="walk-in">Walk-in</option>
+                            <option value="instagram">Instagram</option>
+                            <option value="manual">Manual</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
 
-                            {showUserDropdown && searchResults.length > 0 && (
-                                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                                    {searchResults.map((user) => (
-                                        <div
-                                            key={user._id}
-                                            onClick={() => handleUserSelect(user)}
-                                            className="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
-                                        >
-                                            <div className="flex items-center space-x-3">
-                                                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                                                    <User className="w-4 h-4 text-blue-600" />
-                                                </div>
-                                                <div className="flex-1">
-                                                    <h4 className="text-sm font-medium text-gray-900">{user.name}</h4>
-                                                    <p className="text-xs text-gray-500">{user.email}</p>
+                    {/* Guest Order: Phone Field */}
+                    {orderType === 'guest' && (
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Phone <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="tel"
+                                value={guestInfo.phone}
+                                onChange={(e) => setGuestInfo(prev => ({ ...prev, phone: e.target.value }))}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="Enter phone number"
+                                required
+                            />
+                        </div>
+                    )}
+
+                    {/* Guest Order: Name Field */}
+                    {orderType === 'guest' && (
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Customer Name <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                value={guestInfo.name}
+                                onChange={(e) => setGuestInfo(prev => ({ ...prev, name: e.target.value }))}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="Enter customer name"
+                                required
+                            />
+                        </div>
+                    )}
+
+                    {/* User Selection - Only shows for existing user */}
+                    {orderType === 'existing' && (
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Select User
+                            </label>
+                            <div className="relative">
+                                <div className="relative">
+                                    {searchingUsers ? (
+                                        <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                                        </div>
+                                    ) : (
+                                        <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                                    )}
+                                    <input
+                                        type="text"
+                                        value={userSearchTerm}
+                                        onChange={(e) => setUserSearchTerm(e.target.value)}
+                                        onFocus={() => setShowUserDropdown(true)}
+                                        className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                        placeholder="Search users by name or email..."
+                                    />
+                                </div>
+
+                                {showUserDropdown && searchResults.length > 0 && (
+                                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                        {searchResults.map((user) => (
+                                            <div
+                                                key={user._id}
+                                                onClick={() => handleUserSelect(user)}
+                                                className="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                                            >
+                                                <div className="flex items-center space-x-3">
+                                                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                                        <User className="w-4 h-4 text-blue-600" />
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <h4 className="text-sm font-medium text-gray-900">{user.name}</h4>
+                                                        <p className="text-xs text-gray-500">{user.email}</p>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         </div>
+                    )}
+                </div>
 
-                        {selectedUser && (
-                            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                {/* Selected User Display */}
+                {orderType === 'existing' && selectedUser && (
+                    <div className="mb-6">
+                        <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center space-x-3">
                                         <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
@@ -1047,62 +1257,79 @@ export default function ManualOrderCreation() {
                                         onClick={() => {
                                             setSelectedUser(null);
                                             setUserSearchTerm('');
+                                            setExistingUserInfo({ name: '', phone: '', address: '' });
                                         }}
-                                        className="text-gray-400 hover:text-gray-600"
+                                        className="text-gray-400 hover:text-gray-600 cursor-pointer"
                                     >
                                         <X className="w-4 h-4" />
                                     </button>
+                                </div>
+                            </div>
+
+                        {/* Existing User Info Form (similar to guest form) */}
+                        {selectedUser && (
+                            <div className="mt-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Phone <span className="text-red-500">*</span>
+                                        </label>
+                                        <input
+                                            type="tel"
+                                            value={existingUserInfo.phone}
+                                            onChange={(e) => setExistingUserInfo(prev => ({ ...prev, phone: e.target.value }))}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                                            placeholder="Enter phone number"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Customer Name <span className="text-red-500">*</span>
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={existingUserInfo.name}
+                                            onChange={(e) => setExistingUserInfo(prev => ({ ...prev, name: e.target.value }))}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                                            placeholder="Enter customer name"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="mt-4">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Address <span className="text-red-500">*</span>
+                                    </label>
+                                    <textarea
+                                        value={existingUserInfo.address}
+                                        onChange={(e) => setExistingUserInfo(prev => ({ ...prev, address: e.target.value }))}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                                        rows={3}
+                                        placeholder="Enter delivery address"
+                                        required
+                                    />
                                 </div>
                             </div>
                         )}
                     </div>
                 )}
 
-                {/* Guest User Form */}
+                {/* Guest User Form - Only Address (Phone and Name are in the row above) */}
                 {orderType === 'guest' && (
                     <div className="mb-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Phone <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="tel"
-                                    value={guestInfo.phone}
-                                    onChange={(e) => setGuestInfo(prev => ({ ...prev, phone: e.target.value }))}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                                    placeholder="Enter phone number"
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Customer Name <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    value={guestInfo.name}
-                                    onChange={(e) => setGuestInfo(prev => ({ ...prev, name: e.target.value }))}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                                    placeholder="Enter customer name"
-                                    required
-                                />
-                            </div>
-                        </div>
-
-                        <div className="mt-4">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Address <span className="text-red-500">*</span>
-                            </label>
-                            <textarea
-                                value={guestInfo.address}
-                                onChange={(e) => setGuestInfo(prev => ({ ...prev, address: e.target.value }))}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                                rows={3}
-                                placeholder="Enter delivery address"
-                                required
-                            />
-                        </div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Address <span className="text-red-500">*</span>
+                        </label>
+                        <textarea
+                            value={guestInfo.address}
+                            onChange={(e) => setGuestInfo(prev => ({ ...prev, address: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                            rows={3}
+                            placeholder="Enter delivery address"
+                            required
+                        />
                     </div>
                 )}
 
@@ -1129,7 +1356,7 @@ export default function ManualOrderCreation() {
                     <button
                         onClick={() => setShowConfirmModal(true)}
                         disabled={saving}
-                        className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center space-x-2"
+                        className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed cursor-pointer flex items-center space-x-2"
                     >
                         <Save className="h-5 w-5" />
                         <span>{saving ? 'Creating Order...' : 'Create Order'}</span>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { Plus, Edit, Trash2, Eye, Search, Filter, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, Edit, Trash2, Eye, Search, Filter, ChevronLeft, ChevronRight, TrendingUp } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { getCookie } from 'cookies-next'
 import { productAPI } from '@/services/api'
@@ -439,6 +439,15 @@ export default function AdminProductsPage() {
                                                         title="View"
                                                     >
                                                         <Eye className="h-4 w-4" />
+                                                    </Link>
+                                                )}
+                                                {hasPermission('inventory', 'read') && (
+                                                    <Link
+                                                        href={`/admin/dashboard/products/${product._id}/stock-history`}
+                                                        className="text-green-600 hover:text-green-900 p-1"
+                                                        title="Stock History"
+                                                    >
+                                                        <TrendingUp className="h-4 w-4" />
                                                     </Link>
                                                 )}
                                                 {hasPermission('product', 'update') && (

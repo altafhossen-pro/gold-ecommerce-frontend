@@ -104,9 +104,12 @@ const navigation = [
     },
     { 
         name: 'Inventory', 
-        href: '/admin/dashboard/inventory', 
         icon: Database,
-        type: 'single'
+        type: 'group',
+        children: [
+            { name: 'List Purchase', href: '/admin/dashboard/inventory', icon: ShoppingCart },
+            { name: 'Stock Adjustment', href: '/admin/dashboard/inventory/stock-adjustment', icon: TrendingUp },
+        ]
     },
     { 
         name: 'Settings', 
@@ -151,6 +154,12 @@ export default function AdminSidebar({ onMobileMenuClose }) {
         if (child.href === '/admin/dashboard/own-ads') {
             return pathname === '/admin/dashboard/own-ads' || pathname.startsWith('/admin/dashboard/own-ads/')
         }
+        if (child.href === '/admin/dashboard/inventory') {
+            return pathname === '/admin/dashboard/inventory' || pathname === '/admin/dashboard/inventory/'
+        }
+        if (child.href === '/admin/dashboard/inventory/stock-adjustment') {
+            return pathname === '/admin/dashboard/inventory/stock-adjustment' || pathname.startsWith('/admin/dashboard/inventory/stock-adjustment/')
+        }
         // For other routes, use exact match or startsWith for sub-routes
         return pathname === child.href || pathname.startsWith(child.href + '/')
     }
@@ -188,6 +197,12 @@ export default function AdminSidebar({ onMobileMenuClose }) {
                     }
                     if (child.href === '/admin/dashboard/own-ads') {
                         return pathname === '/admin/dashboard/own-ads' || pathname.startsWith('/admin/dashboard/own-ads/')
+                    }
+                    if (child.href === '/admin/dashboard/inventory') {
+                        return pathname === '/admin/dashboard/inventory' || pathname === '/admin/dashboard/inventory/'
+                    }
+                    if (child.href === '/admin/dashboard/inventory/stock-adjustment') {
+                        return pathname === '/admin/dashboard/inventory/stock-adjustment' || pathname.startsWith('/admin/dashboard/inventory/stock-adjustment/')
                     }
                     return pathname === child.href || pathname.startsWith(child.href + '/')
                 })
