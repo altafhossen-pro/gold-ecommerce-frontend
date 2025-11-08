@@ -1,25 +1,12 @@
 'use client'
 
 import React, { useState, useEffect } from 'react';
-import { Play } from 'lucide-react';
+import { ShoppingBag } from 'lucide-react';
+import Link from 'next/link';
 import { productAPI } from '@/services/api';
 import toast from 'react-hot-toast';
 
 const VideoCard = ({ video }) => {
-    const handleViewClick = () => {
-        let watchUrl = video.videoUrl;
-        
-        // Convert embed URLs to watch URLs for different platforms
-        if (video.videoUrl.includes('youtube.com/embed/')) {
-            const videoId = video.videoUrl.split('youtube.com/embed/')[1].split('?')[0];
-            watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
-        } else if (video.videoUrl.includes('player.vimeo.com/video/')) {
-            const videoId = video.videoUrl.split('player.vimeo.com/video/')[1].split('?')[0];
-            watchUrl = `https://vimeo.com/${videoId}`;
-        }
-        
-        window.open(watchUrl, '_blank');
-    };
 
     return (
         <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300 group">
@@ -41,23 +28,26 @@ const VideoCard = ({ video }) => {
             {/* Product Info */}
             <div className="p-5 space-y-4">
                 {/* Product Name */}
-                <h3 className="text-lg font-semibold text-gray-900 line-clamp-2 min-h-[3.5rem]">
+                <h3 className="text-lg font-semibold text-gray-900 line-clamp-2 ">
                     {video.productName}
                 </h3>
 
-                {/* Views and View Button */}
-                <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-500 flex items-center gap-1">
-                        <Play className="h-4 w-4" />
-                        {video.views} views
-                    </span>
-                    <button
-                        onClick={handleViewClick}
-                        className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white text-sm font-medium rounded-xl transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 flex items-center gap-2"
-                    >
-                        <Play className="h-4 w-4" />
-                        View
-                    </button>
+                {/* View Product Link */}
+                <div className="flex items-center justify-end">
+                    {video.slug ? (
+                        <Link
+                            href={`/product/${video.slug}`}
+                            className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white text-sm font-medium rounded-xl transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 flex items-center gap-2 cursor-pointer"
+                        >
+                            <ShoppingBag className="h-4 w-4" />
+                            View Product
+                        </Link>
+                    ) : (
+                        <span className="px-6 py-2.5 bg-gray-400 text-white text-sm font-medium rounded-xl flex items-center gap-2 cursor-not-allowed">
+                            <ShoppingBag className="h-4 w-4" />
+                            View Product
+                        </span>
+                    )}
                 </div>
             </div>
         </div>
@@ -81,14 +71,16 @@ const page = () => {
                     response.data.forEach((product, productIndex) => {
                         if (product.productVideos && product.productVideos.length > 0) {
                             product.productVideos.forEach((videoUrl, videoIndex) => {
-                                videoList.push({
-                                    id: `${product._id || productIndex}-${videoIndex}`,
-                                    productName: product.title,
-                                    videoUrl: videoUrl,
-                                    slug: product.slug,
-                                    featuredImage: product.featuredImage,
-                                    views: "0" // We don't have view count in the API yet
-                                });
+                                // Only add video if videoUrl exists and is not empty
+                                if (videoUrl && videoUrl.trim() !== '') {
+                                    videoList.push({
+                                        id: `${product._id || productIndex}-${videoIndex}`,
+                                        productName: product.title,
+                                        videoUrl: videoUrl,
+                                        slug: product.slug,
+                                        featuredImage: product.featuredImage
+                                    });
+                                }
                             });
                         }
                     });
@@ -130,9 +122,11 @@ const page = () => {
                 ) : (
                     /* Video Grid - 3 columns on large screens, 2 on medium, 1 on small */
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-                        {videos.map((video) => (
-                            <VideoCard key={video.id} video={video} />
-                        ))}
+                        {videos
+                            .filter((video) => video.videoUrl && video.videoUrl.trim() !== '')
+                            .map((video) => (
+                                <VideoCard key={video.id} video={video} />
+                            ))}
                     </div>
                 )}
             </div>
