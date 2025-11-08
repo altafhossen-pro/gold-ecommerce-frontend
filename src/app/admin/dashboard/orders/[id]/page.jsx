@@ -865,39 +865,49 @@ export default function OrderDetailsPage() {
                                     </div>
                                     <div className="ml-4">
                                         <p className="font-semibold text-slate-900">
-                                            {order.user ? (order.user.name || 'Registered User') : 'Guest User'}
+                                            {order.isGuestOrder && order.guestInfo?.name 
+                                                ? order.guestInfo.name 
+                                                : order.orderType === 'manual' && order.manualOrderInfo?.name
+                                                ? order.manualOrderInfo.name
+                                                : order.user ? (order.user.name || 'Registered User') : 'Guest User'}
                                         </p>
                                         <p className="text-xs text-slate-500 font-medium">Customer Name</p>
                                     </div>
                                 </div>
                                 
-                                {order.user?.email && (
+                                {(order.isGuestOrder && order.guestInfo?.email) || order.user?.email ? (
                                     <div className="flex items-center p-4 bg-slate-50 rounded-xl">
                                         <div className="p-2 bg-blue-100 rounded-lg">
                                             <Mail className="h-4 w-4 text-blue-600" />
                                         </div>
                                         <div className="ml-4">
                                             <p className="font-semibold text-slate-900">
-                                                {order.user.email}
+                                                {order.isGuestOrder && order.guestInfo?.email 
+                                                    ? order.guestInfo.email 
+                                                    : order.user?.email}
                                             </p>
                                             <p className="text-xs text-slate-500 font-medium">Email Address</p>
                                         </div>
                                     </div>
-                                )}
+                                ) : null}
                                 
-                                {order.user?.phone && (
+                                {(order.isGuestOrder && order.guestInfo?.phone) || order.user?.phone || (order.orderType === 'manual' && order.manualOrderInfo?.phone) ? (
                                     <div className="flex items-center p-4 bg-slate-50 rounded-xl">
                                         <div className="p-2 bg-emerald-100 rounded-lg">
                                             <Phone className="h-4 w-4 text-emerald-600" />
                                         </div>
                                         <div className="ml-4">
                                             <p className="font-semibold text-slate-900">
-                                                {order.user.phone}
+                                                {order.isGuestOrder && order.guestInfo?.phone 
+                                                    ? order.guestInfo.phone 
+                                                    : order.orderType === 'manual' && order.manualOrderInfo?.phone
+                                                    ? order.manualOrderInfo.phone
+                                                    : order.user?.phone}
                                             </p>
                                             <p className="text-xs text-slate-500 font-medium">Phone Number</p>
                                         </div>
                                     </div>
-                                )}
+                                ) : null}
                             </div>
                         </div>
 
@@ -1005,7 +1015,13 @@ export default function OrderDetailsPage() {
                                 Order ID: <span className="font-medium">#{order._id.slice(-8).toUpperCase()}</span>
                             </p>
                             <p className="text-sm text-gray-600 mb-4">
-                                Customer: <span className="font-medium">{order.user?.email || 'N/A'}</span>
+                                Customer: <span className="font-medium">
+                                    {order.isGuestOrder && order.guestInfo?.phone 
+                                        ? order.guestInfo.phone 
+                                        : order.orderType === 'manual' && order.manualOrderInfo?.phone
+                                        ? order.manualOrderInfo.phone
+                                        : order.user?.email || 'N/A'}
+                                </span>
                             </p>
                             
                             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1104,7 +1120,13 @@ export default function OrderDetailsPage() {
                                         </div>
                                         <div>
                                             <p className="text-xs text-gray-500 mb-1">Customer</p>
-                                            <p className="font-semibold text-gray-900 text-sm break-all">{order.user?.email || 'N/A'}</p>
+                                            <p className="font-semibold text-gray-900 text-sm break-all">
+                                                {order.isGuestOrder && order.guestInfo?.phone 
+                                                    ? order.guestInfo.phone 
+                                                    : order.orderType === 'manual' && order.manualOrderInfo?.phone
+                                                    ? order.manualOrderInfo.phone
+                                                    : order.user?.email || 'N/A'}
+                                            </p>
                                         </div>
                                     </div>
                                 </div>

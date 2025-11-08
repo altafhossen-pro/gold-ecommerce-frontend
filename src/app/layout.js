@@ -5,6 +5,8 @@ import { AppProvider } from "@/context/AppContext";
 import { generateStaticMetadata, generateViewport } from "@/utils/metadata";
 import ConditionalHeader from "@/components/Common/ConditionalHeader";
 import MobileBottomNavigation from "@/components/Common/MobileBottomNavigation";
+import { Suspense } from "react";
+import AffiliateTracker from "@/components/Common/AffiliateTracker";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,6 +31,9 @@ export default function RootLayout({ children }) {
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AppProvider>
+          <Suspense fallback={null}>
+            <AffiliateTracker />
+          </Suspense>
           <ConditionalHeader />
           {children}
           <MobileBottomNavigation />

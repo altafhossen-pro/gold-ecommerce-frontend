@@ -1303,6 +1303,21 @@ export const settingsAPI = {
             body: JSON.stringify(emailSMSData),
         });
     },
+    // Get affiliate settings only
+    getAffiliateSettings: () => {
+        return apiCall('/settings/affiliate');
+    },
+    // Update affiliate settings only (Admin only)
+    updateAffiliateSettings: (affiliateData, token) => {
+        return apiCall('/settings/affiliate', {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(affiliateData),
+        });
+    },
 
     // Update delivery charge settings only (Admin only)
     updateDeliveryChargeSettings: (deliveryChargeData, token) => {
@@ -2028,6 +2043,32 @@ export const adsAPI = {
     },
 };
 
+// Affiliate API functions
+export const affiliateAPI = {
+    // Create or get affiliate
+    createOrGetAffiliate: (token) => {
+        return apiCall('/affiliate', {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+    // Get affiliate stats
+    getAffiliateStats: (token) => {
+        return apiCall('/affiliate/stats', {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+    // Track affiliate click (public)
+    trackAffiliateClick: (affiliateCode) => {
+        return apiCall(`/affiliate/track/${affiliateCode}`, {
+            method: 'POST',
+        });
+    },
+};
+
 export default {
     productAPI,
     categoryAPI,
@@ -2051,5 +2092,6 @@ export default {
     upsellAPI,
     roleAPI,
     adsAPI,
+    affiliateAPI,
     transformProductData,
 };

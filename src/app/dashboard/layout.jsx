@@ -89,7 +89,7 @@ function CustomerDashboardLayoutContent({ children }) {
 
     // If authenticated, render the dashboard
     return (
-        <div className="min-h-[calc(100vh-80px)] bg-gray-50">
+        <div className="min-h-[calc(100vh-121px)] bg-gray-50">
             {/* Mobile Menu Button - Fixed position bottom right */}
             <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -108,7 +108,7 @@ function CustomerDashboardLayoutContent({ children }) {
             </button>
 
             {/* Main Content with Sidebar */}
-            <div className="flex h-[calc(100vh-80px)]">
+            <div className="flex h-[calc(100vh-121px)]">
                 {/* Desktop Sidebar - Fixed width, scrollable if needed */}
                 <div className="hidden md:block md:w-64 bg-white border-r border-gray-200 shadow-sm">
                     <CustomerSidebar />
@@ -167,6 +167,16 @@ function CustomerDashboardLayoutContent({ children }) {
                                     Loyalty Points
                                 </Link>
                                 <Link 
+                                    href="/dashboard/affiliate" 
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    className="group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                                >
+                                    <svg className="mr-3 h-5 w-5 text-gray-400 group-hover:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                    </svg>
+                                    Affiliate
+                                </Link>
+                                <Link 
                                     href="/dashboard/my-reviews" 
                                     onClick={() => setIsMobileMenuOpen(false)}
                                     className="group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900"
@@ -220,7 +230,7 @@ function CustomerDashboardLayoutContent({ children }) {
                 {/* Main Content Area - Scrollable */}
                 <div className="flex-1 overflow-y-auto">
                     <main className="p-6">
-                        <div className="max-w-7xl mx-auto">
+                        <div className=" mx-auto">
                             {children}
                         </div>
                     </main>

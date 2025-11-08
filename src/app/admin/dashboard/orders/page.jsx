@@ -671,7 +671,9 @@ export default function AdminOrdersPage() {
                                             <div className="flex items-center">
                                                 <Mail className="h-4 w-4 text-gray-400 mr-2" />
                                                 <div className="text-sm text-gray-900">
-                                                    {order.orderType === 'manual' && order.manualOrderInfo?.phone 
+                                                    {order.isGuestOrder && order.guestInfo?.phone 
+                                                        ? order.guestInfo.phone 
+                                                        : order.orderType === 'manual' && order.manualOrderInfo?.phone 
                                                         ? order.manualOrderInfo.phone 
                                                         : order.user?.email || 'N/A'}
                                                 </div>

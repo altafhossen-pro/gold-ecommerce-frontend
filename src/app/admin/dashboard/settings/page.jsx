@@ -8,6 +8,7 @@ import {
   Menu,
   MapPin,
   Mail,
+  Users,
 } from 'lucide-react';
 import { useAppContext } from '@/context/AppContext';
 import PermissionDenied from '@/components/Common/PermissionDenied';
@@ -58,6 +59,14 @@ export default function AdminSettingsPage() {
       icon: Mail,
       color: 'bg-green-100 text-green-600',
       href: '/admin/dashboard/settings/email-sms'
+    },
+    {
+      id: 'affiliate',
+      title: 'Affiliate Settings',
+      description: 'Referral & rewards',
+      icon: Users,
+      color: 'bg-purple-100 text-purple-600',
+      href: '/admin/dashboard/settings/affiliate'
     }
   ];
 

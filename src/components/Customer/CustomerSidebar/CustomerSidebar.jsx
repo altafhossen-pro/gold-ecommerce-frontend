@@ -21,7 +21,8 @@ import {
     Menu,
     X,
     LogOut,
-    Coins
+    Coins,
+    Users
 } from 'lucide-react'
 import AppContext from '@/context/AppContext'
 
@@ -29,6 +30,7 @@ const navigation = [
     { name: 'Overview', href: '/dashboard', icon: LayoutDashboard },
     { name: 'My Orders', href: '/dashboard/my-orders', icon: ShoppingCart },
     { name: 'Loyalty Points', href: '/dashboard/loyalty', icon: Coins },
+    { name: 'Affiliate', href: '/dashboard/affiliate', icon: Users },
     { name: 'My Reviews', href: '/dashboard/my-reviews', icon: Star },
     { name: 'Wishlist', href: '/dashboard/wishlist', icon: Heart },
     { name: 'Profile', href: '/dashboard/profile', icon: User }
