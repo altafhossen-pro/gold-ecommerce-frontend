@@ -59,6 +59,11 @@ export const AppProvider = ({ children }) => {
     const [deliveryChargeSettings, setDeliveryChargeSettings] = useState(null)
     const [deliverySettingsLoading, setDeliverySettingsLoading] = useState(true)
 
+    // Affiliate code state
+    const [affiliateCode, setAffiliateCode] = useState(null)
+    const [affiliateCodeExpireTime, setAffiliateCodeExpireTime] = useState(null)
+    const [isAvailableAffiliateCode, setIsAvailableAffiliateCode] = useState(false)
+
     // Cart functions
     const addToCart = (product, selectedVariant, quantity = 1) => {
         // Create variant key for unique identification
@@ -325,6 +330,8 @@ export const AppProvider = ({ children }) => {
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'strict'
         })
+        // Reload affiliate code from cookie after login
+        loadAffiliateCode()
     }
 
     // Fetch user profile from backend
@@ -342,6 +349,9 @@ export const AppProvider = ({ children }) => {
                 setUser(data.data)
                 setIsAuthenticated(true)
                 setToken(savedToken)
+                
+                // Reload affiliate code from cookie after user profile is loaded
+                loadAffiliateCode()
                 
                 // Set permissions and role details
                 if (data.data.permissions) {
@@ -482,6 +492,68 @@ export const AppProvider = ({ children }) => {
         setWishlistCount(wishlist.length)
     }
 
+    // Load affiliate code from cookie
+    const loadAffiliateCode = useCallback(() => {
+        if (typeof window === 'undefined') return;
+        
+        try {
+            const code = getCookie('affiliateCode');
+            console.log('AppContext: loadAffiliateCode called, cookie value:', code);
+            
+            if (code) {
+                // Set affiliate code and mark as available
+                console.log('AppContext: Setting affiliate code in state:', code);
+                setAffiliateCode(code);
+                setIsAvailableAffiliateCode(true);
+                
+                // Get expiry timestamp from cookie (stored when cookie was set)
+                const expiryTimestamp = getCookie('affiliateCodeExpiry');
+                let expiryDate = null;
+                
+                if (expiryTimestamp) {
+                    expiryDate = new Date(parseInt(expiryTimestamp));
+                    // Check if expired
+                    if (expiryDate < new Date()) {
+                        console.log('AppContext: Affiliate code expired, clearing');
+                        deleteCookie('affiliateCode');
+                        deleteCookie('affiliateCodeExpiry');
+                        setAffiliateCode(null);
+                        setIsAvailableAffiliateCode(false);
+                        setAffiliateCodeExpireTime(null);
+                        return;
+                    }
+                    console.log('AppContext: Using expiry from cookie:', expiryDate);
+                } else {
+                    // If no expiry cookie, set default 15 minutes from now
+                    // This handles old cookies that were set before we started storing expiry
+                    expiryDate = new Date();
+                    expiryDate.setMinutes(expiryDate.getMinutes() + 15);
+                    setCookie('affiliateCodeExpiry', expiryDate.getTime().toString(), {
+                        expires: expiryDate,
+                        sameSite: 'lax',
+                        path: '/'
+                    });
+                    console.log('AppContext: No expiry cookie, setting default 15 minutes');
+                }
+                
+                setAffiliateCodeExpireTime(expiryDate);
+                console.log('AppContext: Affiliate code state updated successfully, expiry:', expiryDate);
+            } else {
+                // No affiliate code in cookie, clear state and expiry cookie
+                console.log('AppContext: No affiliate code in cookie, clearing state');
+                deleteCookie('affiliateCodeExpiry');
+                setAffiliateCode(null);
+                setIsAvailableAffiliateCode(false);
+                setAffiliateCodeExpireTime(null);
+            }
+        } catch (error) {
+            console.error('AppContext: Error loading affiliate code from cookie:', error);
+            setAffiliateCode(null);
+            setIsAvailableAffiliateCode(false);
+            setAffiliateCodeExpireTime(null);
+        }
+    }, []);
+
     // Effect to update totals when cart/wishlist changes
     useEffect(() => {
         updateCartTotals()
@@ -490,6 +562,18 @@ export const AppProvider = ({ children }) => {
     useEffect(() => {
         updateWishlistCount()
     }, [wishlist])
+
+    // Load affiliate code on mount
+    useEffect(() => {
+        loadAffiliateCode();
+    }, [loadAffiliateCode])
+
+    // Reload affiliate code when user logs in (isAuthenticated changes)
+    useEffect(() => {
+        if (isAuthenticated) {
+            loadAffiliateCode();
+        }
+    }, [isAuthenticated, loadAffiliateCode])
 
     // Initialize from localStorage on mount
     useEffect(() => {
@@ -550,6 +634,15 @@ export const AppProvider = ({ children }) => {
         deliverySettingsLoading,
         permissions,
         roleDetails,
+        
+        // Affiliate state
+        affiliateCode,
+        affiliateCodeExpireTime,
+        isAvailableAffiliateCode,
+        setAffiliateCode,
+        setAffiliateCodeExpireTime,
+        setIsAvailableAffiliateCode,
+        loadAffiliateCode,
 
         // Actions
         setUser,

@@ -367,6 +367,25 @@ export default function EditProductPage() {
         }))
     }
 
+    const updateVariantAttribute = (variantIndex, attributeIndex, field, value) => {
+        setFormData(prev => ({
+            ...prev,
+            variants: prev.variants.map((variant, i) => {
+                if (i === variantIndex) {
+                    const updatedAttributes = [...variant.attributes]
+                    updatedAttributes[attributeIndex] = {
+                        ...updatedAttributes[attributeIndex],
+                        [field]: value,
+                        // Also update displayValue when value changes
+                        ...(field === 'value' ? { displayValue: value } : {})
+                    }
+                    return { ...variant, attributes: updatedAttributes }
+                }
+                return variant
+            })
+        }))
+    }
+
     const generateSlug = () => {
         const slug = formData.title
             .toLowerCase()
@@ -1042,13 +1061,12 @@ export default function EditProductPage() {
                 {formData.variants.length > 0 && (
                     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                         <h2 className="text-lg font-medium text-gray-900 mb-6">Existing Variants</h2>
-                        <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {formData.variants.map((variant, index) => (
                                 <div key={index} className="border border-gray-200 rounded-lg p-4">
                                     <div className="flex items-center justify-between mb-4">
                                         <h3 className="text-md font-medium text-gray-900">
-                                            {variant.attributes[0]?.value}
-                                            {variant.attributes[1] && ` - ${variant.attributes[1]?.value}`}
+                                            Variant #{index + 1}
                                         </h3>
                                         <button
                                             type="button"
@@ -1059,39 +1077,118 @@ export default function EditProductPage() {
                                         </button>
                                     </div>
                                     
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Current Price</label>
-                                            <input
-                                                type="number"
-                                                value={variant.currentPrice}
-                                                onChange={(e) => updateVariant(index, 'currentPrice', parseFloat(e.target.value))}
-                                                step="0.01"
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    {/* Variant Image Display */}
+                                    {variant.images && variant.images.length > 0 && (
+                                        <div className="mb-4 aspect-square">
+                                            <img
+                                                src={variant.images[0]?.url || variant.images[0]}
+                                                alt={`${variant.attributes[0]?.value} ${variant.attributes[1]?.value || ''}`}
+                                                className="w-full h-full object-cover rounded-lg border border-gray-200"
+                                                onError={(e) => {
+                                                    e.target.src = '/images/placeholder.png'
+                                                }}
                                             />
                                         </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Original Price</label>
-                                            <input
-                                                type="number"
-                                                value={variant.originalPrice || ''}
-                                                onChange={(e) => updateVariant(index, 'originalPrice', e.target.value ? parseFloat(e.target.value) : null)}
-                                                step="0.01"
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                            />
+                                    )}
+                                    
+                                    <div className="space-y-4">
+                                        {/* First Line: Size and Stock */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {/* Size */}
+                                            {variant.attributes[0] && (
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                        Size *
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        value={variant.attributes[0]?.value || ''}
+                                                        onChange={(e) => updateVariantAttribute(index, 0, 'value', e.target.value)}
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                    />
+                                                </div>
+                                            )}
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Stock</label>
+                                                <input
+                                                    type="number"
+                                                    value={variant.stockQuantity}
+                                                    readOnly
+                                                    disabled
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed"
+                                                />
+                                                <p className="mt-1 text-xs text-gray-500">
+                                                    To update stock, please use the Inventory Management menu
+                                                </p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Stock</label>
-                                            <input
-                                                type="number"
-                                                value={variant.stockQuantity}
-                                                readOnly
-                                                disabled
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed"
-                                            />
-                                            <p className="mt-1 text-xs text-gray-500">
-                                                To update stock, please use the Inventory Management menu
-                                            </p>
+                                        
+                                        {/* Second Line: Color (if exists) */}
+                                        {variant.attributes[1] && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Color *
+                                                </label>
+                                                <div className="flex flex-col sm:flex-row gap-2">
+                                                    <input
+                                                        type="text"
+                                                        value={variant.attributes[1]?.value || ''}
+                                                        onChange={(e) => updateVariantAttribute(index, 1, 'value', e.target.value)}
+                                                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                    />
+                                                    <input
+                                                        type="color"
+                                                        value={variant.attributes[1]?.hexCode || '#000000'}
+                                                        onChange={(e) => updateVariantAttribute(index, 1, 'hexCode', e.target.value)}
+                                                        className="w-full sm:w-16 h-10 border border-gray-300 rounded-lg cursor-pointer"
+                                                        title="Pick color"
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+                                        
+                                        {/* Third Line: Current Price and Old Price */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Current Price *</label>
+                                                <input
+                                                    type="text"
+                                                    value={variant.currentPrice || ''}
+                                                    onChange={(e) => {
+                                                        const value = e.target.value
+                                                        // Only allow numbers and decimal point
+                                                        if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                                                            updateVariant(index, 'currentPrice', value === '' ? 0 : parseFloat(value) || 0)
+                                                        }
+                                                    }}
+                                                    onBlur={(e) => {
+                                                        // Ensure valid number on blur
+                                                        const value = parseFloat(e.target.value) || 0
+                                                        updateVariant(index, 'currentPrice', value)
+                                                    }}
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Old Price</label>
+                                                <input
+                                                    type="text"
+                                                    value={variant.originalPrice || ''}
+                                                    onChange={(e) => {
+                                                        const value = e.target.value
+                                                        // Only allow numbers and decimal point
+                                                        if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                                                            updateVariant(index, 'originalPrice', value === '' ? null : (parseFloat(value) || null))
+                                                        }
+                                                    }}
+                                                    onBlur={(e) => {
+                                                        // Ensure valid number on blur
+                                                        const value = e.target.value === '' ? null : (parseFloat(e.target.value) || null)
+                                                        updateVariant(index, 'originalPrice', value)
+                                                    }}
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -1102,8 +1199,8 @@ export default function EditProductPage() {
 
                 {/* Add New Variants */}
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                    <h2 className="text-lg font-medium text-gray-900 mb-6">Add New Variants</h2>
-                    <p className="text-sm text-gray-600 mb-4">Add new variants to the product.</p>
+                    <h2 className="text-lg font-medium text-gray-900 mb-6">Add Product Variants</h2>
+                    <p className="text-sm text-gray-600 mb-4">Add variants one by one. Each variant will be added to the product.</p>
                     
                     {/* Color Variants Toggle */}
                     <div className="mb-6 p-4 bg-gray-50 rounded-lg">

@@ -1,12 +1,23 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { setCookie } from 'cookies-next';
-import { X, CheckCircle, Gift } from 'lucide-react';
-import { settingsAPI } from '@/services/api';
+import { setCookie, deleteCookie } from 'cookies-next';
+import { X, CheckCircle, Gift, AlertCircle } from 'lucide-react';
+import { settingsAPI, affiliateAPI } from '@/services/api';
+import { useAppContext } from '@/context/AppContext';
+import toast from 'react-hot-toast';
 
 export default function AffiliateTracker() {
   const [showModal, setShowModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const { 
+    setAffiliateCode, 
+    setIsAvailableAffiliateCode, 
+    setAffiliateCodeExpireTime,
+    token,
+    isAuthenticated
+  } = useAppContext();
 
   useEffect(() => {
     // Only run on client side
@@ -16,20 +27,160 @@ export default function AffiliateTracker() {
     const urlParams = new URLSearchParams(window.location.search);
     const affiliateCode = urlParams.get('affiliate');
 
-    if (affiliateCode) {
-      // Store in cookie with 15 minutes expiry
-      const expiryMinutes = 15;
-      const expiryDate = new Date();
-      expiryDate.setMinutes(expiryDate.getMinutes() + expiryMinutes);
-      
-      setCookie('affiliateCode', affiliateCode, {
-        expires: expiryDate,
-        sameSite: 'lax',
-        path: '/'
-      });
-      
-      // Fetch affiliate settings to check if modal should be shown
-      const checkAndShowModal = async () => {
+    if (!affiliateCode) return; // No affiliate code in URL, exit early
+
+    // First check if user has already used this affiliate code
+    const checkAndProcessAffiliate = async () => {
+      try {
+        console.log('AffiliateTracker: Checking affiliate code:', affiliateCode);
+        console.log('AffiliateTracker: isAuthenticated:', isAuthenticated);
+        console.log('AffiliateTracker: token:', token ? 'exists' : 'missing');
+        
+        // Check if user has already used this code (only for logged in users)
+        // Guest users will be checked on checkout page
+        if (isAuthenticated && token) {
+          console.log('AffiliateTracker: Making API call to check affiliate code usage');
+          const checkResponse = await affiliateAPI.checkAffiliateCodeUsage(affiliateCode, token);
+          console.log('AffiliateTracker: API response:', checkResponse);
+          
+          if (checkResponse.success && checkResponse.data) {
+            // If user is trying to use their own affiliate code
+            if (!checkResponse.data.canUse && checkResponse.data.reason === 'own_code') {
+              console.log('AffiliateTracker: User trying to use own affiliate code');
+              setErrorMessage(checkResponse.data.message || 'You cannot use your own affiliate link');
+              setShowErrorModal(true);
+              toast.error(checkResponse.data.message || 'You cannot use your own affiliate link');
+              
+              // Clear any previous affiliate code from state and cookie
+              deleteCookie('affiliateCode');
+              deleteCookie('affiliateCodeExpiry');
+              setAffiliateCode(null);
+              setIsAvailableAffiliateCode(false);
+              setAffiliateCodeExpireTime(null);
+              console.log('AffiliateTracker: Cleared previous affiliate code - own code');
+              
+              // Clean URL - remove affiliate parameter
+              urlParams.delete('affiliate');
+              const newQueryString = urlParams.toString();
+              const pathname = window.location.pathname;
+              const newUrl = newQueryString 
+                ? `${pathname}?${newQueryString}` 
+                : pathname;
+              window.history.replaceState({}, '', newUrl);
+              return; // Don't proceed with setting cookie/state
+            }
+
+            // If user has already used this code, show error and clear any previous code
+            if (!checkResponse.data.canUse && checkResponse.data.reason === 'already_used') {
+              console.log('AffiliateTracker: User has already used this code');
+              setErrorMessage('You have already used this affiliate code earlier. Each affiliate code can only be used once per user.');
+              setShowErrorModal(true);
+              toast.error('You have already used this affiliate code');
+              
+              // Clear any previous affiliate code from state and cookie
+              deleteCookie('affiliateCode');
+              deleteCookie('affiliateCodeExpiry');
+              setAffiliateCode(null);
+              setIsAvailableAffiliateCode(false);
+              setAffiliateCodeExpireTime(null);
+              console.log('AffiliateTracker: Cleared previous affiliate code - already used');
+              
+              // Clean URL - remove affiliate parameter
+              urlParams.delete('affiliate');
+              const newQueryString = urlParams.toString();
+              const pathname = window.location.pathname;
+              const newUrl = newQueryString 
+                ? `${pathname}?${newQueryString}` 
+                : pathname;
+              window.history.replaceState({}, '', newUrl);
+              return; // Don't proceed with setting cookie/state
+            }
+            
+            // If code is invalid
+            if (!checkResponse.data.canUse || checkResponse.data.reason !== 'valid') {
+              console.log('AffiliateTracker: Invalid affiliate code');
+              setErrorMessage('Invalid affiliate code');
+              setShowErrorModal(true);
+              toast.error('Invalid affiliate code');
+              
+              // Clear any previous affiliate code from state and cookie
+              deleteCookie('affiliateCode');
+              deleteCookie('affiliateCodeExpiry');
+              setAffiliateCode(null);
+              setIsAvailableAffiliateCode(false);
+              setAffiliateCodeExpireTime(null);
+              console.log('AffiliateTracker: Cleared previous affiliate code - invalid code');
+              
+              // Clean URL
+              urlParams.delete('affiliate');
+              const newQueryString = urlParams.toString();
+              const pathname = window.location.pathname;
+              const newUrl = newQueryString 
+                ? `${pathname}?${newQueryString}` 
+                : pathname;
+              window.history.replaceState({}, '', newUrl);
+              return;
+            }
+            
+            console.log('AffiliateTracker: Code is valid, proceeding to set cookie and state');
+          } else if (!checkResponse.success) {
+            // If API call failed, show error and clear any previous affiliate code
+            console.log('AffiliateTracker: API call failed:', checkResponse.message);
+            setErrorMessage(checkResponse.message || 'Invalid affiliate code');
+            setShowErrorModal(true);
+            toast.error(checkResponse.message || 'Invalid affiliate code');
+            
+            // Clear any previous affiliate code from state and cookie
+            deleteCookie('affiliateCode');
+            deleteCookie('affiliateCodeExpiry');
+            setAffiliateCode(null);
+            setIsAvailableAffiliateCode(false);
+            setAffiliateCodeExpireTime(null);
+            console.log('AffiliateTracker: Cleared previous affiliate code due to API error');
+            
+            // Clean URL
+            urlParams.delete('affiliate');
+            const newQueryString = urlParams.toString();
+            const pathname = window.location.pathname;
+            const newUrl = newQueryString 
+              ? `${pathname}?${newQueryString}` 
+              : pathname;
+            window.history.replaceState({}, '', newUrl);
+            return;
+          }
+        } else {
+          console.log('AffiliateTracker: User is guest, will check on checkout page');
+        }
+        // For guest users, we don't check here - will be checked on checkout page
+
+        // If check passed or user is guest, proceed with setting cookie and state
+        console.log('AffiliateTracker: Setting cookie and state');
+        // Store in cookie with 15 minutes expiry
+        const expiryMinutes = 15;
+        const expiryDate = new Date();
+        expiryDate.setMinutes(expiryDate.getMinutes() + expiryMinutes);
+        
+        setCookie('affiliateCode', affiliateCode, {
+          expires: expiryDate,
+          sameSite: 'lax',
+          path: '/'
+        });
+
+        // Store expiry timestamp in a separate cookie for accurate countdown
+        setCookie('affiliateCodeExpiry', expiryDate.getTime().toString(), {
+          expires: expiryDate,
+          sameSite: 'lax',
+          path: '/'
+        });
+        console.log('AffiliateTracker: Stored expiry timestamp in cookie:', expiryDate.getTime());
+
+        // Update global state immediately
+        setAffiliateCode(affiliateCode);
+        setIsAvailableAffiliateCode(true);
+        setAffiliateCodeExpireTime(expiryDate);
+        console.log('AffiliateTracker: State updated - affiliateCode:', affiliateCode, 'isAvailable:', true, 'expiry:', expiryDate);
+        
+        // Fetch affiliate settings to check if modal should be shown
         try {
           const response = await settingsAPI.getAffiliateSettings();
           if (response.success && response.data) {
@@ -46,22 +197,46 @@ export default function AffiliateTracker() {
           console.log('Failed to fetch affiliate settings, defaulting to show modal');
           setShowModal(true);
         }
-      };
+        
+        // Clean URL - remove affiliate parameter
+        urlParams.delete('affiliate');
+        const newQueryString = urlParams.toString();
+        const pathname = window.location.pathname;
+        const newUrl = newQueryString 
+          ? `${pathname}?${newQueryString}` 
+          : pathname;
+        
+        // Replace URL without page reload
+        window.history.replaceState({}, '', newUrl);
+      } catch (error) {
+        console.error('AffiliateTracker: Error checking affiliate code:', error);
+        setErrorMessage('Failed to validate affiliate code');
+        setShowErrorModal(true);
+        toast.error('Failed to validate affiliate code');
+        
+        // Clean URL
+        urlParams.delete('affiliate');
+        const newQueryString = urlParams.toString();
+        const pathname = window.location.pathname;
+        const newUrl = newQueryString 
+          ? `${pathname}?${newQueryString}` 
+          : pathname;
+        window.history.replaceState({}, '', newUrl);
+      }
+    };
 
-      checkAndShowModal();
-      
-      // Clean URL - remove affiliate parameter
-      urlParams.delete('affiliate');
-      const newQueryString = urlParams.toString();
-      const pathname = window.location.pathname;
-      const newUrl = newQueryString 
-        ? `${pathname}?${newQueryString}` 
-        : pathname;
-      
-      // Replace URL without page reload
-      window.history.replaceState({}, '', newUrl);
+    // Wait a bit for auth to be ready if user is logged in
+    if (isAuthenticated && !token) {
+      // Auth is being loaded, wait a bit and retry
+      const timer = setTimeout(() => {
+        checkAndProcessAffiliate();
+      }, 500);
+      return () => clearTimeout(timer);
+    } else {
+      // Auth is ready or user is guest, proceed immediately
+      checkAndProcessAffiliate();
     }
-  }, []); // Run only once on mount
+  }, [isAuthenticated, token, setAffiliateCode, setIsAvailableAffiliateCode, setAffiliateCodeExpireTime]); // Re-run if auth status changes
 
   return (
     <>
@@ -119,7 +294,53 @@ export default function AffiliateTracker() {
           </div>
         </div>
       )}
+
+      {showErrorModal && (
+        <div 
+          onClick={() => setShowErrorModal(false)}
+          className="fixed inset-0 z-99 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm cursor-pointer"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 relative animate-in fade-in zoom-in duration-300"
+          >
+            {/* Close Button */}
+            <button
+              onClick={() => setShowErrorModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            {/* Content */}
+            <div className="text-center">
+              {/* Error Icon */}
+              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4">
+                <AlertCircle className="h-10 w-10 text-red-600" />
+              </div>
+
+              {/* Title */}
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                Invalid Affiliate Code
+              </h3>
+
+              {/* Message */}
+              <p className="text-gray-600 mb-4">
+                {errorMessage || 'This affiliate code cannot be used.'}
+              </p>
+
+              {/* Close Button */}
+              <button
+                onClick={() => setShowErrorModal(false)}
+                className="w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors font-medium cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
-

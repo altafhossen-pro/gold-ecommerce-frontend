@@ -13,7 +13,8 @@ import {
     Filter,
     X,
     Calendar,
-    ChevronDown
+    ChevronDown,
+    ShoppingCart
 } from 'lucide-react'
 import Link from 'next/link'
 import { useAppContext } from '@/context/AppContext'
@@ -485,10 +486,17 @@ export default function MyOrders() {
                                                         <Link
                                                             href={`/dashboard/my-orders/${order.orderId}`}
                                                             className="bg-pink-500 hover:bg-pink-600 text-white px-2 py-2 rounded-md flex items-center justify-center gap-1"
+                                                            title="View Order"
                                                         >
                                                             <Eye className="h-4 w-4" /> 
                                                         </Link>
-                                                        
+                                                        <Link
+                                                            href={`/dashboard/my-orders/${order.orderId}/reorder`}
+                                                            className="bg-blue-500 hover:bg-blue-600 text-white px-2 py-2 rounded-md flex items-center justify-center gap-1"
+                                                            title="Reorder"
+                                                        >
+                                                            <ShoppingCart className="h-4 w-4" /> 
+                                                        </Link>
                                                     </div>
                                                 </td>
                                             </tr>

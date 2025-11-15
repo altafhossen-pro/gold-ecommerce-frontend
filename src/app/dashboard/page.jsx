@@ -7,9 +7,6 @@ import {
     ShoppingCart, 
     Heart, 
     Package, 
-    Clock,
-    CheckCircle,
-    AlertCircle,
     User,
     Coins
 } from 'lucide-react'

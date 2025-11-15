@@ -3,19 +3,97 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, ArrowRight, MessageCircle, Minus, Plus, Trash2, Check, AlertTriangle } from 'lucide-react';
 import { useAppContext } from '@/context/AppContext';
-import { orderAPI, productAPI, loyaltyAPI, couponAPI, addressAPI, upsellAPI, settingsAPI } from '@/services/api';
+import { orderAPI, productAPI, loyaltyAPI, couponAPI, addressAPI, upsellAPI, settingsAPI, affiliateAPI } from '@/services/api';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
-import { getCookie } from 'cookies-next';
+import { getCookie, setCookie, deleteCookie } from 'cookies-next';
 import CheckoutOptionsModal from '@/components/Common/CheckoutOptionsModal';
 
 export default function Checkout() {
-    const { cart, cartTotal, updateCartItem, removeFromCart, cartLoading, user, clearCart, deliveryChargeSettings } = useAppContext();
+    const { 
+        cart, 
+        cartTotal, 
+        updateCartItem, 
+        removeFromCart, 
+        cartLoading, 
+        user, 
+        clearCart, 
+        deliveryChargeSettings,
+        affiliateCode,
+        isAvailableAffiliateCode,
+        setAffiliateCodeExpireTime,
+        setAffiliateCode,
+        setIsAvailableAffiliateCode,
+        loadAffiliateCode
+    } = useAppContext();
     const router = useRouter();
+    
+    // All state declarations first
     // Checkout options modal state
     const [showCheckoutModal, setShowCheckoutModal] = useState(false);
     const [isCheckingAuth, setIsCheckingAuth] = useState(true);
     const [isGuestCheckout, setIsGuestCheckout] = useState(false);
+    
+    // Form data state
+    const [formData, setFormData] = useState({
+        fullName: '',
+        mobileNumber: '',
+        division: '',
+        divisionId: '',
+        district: '',
+        districtId: '',
+        upazila: '',
+        upazilaId: '',
+        area: '',
+        areaId: '',
+        deliveryType: 'outsideDhaka',
+        deliveryAddress: '',
+        orderNotes: ''
+    });
+
+    const [paymentMethod, setPaymentMethod] = useState('cash');
+    const [manualPaymentData, setManualPaymentData] = useState({
+        phoneNumber: '',
+        transactionId: ''
+    });
+
+    // Loyalty points state
+    const [loyaltyData, setLoyaltyData] = useState(null);
+    const [useLoyaltyPoints, setUseLoyaltyPoints] = useState(false);
+    const [loyaltyDiscount, setLoyaltyDiscount] = useState(0);
+    const [loyaltyLoading, setLoyaltyLoading] = useState(false);
+    const [loyaltySettings, setLoyaltySettings] = useState(null);
+
+    // Coupon state
+    const [couponCode, setCouponCode] = useState('');
+    const [appliedCoupon, setAppliedCoupon] = useState(null);
+    const [couponDiscount, setCouponDiscount] = useState(0);
+    const [couponLoading, setCouponLoading] = useState(false);
+    const [couponError, setCouponError] = useState('');
+
+    // Upsell discount state
+    const [upsellDiscount, setUpsellDiscount] = useState(0);
+
+    // Affiliate state
+    const [affiliateSettings, setAffiliateSettings] = useState(null);
+    const [affiliateDiscount, setAffiliateDiscount] = useState(0);
+    const [affiliateExpireTime, setAffiliateExpireTime] = useState(null);
+    const [timeRemaining, setTimeRemaining] = useState(null);
+
+    // Stock validation state
+    const [stockData, setStockData] = useState({});
+    const [stockLoading, setStockLoading] = useState(false);
+    const [outOfStockItems, setOutOfStockItems] = useState([]);
+
+    // Address state
+    const [divisions, setDivisions] = useState([]);
+    const [divisionsLoading, setDivisionsLoading] = useState(true);
+    const [districts, setDistricts] = useState([]);
+    const [districtsLoading, setDistrictsLoading] = useState(false);
+    const [upazilas, setUpazilas] = useState([]);
+    const [upazilasLoading, setUpazilasLoading] = useState(false);
+    const [dhakaAreas, setDhakaAreas] = useState([]);
+    const [dhakaAreasLoading, setDhakaAreasLoading] = useState(false);
 
     // Check authentication status
     useEffect(() => {
@@ -90,10 +168,164 @@ export default function Checkout() {
         }
     };
 
+    // Fetch affiliate settings - define before use
+    const fetchAffiliateSettings = async () => {
+        try {
+            console.log('Checkout: Fetching affiliate settings');
+            const response = await settingsAPI.getAffiliateSettings();
+            console.log('Checkout: Affiliate settings response:', response);
+            if (response.success && response.data) {
+                setAffiliateSettings(response.data);
+                console.log('Checkout: Affiliate settings set:', response.data);
+            } else {
+                console.log('Checkout: Failed to fetch affiliate settings:', response.message);
+            }
+        } catch (error) {
+            console.error('Checkout: Error fetching affiliate settings:', error);
+        }
+    };
+
+    // Load affiliate code from cookie and calculate expire time
+    const loadAffiliateCodeFromCookie = () => {
+        if (typeof window === 'undefined' || !isAvailableAffiliateCode || !affiliateCode) {
+            setAffiliateDiscount(0);
+            setAffiliateExpireTime(null);
+            return;
+        }
+
+        // Get expiry timestamp from cookie (stored when cookie was set)
+        const expiryTimestamp = getCookie('affiliateCodeExpiry');
+        if (expiryTimestamp) {
+            const expireTime = new Date(parseInt(expiryTimestamp));
+            // Check if expired
+            if (expireTime < new Date()) {
+                console.log('Checkout: Affiliate code expired');
+                setAffiliateExpireTime(null);
+                setAffiliateDiscount(0);
+                return;
+            }
+            console.log('Checkout: Using expiry from cookie:', expireTime);
+            setAffiliateExpireTime(expireTime);
+        } else {
+            // If no expiry cookie, check affiliateCode cookie exists
+            const code = getCookie('affiliateCode');
+            if (code) {
+                // Cookie exists but no expiry timestamp, set default 15 minutes from now
+                const now = new Date();
+                const expireTime = new Date(now.getTime() + 15 * 60 * 1000);
+                setCookie('affiliateCodeExpiry', expireTime.getTime().toString(), {
+                    expires: expireTime,
+                    sameSite: 'lax',
+                    path: '/'
+                });
+                setAffiliateExpireTime(expireTime);
+                console.log('Checkout: No expiry cookie, setting default');
+            } else {
+                setAffiliateExpireTime(null);
+                setAffiliateDiscount(0);
+            }
+        }
+    };
+
     // Fetch loyalty settings on mount
     useEffect(() => {
         fetchLoyaltySettings();
+        fetchAffiliateSettings();
+        // Load affiliate code from cookie on mount
+        console.log('Checkout: Loading affiliate code from cookie');
+        loadAffiliateCode();
+        loadAffiliateCodeFromCookie();
     }, []);
+
+    // Debug: Log affiliate code state changes
+    useEffect(() => {
+        console.log('Checkout: Affiliate code state changed:', {
+            affiliateCode,
+            isAvailableAffiliateCode,
+            hasCookie: typeof window !== 'undefined' ? !!getCookie('affiliateCode') : false
+        });
+    }, [affiliateCode, isAvailableAffiliateCode]);
+
+    // Reload affiliate code when it changes
+    useEffect(() => {
+        if (isAvailableAffiliateCode && affiliateCode) {
+            loadAffiliateCodeFromCookie();
+        }
+    }, [isAvailableAffiliateCode, affiliateCode]);
+
+    // Calculate affiliate discount
+    useEffect(() => {
+        console.log('Checkout: Calculating affiliate discount', {
+            hasAffiliateSettings: !!affiliateSettings,
+            isAvailableAffiliateCode,
+            affiliateCode,
+            cartTotal,
+            hasUser: !!user,
+            affiliateSettingsData: affiliateSettings
+        });
+
+        if (!affiliateSettings || !isAvailableAffiliateCode || !affiliateCode) {
+            console.log('Checkout: Missing requirements, setting discount to 0');
+            setAffiliateDiscount(0);
+            return;
+        }
+
+        if (!affiliateSettings.isAffiliateEnabled) {
+            console.log('Checkout: Affiliate is not enabled, setting discount to 0');
+            setAffiliateDiscount(0);
+            return;
+        }
+
+        // Only apply discount for guest users (as per requirements)
+        if (user) {
+            console.log('Checkout: User is logged in, discount is 0 (only for guests)');
+            setAffiliateDiscount(0);
+            return;
+        }
+
+        // Calculate discount based on type
+        let discount = 0;
+        const currentSubtotal = cartTotal; // Use cartTotal directly to avoid dependency issues
+        if (affiliateSettings.purchaserDiscountType === 'percentage') {
+            discount = (currentSubtotal * parseFloat(affiliateSettings.purchaserDiscountValue || 0)) / 100;
+        } else {
+            discount = parseFloat(affiliateSettings.purchaserDiscountValue || 0);
+        }
+
+        // Max discount cannot exceed subtotal
+        discount = Math.min(discount, currentSubtotal);
+        console.log('Checkout: Calculated affiliate discount:', discount);
+        setAffiliateDiscount(discount);
+    }, [affiliateSettings, isAvailableAffiliateCode, affiliateCode, cartTotal, user]);
+
+    // Countdown timer for affiliate code
+    useEffect(() => {
+        if (!affiliateExpireTime) {
+            setTimeRemaining(null);
+            return;
+        }
+
+        const updateTimer = () => {
+            const now = new Date();
+            const diff = affiliateExpireTime.getTime() - now.getTime();
+            
+            if (diff <= 0) {
+                setTimeRemaining(null);
+                setAffiliateExpireTime(null);
+                setAffiliateDiscount(0);
+                return;
+            }
+
+            const minutes = Math.floor(diff / 60000);
+            const seconds = Math.floor((diff % 60000) / 1000);
+            setTimeRemaining(`${minutes}:${seconds.toString().padStart(2, '0')}`);
+        };
+
+        updateTimer();
+        const interval = setInterval(updateTimer, 1000);
+
+        return () => clearInterval(interval);
+    }, [affiliateExpireTime]);
 
     // Fetch loyalty data when user is available
     useEffect(() => {
@@ -256,61 +488,8 @@ export default function Checkout() {
             setDhakaAreasLoading(false);
         }
     };
-    
-    const [formData, setFormData] = useState({
-        fullName: '',
-        mobileNumber: '',
-        division: '',
-        divisionId: '',
-        district: '',
-        districtId: '',
-        upazila: '',
-        upazilaId: '',
-        area: '',
-        areaId: '',
-        deliveryType: 'outsideDhaka', // Default to outside Dhaka
-        deliveryAddress: '',
-        orderNotes: ''
-    });
 
-    const [paymentMethod, setPaymentMethod] = useState('cash');
-    const [manualPaymentData, setManualPaymentData] = useState({
-        phoneNumber: '',
-        transactionId: ''
-    });
-
-    // Loyalty points state
-    const [loyaltyData, setLoyaltyData] = useState(null);
-    const [useLoyaltyPoints, setUseLoyaltyPoints] = useState(false);
-    const [loyaltyDiscount, setLoyaltyDiscount] = useState(0);
-    const [loyaltyLoading, setLoyaltyLoading] = useState(false);
-    const [loyaltySettings, setLoyaltySettings] = useState(null);
-
-    // Coupon state
-    const [couponCode, setCouponCode] = useState('');
-    const [appliedCoupon, setAppliedCoupon] = useState(null);
-    const [couponDiscount, setCouponDiscount] = useState(0);
-    const [couponLoading, setCouponLoading] = useState(false);
-    const [couponError, setCouponError] = useState('');
-
-    // Upsell discount state
-    const [upsellDiscount, setUpsellDiscount] = useState(0);
-
-    // Stock validation state
-    const [stockData, setStockData] = useState({});
-    const [stockLoading, setStockLoading] = useState(false);
-    const [outOfStockItems, setOutOfStockItems] = useState([]);
-
-    // Address state
-    const [divisions, setDivisions] = useState([]);
-    const [divisionsLoading, setDivisionsLoading] = useState(true);
-    const [districts, setDistricts] = useState([]);
-    const [districtsLoading, setDistrictsLoading] = useState(false);
-    const [upazilas, setUpazilas] = useState([]);
-    const [upazilasLoading, setUpazilasLoading] = useState(false);
-    const [dhakaAreas, setDhakaAreas] = useState([]);
-    const [dhakaAreasLoading, setDhakaAreasLoading] = useState(false);
-
+    // Calculate subtotal (needed for calculations)
     const subtotal = cartTotal;
     
     // Dynamic delivery charge calculation based on delivery type
@@ -336,9 +515,9 @@ export default function Checkout() {
     
     const shippingCost = calculateDeliveryCharge();
     const discount = 0; // General discount (not coupon discount)
-    // Combine normal discount with upsell discount for UI display
+    // Combine normal discount with upsell discount (affiliate discount shown separately)
     const totalDiscountForUI = discount + upsellDiscount;
-    const totalCost = useLoyaltyPoints ? 0 : (subtotal + shippingCost - discount - upsellDiscount - loyaltyDiscount - couponDiscount);
+    const totalCost = useLoyaltyPoints ? 0 : (subtotal + shippingCost - discount - upsellDiscount - affiliateDiscount - loyaltyDiscount - couponDiscount);
     
     // Auto-select delivery type when division/district is selected
     useEffect(() => {
@@ -629,6 +808,41 @@ export default function Checkout() {
             }
         }
 
+        // For guest checkout, check if phone number has already used affiliate code
+        if (isGuestCheckout && isAvailableAffiliateCode && affiliateCode) {
+            try {
+                const checkResponse = await affiliateAPI.checkGuestAffiliateCodeUsage(affiliateCode, formData.mobileNumber);
+                
+                if (checkResponse.success && checkResponse.data) {
+                    // If guest user is trying to use their own affiliate code
+                    if (!checkResponse.data.canUse && checkResponse.data.reason === 'own_code') {
+                        toast.error(checkResponse.data.message || 'You cannot use your own affiliate link');
+                        return; // Don't proceed with checkout
+                    }
+
+                    // If guest user has already used this code, show error and don't proceed
+                    if (!checkResponse.data.canUse && checkResponse.data.reason === 'already_used') {
+                        toast.error('This phone number has already used this affiliate code. Each affiliate code can only be used once per phone number.');
+                        return; // Don't proceed with checkout
+                    }
+                    
+                    // If code is invalid
+                    if (!checkResponse.data.canUse || checkResponse.data.reason !== 'valid') {
+                        toast.error('Invalid affiliate code');
+                        return; // Don't proceed with checkout
+                    }
+                } else if (!checkResponse.success) {
+                    // If API call failed, show error
+                    toast.error(checkResponse.message || 'Failed to validate affiliate code');
+                    return; // Don't proceed with checkout
+                }
+            } catch (error) {
+                console.error('Error checking guest affiliate code:', error);
+                toast.error('Failed to validate affiliate code');
+                return; // Don't proceed with checkout
+            }
+        }
+
         // Process order based on payment method
         switch (paymentMethod) {
             case 'cash':
@@ -702,7 +916,18 @@ export default function Checkout() {
                         shippingCost: shippingCost,
                         orderNotes: formData.orderNotes,
                         coupon: appliedCoupon ? appliedCoupon.code : undefined,
-                        couponDiscount: couponDiscount
+                        couponDiscount: couponDiscount,
+                        // Add affiliate order data if affiliate code exists and is enabled
+                        ...(isAvailableAffiliateCode && affiliateCode && affiliateSettings?.isAffiliateEnabled && {
+                            affiliateOrder: {
+                                affiliateCode: affiliateCode,
+                                affiliateDiscount: affiliateDiscount,
+                                purchaserDiscountType: affiliateSettings.purchaserDiscountType || '',
+                                purchaserDiscountValue: String(affiliateSettings.purchaserDiscountValue || '0'),
+                                purchaserLoyaltyPointsPerPurchase: String(affiliateSettings.purchaserLoyaltyPointsPerPurchase || '0'),
+                                referrerLoyaltyPointsPerPurchase: String(affiliateSettings.referrerLoyaltyPointsPerPurchase || '0')
+                            }
+                        })
                     };
 
                     
@@ -726,6 +951,17 @@ export default function Checkout() {
                     
                     if (response.success) {
                         toast.success('Order placed successfully! Cash on delivery');
+                        
+                        // Clear affiliate code from state and cookie after successful order (one-time use)
+                        if (isAvailableAffiliateCode && affiliateCode) {
+                            deleteCookie('affiliateCode');
+                            deleteCookie('affiliateCodeExpiry');
+                            setAffiliateCode(null);
+                            setIsAvailableAffiliateCode(false);
+                            setAffiliateCodeExpireTime(null);
+                            console.log('Checkout: Cleared affiliate code after successful order');
+                        }
+                        
                         // Clear cart and redirect to order confirmation with order details
                         clearCart();
                         const order = response.data;
@@ -738,6 +974,8 @@ export default function Checkout() {
                             ...(order.loyaltyDiscount > 0 && { loyaltyDiscount: order.loyaltyDiscount }),
                             ...(order.discount > 0 && { discount: order.discount }),
                             ...(order.upsellDiscount > 0 && { upsellDiscount: order.upsellDiscount }),
+                            ...(order.affiliateOrder?.affiliateDiscount > 0 && { affiliateDiscount: order.affiliateOrder.affiliateDiscount }),
+                            ...(order.affiliateOrder?.affiliateCode && { affiliateCode: order.affiliateOrder.affiliateCode }),
                             ...(order.coupon && { coupon: order.coupon }),
                             ...(order.isGuestOrder && { isGuestOrder: 'true' })
                         });
@@ -1578,10 +1816,35 @@ export default function Checkout() {
                                 </div>
                                 
                                 
-                                <div className="flex justify-between">
-                                    <span className="text-gray-600">Discount</span>
-                                    <span className="text-orange-500">{totalDiscountForUI} ৳</span>
-                                </div>
+                                {/* Discount (only show if there's a discount, excluding affiliate) */}
+                                {totalDiscountForUI > 0 && (
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-600">Discount</span>
+                                        <span className="text-orange-500">-৳{totalDiscountForUI}</span>
+                                    </div>
+                                )}
+
+                                {/* Affiliate Code Info - Show if code exists and affiliate is enabled */}
+                                {isAvailableAffiliateCode && affiliateCode && affiliateSettings?.isAffiliateEnabled && (
+                                    <div className="flex justify-between items-center">
+                                        <div className="flex flex-col">
+                                            <span className="text-gray-600">
+                                                Affiliate Code: <span className="font-semibold">{affiliateCode}</span>
+                                                {affiliateDiscount > 0 && (
+                                                    <span className="ml-2">(Discount: -৳{affiliateDiscount.toFixed(2)})</span>
+                                                )}
+                                            </span>
+                                            {timeRemaining && (
+                                                <span className="text-xs text-red-600 mt-0.5">
+                                                    Expires in: {timeRemaining}
+                                                </span>
+                                            )}
+                                        </div>
+                                        {affiliateDiscount > 0 && (
+                                            <span className="text-green-600 font-semibold">-৳{affiliateDiscount.toFixed(2)}</span>
+                                        )}
+                                    </div>
+                                )}
                                 
                                 {/* Coupon Discount */}
                                 {appliedCoupon && (

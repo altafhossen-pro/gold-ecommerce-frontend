@@ -18,7 +18,8 @@ import {
     Calendar,
     RefreshCw,
     Printer,
-    Coins
+    Coins,
+    ShoppingCart
 } from 'lucide-react'
 import Link from 'next/link'
 import { useAppContext } from '@/context/AppContext'
@@ -293,15 +294,24 @@ export default function OrderDetails() {
             `}</style>
 
             <div className="min-h-screen bg-gray-50">
-                {/* Back Button */}
+                {/* Header with Back and Reorder */}
                 <div className="max-w-4xl mx-auto px-6 pb-4 no-print">
-                    <Link
-                        href="/dashboard/my-orders"
-                        className="inline-flex items-center text-gray-600 hover:text-gray-900 text-sm font-medium"
-                    >
-                        <ArrowLeft className="h-4 w-4 mr-2" />
-                        Back to Orders
-                    </Link>
+                    <div className="flex items-center justify-between">
+                        <Link
+                            href="/dashboard/my-orders"
+                            className="inline-flex items-center text-gray-600 hover:text-gray-900 text-sm font-medium"
+                        >
+                            <ArrowLeft className="h-4 w-4 mr-2" />
+                            Back to Orders
+                        </Link>
+                        <Link
+                            href={`/dashboard/my-orders/${params.orderId}/reorder`}
+                            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                            <ShoppingCart className="h-4 w-4 mr-2" />
+                            Reorder
+                        </Link>
+                    </div>
                 </div>
 
                 {/* Invoice Container */}

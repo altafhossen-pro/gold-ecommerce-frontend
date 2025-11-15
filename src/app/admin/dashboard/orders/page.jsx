@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Eye, Trash2, Package, Calendar, User, MapPin, CreditCard, Mail, Edit, MoreVertical, Copy } from 'lucide-react';
+import { Eye, Trash2, Package, Calendar, User, MapPin, CreditCard, Mail, Edit, MoreVertical, Copy, Download } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { formatDateForTable } from '@/utils/formatDate';
@@ -29,11 +29,17 @@ export default function AdminOrdersPage() {
     const [dropdownPosition, setDropdownPosition] = useState({});
     const buttonRefs = useRef({});
     const [contextMenu, setContextMenu] = useState({ open: false, orderId: null, x: 0, y: 0, hasSelection: false });
+    const [showExportModal, setShowExportModal] = useState(false);
+    const [exportStartDate, setExportStartDate] = useState('');
+    const [exportEndDate, setExportEndDate] = useState('');
+    const [exporting, setExporting] = useState(false);
     
     // Filter states
     const [filters, setFilters] = useState({
         search: '', // Unified search for orderId, email, phone
-        status: 'all'
+        status: 'all',
+        startDate: '', // Date range start
+        endDate: '' // Date range end
     });
     
     // Pagination states
@@ -72,7 +78,7 @@ export default function AdminOrdersPage() {
         }, 500); // 500ms debounce
 
         return () => clearTimeout(timeoutId);
-    }, [filters.search, filters.status, pagination.currentPage, pagination.itemsPerPage, contextLoading, hasPermission]);
+    }, [filters.search, filters.status, filters.startDate, filters.endDate, pagination.currentPage, pagination.itemsPerPage, contextLoading, hasPermission]);
 
     const fetchOrders = async () => {
         try {
@@ -93,6 +99,14 @@ export default function AdminOrdersPage() {
             // Add unified search filter (searches orderId, email, phone)
             if (filters.search && filters.search.trim()) {
                 params.append('search', filters.search.trim());
+            }
+            
+            // Add date range filters
+            if (filters.startDate) {
+                params.append('startDate', filters.startDate);
+            }
+            if (filters.endDate) {
+                params.append('endDate', filters.endDate);
             }
             
             const data = await orderAPI.getAdminOrders(token, params.toString());
@@ -162,7 +176,9 @@ export default function AdminOrdersPage() {
     const clearFilters = () => {
         setFilters({
             search: '',
-            status: 'all'
+            status: 'all',
+            startDate: '',
+            endDate: ''
         });
         setPagination(prev => ({
             ...prev,
@@ -386,9 +402,10 @@ export default function AdminOrdersPage() {
                 setContextMenu({ open: false, orderId: null, x: 0, y: 0, hasSelection: false });
             }
         };
-        document.addEventListener('mousedown', handleClickOutside);
+        // Use click instead of mousedown to allow link clicks to register first
+        document.addEventListener('click', handleClickOutside);
         return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('click', handleClickOutside);
         };
     }, [openDropdownId, contextMenu.open]);
 
@@ -475,6 +492,209 @@ export default function AdminOrdersPage() {
         return validTransitions[currentStatus] || [];
     };
 
+    // Export orders to CSV - Fetches ALL orders by making multiple API calls
+    const handleExportOrders = async () => {
+        if (!exportStartDate || !exportEndDate) {
+            toast.error('Please select both start and end dates');
+            return;
+        }
+
+        if (new Date(exportStartDate) > new Date(exportEndDate)) {
+            toast.error('Start date cannot be after end date');
+            return;
+        }
+
+        try {
+            setExporting(true);
+            const token = getCookie('token');
+            
+            // Fetch all orders by making multiple API calls (handle pagination)
+            let allOrders = [];
+            let currentPage = 1;
+            let hasMorePages = true;
+            const itemsPerPage = 200; // Fetch 100 at a time for better performance
+
+            toast.loading('Fetching orders...', { id: 'export-loading' });
+
+            while (hasMorePages) {
+                // Build query parameters for each page
+                const params = new URLSearchParams({
+                    page: currentPage.toString(),
+                    limit: itemsPerPage.toString(),
+                    startDate: exportStartDate,
+                    endDate: exportEndDate
+                });
+
+                // Add status filter if not 'all'
+                if (filters.status && filters.status !== 'all') {
+                    params.append('status', filters.status);
+                }
+
+                // Add search filter if exists
+                if (filters.search && filters.search.trim()) {
+                    params.append('search', filters.search.trim());
+                }
+
+                const data = await orderAPI.getAdminOrders(token, params.toString());
+
+                if (data.success && data.data && data.data.length > 0) {
+                    allOrders = [...allOrders, ...data.data];
+                    
+                    // Check if there are more pages
+                    if (data.pagination) {
+                        hasMorePages = data.pagination.hasNextPage;
+                        currentPage++;
+                        
+                        // Update loading message
+                        toast.loading(
+                            `Fetching orders... (${allOrders.length} orders loaded)`, 
+                            { id: 'export-loading' }
+                        );
+                    } else {
+                        hasMorePages = false;
+                    }
+                } else {
+                    hasMorePages = false;
+                }
+            }
+
+            toast.dismiss('export-loading');
+
+            if (allOrders.length > 0) {
+                // Convert all orders to CSV
+                const csv = convertOrdersToCSV(allOrders);
+                
+                // Create download link
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                const url = URL.createObjectURL(blob);
+                
+                link.setAttribute('href', url);
+                link.setAttribute('download', `orders_${exportStartDate}_to_${exportEndDate}.csv`);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                toast.success(`Exported ${allOrders.length} orders successfully!`);
+                setShowExportModal(false);
+                setExportStartDate('');
+                setExportEndDate('');
+            } else {
+                toast.error('No orders found for the selected date range');
+            }
+        } catch (error) {
+            console.error('Error exporting orders:', error);
+            toast.dismiss('export-loading');
+            toast.error('Failed to export orders. Please try again.');
+        } finally {
+            setExporting(false);
+        }
+    };
+
+    // Convert orders array to CSV format
+    const convertOrdersToCSV = (orders) => {
+        // CSV Headers
+        const headers = [
+            'Order ID',
+            'Date',
+            'Customer Email',
+            'Customer Phone',
+            'Customer Name',
+            'Shipping Address',
+            'City',
+            'Postal Code',
+            'Total Amount',
+            'Subtotal',
+            'Shipping Cost',
+            'Coupon Discount',
+            'Loyalty Discount',
+            'Other Discount',
+            'Status',
+            'Payment Status',
+            'Payment Method',
+            'Order Source',
+            'Items Count',
+            'Items Details'
+        ];
+
+        // Create CSV rows
+        const rows = orders.map(order => {
+            const customerEmail = order.isGuestOrder && order.guestInfo?.email 
+                ? order.guestInfo.email 
+                : order.orderType === 'manual' && order.manualOrderInfo?.email
+                ? order.manualOrderInfo.email
+                : order.user?.email || 'N/A';
+
+            const customerPhone = order.isGuestOrder && order.guestInfo?.phone 
+                ? order.guestInfo.phone 
+                : order.orderType === 'manual' && order.manualOrderInfo?.phone
+                ? order.manualOrderInfo.phone
+                : order.user?.phone || order.shippingAddress?.phone || 'N/A';
+
+            const customerName = order.shippingAddress?.name || order.user?.name || 'N/A';
+            
+            const shippingAddress = order.shippingAddress 
+                ? `${order.shippingAddress.address || ''} ${order.shippingAddress.area || ''} ${order.shippingAddress.district || ''}`.trim()
+                : 'N/A';
+
+            const city = order.shippingAddress?.city || order.shippingAddress?.district || 'N/A';
+            const postalCode = order.shippingAddress?.postalCode || 'N/A';
+
+            // Format items details
+            const itemsDetails = order.items && order.items.length > 0
+                ? order.items.map(item => {
+                    const variantInfo = item.variant?.attributes 
+                        ? ` (${item.variant.attributes.map(attr => `${attr.name}: ${attr.value}`).join(', ')})`
+                        : '';
+                    return `${item.product?.title || 'N/A'}${variantInfo} - Qty: ${item.quantity} - Price: ৳${item.price}`;
+                }).join('; ')
+                : 'N/A';
+
+            return [
+                order.orderId || order._id.slice(-8).toUpperCase(),
+                formatDateForTable(order.createdAt),
+                customerEmail,
+                customerPhone,
+                customerName,
+                shippingAddress,
+                city,
+                postalCode,
+                order.total || 0,
+                order.subtotal || 0,
+                order.shippingCost || 0,
+                order.couponDiscount || 0,
+                order.loyaltyDiscount || 0,
+                order.discount || 0,
+                order.status || 'N/A',
+                order.paymentStatus || 'N/A',
+                order.paymentMethod === 'cod' ? 'Cash on Delivery' : order.paymentMethod || 'N/A',
+                getOrderSourceLabel(order.orderSource),
+                order.items?.length || 0,
+                itemsDetails
+            ];
+        });
+
+        // Escape CSV values (handle commas, quotes, newlines)
+        const escapeCSV = (value) => {
+            if (value === null || value === undefined) return '';
+            const stringValue = String(value);
+            // If value contains comma, quote, or newline, wrap in quotes and escape quotes
+            if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+                return `"${stringValue.replace(/"/g, '""')}"`;
+            }
+            return stringValue;
+        };
+
+        // Combine headers and rows
+        const csvContent = [
+            headers.map(escapeCSV).join(','),
+            ...rows.map(row => row.map(escapeCSV).join(','))
+        ].join('\n');
+
+        return csvContent;
+    };
+
     const handleStatusUpdate = async () => {
         if (!selectedOrder || !newStatus) return;
 
@@ -541,13 +761,20 @@ export default function AdminOrdersPage() {
 
             {/* Orders Table */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                <div className="px-6 py-4 border-b border-gray-200">
+                <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
                     <h2 className="text-lg font-medium text-gray-900">All Orders</h2>
+                    <button
+                        onClick={() => setShowExportModal(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors cursor-pointer"
+                    >
+                        <Download className="h-4 w-4" />
+                        Export
+                    </button>
                 </div>
                 
                 {/* Filters */}
                 <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         {/* Unified Search Filter */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -584,13 +811,46 @@ export default function AdminOrdersPage() {
                                 <option value="cancelled">Cancelled</option>
                             </select>
                         </div>
+
+                        {/* Start Date Filter */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Start Date
+                            </label>
+                            <input
+                                type="date"
+                                value={filters.startDate}
+                                onChange={(e) => {
+                                    handleFilterChange('startDate', e.target.value);
+                                    setPagination(prev => ({ ...prev, currentPage: 1 }));
+                                }}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                            />
+                        </div>
+
+                        {/* End Date Filter */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                End Date
+                            </label>
+                            <input
+                                type="date"
+                                value={filters.endDate}
+                                onChange={(e) => {
+                                    handleFilterChange('endDate', e.target.value);
+                                    setPagination(prev => ({ ...prev, currentPage: 1 }));
+                                }}
+                                min={filters.startDate || undefined}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                            />
+                        </div>
                     </div>
                     
                     {/* Clear Filters Button */}
                     <div className="mt-4 flex justify-end">
                         <button
                             onClick={clearFilters}
-                            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors cursor-pointer"
                         >
                             Clear Filters
                         </button>
@@ -741,7 +1001,10 @@ export default function AdminOrdersPage() {
                                             <div className="relative dropdown-menu-container">
                                                 <button
                                                     ref={(el) => (buttonRefs.current[order._id] = el)}
-                                                    onClick={() => handleDropdownToggle(order._id)}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDropdownToggle(order._id);
+                                                    }}
                                                     className="inline-flex items-center p-2 text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-md"
                                                 >
                                                     <MoreVertical className="h-5 w-5" />
@@ -933,14 +1196,18 @@ export default function AdminOrdersPage() {
             {/* Floating Dropdown Menu (Portal) */}
             {openDropdownId && typeof window !== 'undefined' && createPortal(
                 <div 
-                    className="w-48 bg-white rounded-md shadow-lg border border-gray-200"
+                    className="dropdown-menu-container w-48 bg-white rounded-md shadow-lg border border-gray-200"
                     style={dropdownPosition[openDropdownId] || {}}
+                    onClick={(e) => e.stopPropagation()}
                 >
                     <div className="py-1">
                         {hasPermission('order', 'read') && (
                             <Link
                                 href={`/admin/dashboard/orders/${openDropdownId}`}
-                                onClick={() => setOpenDropdownId(null)}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenDropdownId(null);
+                                }}
                                 className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                             >
                                 <Eye className="h-4 w-4 mr-2" />
@@ -951,14 +1218,18 @@ export default function AdminOrdersPage() {
                             <>
                                 <Link
                                     href={`/admin/dashboard/orders/${openDropdownId}/edit`}
-                                    onClick={() => setOpenDropdownId(null)}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setOpenDropdownId(null);
+                                    }}
                                     className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                 >
                                     <Edit className="h-4 w-4 mr-2" />
                                     Edit
                                 </Link>
                                 <button
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                        e.stopPropagation();
                                         const order = orders.find(o => o._id === openDropdownId);
                                         if (order) {
                                             setOpenDropdownId(null);
@@ -974,7 +1245,8 @@ export default function AdminOrdersPage() {
                         )}
                         {hasPermission('order', 'delete') && (
                             <button
-                                onClick={() => {
+                                onClick={(e) => {
+                                    e.stopPropagation();
                                     setOpenDropdownId(null);
                                     handleDeleteOrder(openDropdownId);
                                 }}
@@ -1063,6 +1335,87 @@ export default function AdminOrdersPage() {
                     </div>
                 </div>,
                 document.body
+            )}
+
+            {/* Export Modal */}
+            {showExportModal && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-medium text-gray-900">Export Orders</h3>
+                            <button
+                                onClick={() => {
+                                    setShowExportModal(false);
+                                    setExportStartDate('');
+                                    setExportEndDate('');
+                                }}
+                                className="text-gray-400 hover:text-gray-600"
+                            >
+                                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Start Date <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="date"
+                                    value={exportStartDate}
+                                    onChange={(e) => setExportStartDate(e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    End Date <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="date"
+                                    value={exportEndDate}
+                                    onChange={(e) => setExportEndDate(e.target.value)}
+                                    min={exportStartDate || undefined}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    required
+                                />
+                            </div>
+
+                            <p className="text-sm text-gray-500">
+                                Orders within the selected date range will be exported as a CSV file.
+                            </p>
+                        </div>
+
+                        <div className="flex justify-end space-x-3 mt-6">
+                            <button
+                                onClick={() => {
+                                    setShowExportModal(false);
+                                    setExportStartDate('');
+                                    setExportEndDate('');
+                                }}
+                                disabled={exporting}
+                                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleExportOrders}
+                                disabled={exporting || !exportStartDate || !exportEndDate}
+                                className={`px-4 py-2 rounded-md text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+                                    exporting || !exportStartDate || !exportEndDate
+                                        ? 'bg-gray-400 cursor-not-allowed'
+                                        : 'bg-blue-600 hover:bg-blue-700'
+                                }`}
+                            >
+                                {exporting ? 'Exporting...' : 'Export CSV'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

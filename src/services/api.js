@@ -2067,6 +2067,24 @@ export const affiliateAPI = {
             method: 'POST',
         });
     },
+    // Check if user has already used an affiliate code (requires auth)
+    checkAffiliateCodeUsage: (affiliateCode, token) => {
+        return apiCall(`/affiliate/check/${affiliateCode}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+    // Check if guest user has already used an affiliate code (by phone number - no auth)
+    checkGuestAffiliateCodeUsage: (affiliateCode, phoneNumber) => {
+        return apiCall('/affiliate/check-guest', {
+            method: 'POST',
+            body: JSON.stringify({ affiliateCode, phoneNumber }),
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+    },
 };
 
 export default {

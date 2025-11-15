@@ -17,6 +17,8 @@ function OrderConfirmation() {
     const loyaltyDiscount = searchParams.get('loyaltyDiscount');
     const discount = searchParams.get('discount');
     const upsellDiscount = searchParams.get('upsellDiscount');
+    const affiliateDiscount = searchParams.get('affiliateDiscount');
+    const affiliateCode = searchParams.get('affiliateCode');
     const coupon = searchParams.get('coupon');
     const isGuestOrder = searchParams.get('isGuestOrder') === 'true';
 
@@ -27,6 +29,7 @@ function OrderConfirmation() {
         if (loyaltyDiscount) finalTotal -= parseFloat(loyaltyDiscount);
         if (discount) finalTotal -= parseFloat(discount);
         if (upsellDiscount) finalTotal -= parseFloat(upsellDiscount);
+        if (affiliateDiscount) finalTotal -= parseFloat(affiliateDiscount);
         return Math.max(0, finalTotal); // Ensure total doesn't go below 0
     };
 
@@ -187,7 +190,7 @@ function OrderConfirmation() {
                     </div>
 
                     {/* Discount Breakdown */}
-                    {(couponDiscount || loyaltyDiscount || discount || upsellDiscount) && (
+                    {(couponDiscount || loyaltyDiscount || discount || upsellDiscount || affiliateDiscount) && (
                         <div className="bg-gray-50 rounded-lg p-3 mb-4">
                             <h3 className="text-sm font-semibold text-gray-700 mb-2">Savings Applied</h3>
                             <div className="space-y-2">
@@ -214,6 +217,16 @@ function OrderConfirmation() {
                                         <span className="text-gray-600">Upsell Discount</span>
                                         <span className="font-semibold text-green-600">
                                             -৳{parseFloat(upsellDiscount).toFixed(2)}
+                                        </span>
+                                    </div>
+                                )}
+                                {affiliateDiscount && (
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-gray-600">
+                                            Affiliate Discount {affiliateCode && `(${affiliateCode})`}
+                                        </span>
+                                        <span className="font-semibold text-green-600">
+                                            -৳{parseFloat(affiliateDiscount).toFixed(2)}
                                         </span>
                                     </div>
                                 )}

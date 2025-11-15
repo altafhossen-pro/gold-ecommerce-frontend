@@ -11,7 +11,8 @@ import {
     ShoppingCart,
     DollarSign,
     Calendar,
-    User
+    User,
+    Eye
 } from 'lucide-react';
 import { inventoryAPI, productAPI } from '@/services/api';
 import { getCookie } from 'cookies-next';
@@ -45,6 +46,8 @@ const InventoryPage = () => {
     const [hasReadPermission, setHasReadPermission] = useState(false);
     const [hasUpdatePermission, setHasUpdatePermission] = useState(false);
     const [permissionError, setPermissionError] = useState(null);
+    const [showItemsModal, setShowItemsModal] = useState(false);
+    const [selectedPurchase, setSelectedPurchase] = useState(null);
 
     // Fetch purchases
     const fetchPurchases = async () => {
@@ -876,6 +879,9 @@ const InventoryPage = () => {
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             Purchased By
                                         </th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Action
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
@@ -888,19 +894,9 @@ const InventoryPage = () => {
                                                 {formatDate(purchase.createdAt)}
                                             </td>
                                             <td className="px-6 py-4 text-sm text-gray-900">
-                                                <div className="max-w-xs">
-                                                    {purchase.items?.slice(0, 2).map((item, idx) => (
-                                                        <div key={idx} className="text-xs">
-                                                            {item.product?.title || 'N/A'}
-                                                            {item.variant?.sku && ` (${item.variant.sku})`}
-                                                        </div>
-                                                    ))}
-                                                    {purchase.items?.length > 2 && (
-                                                        <div className="text-xs text-gray-500">
-                                                            +{purchase.items.length - 2} more
-                                                        </div>
-                                                    )}
-                                                </div>
+                                                <span className="font-medium">
+                                                    {purchase.items?.length || 0} {purchase.items?.length === 1 ? 'item' : 'items'}
+                                                </span>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                 {purchase.totalQuantity}
@@ -910,6 +906,18 @@ const InventoryPage = () => {
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                                 {purchase.performedBy?.name || 'N/A'}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                <button
+                                                    onClick={() => {
+                                                        setSelectedPurchase(purchase);
+                                                        setShowItemsModal(true);
+                                                    }}
+                                                    className="text-blue-600 hover:text-blue-800 cursor-pointer flex items-center space-x-1"
+                                                >
+                                                    <Eye className="w-4 h-4" />
+                                                    <span>View</span>
+                                                </button>
                                             </td>
                                         </tr>
                                     ))}
@@ -967,6 +975,133 @@ const InventoryPage = () => {
                     </>
                 )}
             </div>
+
+            {/* Items Modal */}
+            {showItemsModal && selectedPurchase && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                            <div>
+                                <h3 className="text-xl font-semibold text-gray-900">
+                                    Purchase Items - {selectedPurchase.purchaseNumber}
+                                </h3>
+                                <p className="text-sm text-gray-500 mt-1">
+                                    {formatDate(selectedPurchase.createdAt)} • {selectedPurchase.items?.length || 0} items
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    setShowItemsModal(false);
+                                    setSelectedPurchase(null);
+                                }}
+                                className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                            >
+                                <X className="h-6 w-6" />
+                            </button>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="flex-1 overflow-y-auto p-6">
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className="bg-gray-50 sticky top-0">
+                                        <tr>
+                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                #
+                                            </th>
+                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Product
+                                            </th>
+                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                SKU
+                                            </th>
+                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Variant
+                                            </th>
+                                            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Qty
+                                            </th>
+                                            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Unit Cost
+                                            </th>
+                                            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Total
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {selectedPurchase.items?.map((item, index) => (
+                                            <tr key={index} className="hover:bg-gray-50">
+                                                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
+                                                    {index + 1}
+                                                </td>
+                                                <td className="px-4 py-2 text-sm text-gray-900 max-w-xs">
+                                                    <div className="truncate" title={item.product?.title || 'N/A'}>
+                                                        {item.product?.title || 'N/A'}
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-600">
+                                                    {item.variant?.sku ? (
+                                                        <span className="font-mono text-xs">{item.variant.sku}</span>
+                                                    ) : (
+                                                        <span className="text-gray-400">-</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-2 text-sm text-gray-600">
+                                                    {item.variant?.attributes && item.variant.attributes.length > 0 ? (
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {item.variant.attributes.map((attr, attrIdx) => (
+                                                                <span
+                                                                    key={attrIdx}
+                                                                    className="inline-block px-1.5 py-0.5 rounded text-xs bg-gray-100 text-gray-700"
+                                                                >
+                                                                    {attr.value}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-gray-400">-</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900 text-right">
+                                                    {item.quantity || 0}
+                                                </td>
+                                                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900 text-right">
+                                                    ৳{item.unitCost?.toFixed(2) || '0.00'}
+                                                </td>
+                                                <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900 text-right">
+                                                    ৳{item.totalCost?.toFixed(2) || '0.00'}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="border-t border-gray-200 p-6 bg-gray-50">
+                            <div className="flex items-center justify-between">
+                                <div className="text-sm text-gray-600">
+                                    <span className="font-medium">Total Items:</span> {selectedPurchase.items?.length || 0} • 
+                                    <span className="font-medium ml-2">Total Quantity:</span> {selectedPurchase.totalQuantity || 0} • 
+                                    <span className="font-medium ml-2">Total Cost:</span> ৳{selectedPurchase.totalCost?.toFixed(2) || '0.00'}
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setShowItemsModal(false);
+                                        setSelectedPurchase(null);
+                                    }}
+                                    className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors cursor-pointer"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

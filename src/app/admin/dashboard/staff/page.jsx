@@ -16,7 +16,8 @@ import {
     Mail,
     Phone,
     Calendar,
-    MoreVertical
+    MoreVertical,
+    Shield
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { userAPI } from '@/services/api'
@@ -25,9 +26,9 @@ import { useAppContext } from '@/context/AppContext'
 import PermissionDenied from '@/components/Common/PermissionDenied'
 import DeleteConfirmationModal from '@/components/Common/DeleteConfirmationModal'
 
-export default function AdminCustomersPage() {
+export default function AdminStaffPage() {
     const router = useRouter()
-    const { hasPermission, contextLoading, user: currentUser } = useAppContext()
+    const { hasPermission, contextLoading, user: currentUser, roleDetails } = useAppContext()
     const [users, setUsers] = useState([])
     const [loading, setLoading] = useState(true)
     const [checkingPermission, setCheckingPermission] = useState(true)
@@ -65,11 +66,13 @@ export default function AdminCustomersPage() {
                 limit: itemsPerPage,
                 search: searchTerm,
                 status: statusFilter,
-                customersOnly: 'true' // Filter for customers only (role='customer' AND roleId is null)
+                staffOnly: 'true' // Filter for staff only (non-customers)
             }
             
-            // Don't add role filter for customers page since customersOnly already filters correctly
-            // Role filter dropdown is kept for UI consistency but won't affect results
+            // Add role filter if specified (for staff page, only admin and seller)
+            if (roleFilter) {
+                params.role = roleFilter
+            }
             
             const data = await userAPI.getUsers(params, token)
             
@@ -151,14 +154,16 @@ export default function AdminCustomersPage() {
         )
     }
 
-    const getRoleBadge = (role) => {
+    const getRoleBadge = (role, roleId) => {
         const roleConfig = {
             admin: { bg: 'bg-purple-100', text: 'text-purple-800', label: 'Admin' },
             customer: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Customer' },
             seller: { bg: 'bg-orange-100', text: 'text-orange-800', label: 'Seller' }
         }
         
-        const config = roleConfig[role] || roleConfig.customer
+        // If user has roleId, they are staff (admin with custom role)
+        const displayRole = roleId ? 'admin' : role
+        const config = roleConfig[displayRole] || roleConfig.customer
         return (
             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.bg} ${config.text}`}>
                 {config.label}
@@ -196,7 +201,7 @@ export default function AdminCustomersPage() {
         return (
             <PermissionDenied 
                 title="Access Denied"
-                message={permissionError || "You don't have permission to access customers"}
+                message={permissionError || "You don't have permission to access staff"}
                 action="Contact your administrator for access"
                 showBackButton={true}
             />
@@ -209,14 +214,14 @@ export default function AdminCustomersPage() {
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900">Customers</h1>
+                        <h1 className="text-2xl font-bold text-gray-900">Staff</h1>
                         <p className="mt-1 text-sm text-gray-500">
-                            Manage your customers and user accounts
+                            Manage your staff members and admin accounts
                         </p>
                     </div>
                     <div className="flex items-center space-x-3">
                         <div className="text-sm text-gray-500">
-                            Total: {totalItems} users
+                            Total: {totalItems} staff members
                         </div>
                     </div>
                 </div>
@@ -268,7 +273,6 @@ export default function AdminCustomersPage() {
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer"
                         >
                             <option value="">All Roles</option>
-                            <option value="customer">Customer</option>
                             <option value="admin">Admin</option>
                             <option value="seller">Seller</option>
                         </select>
@@ -315,8 +319,8 @@ export default function AdminCustomersPage() {
                                 <tr>
                                     <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
                                         {searchTerm || statusFilter || roleFilter 
-                                            ? 'No users found matching your filters.' 
-                                            : 'No users found.'
+                                            ? 'No staff members found matching your filters.' 
+                                            : 'No staff members found.'
                                         }
                                     </td>
                                 </tr>
@@ -334,7 +338,7 @@ export default function AdminCustomersPage() {
                                                         />
                                                     ) : (
                                                         <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
-                                                            <Users className="h-5 w-5 text-gray-400" />
+                                                            <Shield className="h-5 w-5 text-gray-400" />
                                                         </div>
                                                     )}
                                                 </div>
@@ -359,7 +363,7 @@ export default function AdminCustomersPage() {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            {getRoleBadge(user.role)}
+                                            {getRoleBadge(user.role, user.roleId)}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             {getStatusBadge(user.status)}
@@ -387,15 +391,20 @@ export default function AdminCustomersPage() {
                                                         <Eye className="h-4 w-4" />
                                                     </button>
                                                 )}
-                                                {hasPermission('user','update') && (
-                                                    <button
-                                                        onClick={() => router.push(`/admin/dashboard/customers/${user._id}/edit`)}
-                                                        className="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-50 cursor-pointer"
-                                                        title="Edit User"
-                                                    >
-                                                        <Edit className="h-4 w-4" />
-                                                    </button>
-                                                )}
+                                                {(() => {
+                                                    // Only Super Admin can edit staff users
+                                                    const isCurrentUserSuperAdmin = roleDetails?.isSuperAdmin === true
+                                                    const canEdit = hasPermission('user','update') && isCurrentUserSuperAdmin
+                                                    return canEdit && (
+                                                        <button
+                                                            onClick={() => router.push(`/admin/dashboard/customers/${user._id}/edit`)}
+                                                            className="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-50 cursor-pointer"
+                                                            title="Edit User"
+                                                        >
+                                                            <Edit className="h-4 w-4" />
+                                                        </button>
+                                                    )
+                                                })()}
                                                 {(() => {
                                                     const isTargetAdmin = user.role === 'admin' || !!user.roleId
                                                     const targetIsSuperAdmin = !!(user.roleId && user.roleId.isSuperAdmin)
@@ -520,3 +529,4 @@ export default function AdminCustomersPage() {
         </div>
     )
 }
+

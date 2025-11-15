@@ -57,9 +57,10 @@ export default function EditCustomerPage() {
         if (!customerId) return
         if (contextLoading) return
         const canUpdate = hasPermission('user', 'update')
-        const canManageRoles = hasPermission('user', 'manage_roles')
+        const canUpdateRole = hasPermission('role', 'update')
+        // Role update permission requires role.update permission (module: 'role', action: 'update')
         setHasUpdatePermission(canUpdate)
-        setHasRoleUpdatePermission(!!canManageRoles)
+        setHasRoleUpdatePermission(!!canUpdateRole)
         setCheckingPermission(false)
         if (canUpdate) {
             fetchCustomerDetails()
@@ -93,17 +94,30 @@ export default function EditCustomerPage() {
             const data = await userAPI.getUserById(customerId, token)
             
             if (data.success) {
-                setCustomer(data.data)
+                const userData = data.data
+                
+                // Check if target user is staff (has roleId)
+                const targetIsStaff = userData.roleId && (userData.roleId._id || userData.roleId)
+                const isCurrentUserSuperAdmin = roleDetails?.isSuperAdmin === true
+                
+                // If target user is staff and current user is not super admin, deny access
+                if (targetIsStaff && !isCurrentUserSuperAdmin) {
+                    setPermissionError("Only Super Admin can view or edit staff user data")
+                    setLoading(false)
+                    return
+                }
+                
+                setCustomer(userData)
                 setFormData({
-                    name: data.data.name,
-                    email: data.data.email,
-                    phone: data.data.phone,
-                    address: data.data.address || '',
-                    status: data.data.status,
-                    roleId: data.data.roleId || null
+                    name: userData.name,
+                    email: userData.email,
+                    phone: userData.phone,
+                    address: userData.address || '',
+                    status: userData.status,
+                    roleId: userData.roleId?._id || userData.roleId || null
                 })
-                setOriginalRoleId(data.data.roleId || null)
-                setOriginalEmail(data.data.email || null)
+                setOriginalRoleId(userData.roleId?._id || userData.roleId || null)
+                setOriginalEmail(userData.email || null)
             } else {
                 if (data.status === 403) {
                     setPermissionError(data.message || "You don't have permission to update users")
@@ -162,7 +176,7 @@ export default function EditCustomerPage() {
 
     const handleRoleConfirm = async () => {
         if (!hasRoleUpdatePermission) {
-            toast.error("You don't have permission to manage user roles")
+            toast.error("Permission Denied: You don't have permission to change user roles. Please contact your administrator to grant Role Management access.")
             return
         }
         if (isCaptchaCorrect) {
@@ -447,7 +461,11 @@ export default function EditCustomerPage() {
                                             value={formData.roleId || ''}
                                             onChange={(e) => {
                                                 if (!hasRoleUpdatePermission || (isSelfEdit && !isCurrentUserSuperAdmin)) {
-                                                    toast.error("You don't have permission to manage user roles")
+                                                    if (!hasRoleUpdatePermission) {
+                                                        toast.error("Permission Denied: You don't have permission to change user roles. Please contact your administrator to grant Role Management access.")
+                                                    } else {
+                                                        toast.error("Cannot Update Own Role: You cannot update your own role. Only Super Admin can update their own role.")
+                                                    }
                                                     return
                                                 }
                                                 const roleId = e.target.value || null
@@ -472,11 +490,21 @@ export default function EditCustomerPage() {
                                                     </option>
                                                 ))}
                                         </select>
-                                        <p className={`mt-1 text-xs ${isDisabled ? 'text-red-500' : 'text-gray-500'}`}>
+                                        <p className={`mt-1 text-xs ${isDisabled ? 'text-red-600 font-medium' : 'text-gray-500'}`}>
                                             {!hasRoleUpdatePermission 
-                                                ? "You don't have permission to manage user roles"
+                                                ? (
+                                                    <span className="flex items-center gap-1">
+                                                        <AlertCircle className="h-3 w-3 inline" />
+                                                        <span>You don't have permission to change user roles. Contact your administrator to grant <span className="font-semibold">Role Management</span> access.</span>
+                                                    </span>
+                                                )
                                                 : isSelfEdit && !isCurrentUserSuperAdmin
-                                                ? "You cannot update your own role. Only Super Admin can update their own role."
+                                                ? (
+                                                    <span className="flex items-center gap-1 text-amber-600">
+                                                        <AlertCircle className="h-3 w-3 inline" />
+                                                        <span>You cannot update your own role. Only Super Admin can update their own role.</span>
+                                                    </span>
+                                                )
                                                 : "Assign an admin role for admin panel access. If none selected, user will remain as a regular customer."
                                             }
                                         </p>

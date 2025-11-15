@@ -31,6 +31,8 @@ export default function ProductDetails({ productSlug }) {
     const [loading, setLoading] = useState(true);
     const [showMagnify, setShowMagnify] = useState(false);
     const [magnifyPosition, setMagnifyPosition] = useState({ x: 0, y: 0 });
+    const [isManualImageSelection, setIsManualImageSelection] = useState(false);
+    const [hasManuallySelectedVariant, setHasManuallySelectedVariant] = useState(false);
 
     // Fetch product data
     useEffect(() => {
@@ -51,8 +53,16 @@ export default function ProductDetails({ productSlug }) {
     useEffect(() => {
         if (product) {
             setSelectedImage(0);
+            setHasManuallySelectedVariant(false); // Reset on new product load
+            setIsManualImageSelection(false); // Reset manual image selection
         }
     }, [product]);
+
+    // Reset selected image to 0 when variant changes (size or color)
+    useEffect(() => {
+        setSelectedImage(0);
+        setIsManualImageSelection(false); // Reset manual selection when variant changes
+    }, [selectedSize, selectedColor]);
 
     const fetchProduct = async () => {
         try {
@@ -177,6 +187,7 @@ export default function ProductDetails({ productSlug }) {
 
     const handleSizeChange = (size) => {
         setSelectedSize(size);
+        setHasManuallySelectedVariant(true); // User manually selected variant
         // Reset color when size changes
         const colorsForSize = getAvailableColorsForSize(size);
         if (colorsForSize.length > 0) {
@@ -189,6 +200,7 @@ export default function ProductDetails({ productSlug }) {
 
     const handleColorChange = (color) => {
         setSelectedColor(color);
+        setHasManuallySelectedVariant(true); // User manually selected variant
     };
 
     const handleAddToCart = () => {
@@ -296,8 +308,8 @@ export default function ProductDetails({ productSlug }) {
     const originalPrice = getOriginalPrice();
     const discount = originalPrice ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100) : 0;
 
-    // Get all images (featured + gallery)
-    const getAllImages = () => {
+    // Get default product images (featured + gallery) - always used for gallery slider
+    const getDefaultImages = () => {
         if (!product) return [];
 
         const images = [];
@@ -319,19 +331,43 @@ export default function ProductDetails({ productSlug }) {
         return images;
     };
 
-    // Get display image based on selected index
+    // Get preview images - variant images only if user manually selected variant, else default
+    const getPreviewImages = () => {
+        if (!product) return [];
+
+        // If user manually selected an image from gallery, use default images
+        if (isManualImageSelection) {
+            return getDefaultImages();
+        }
+
+        // Only show variant images if user has manually selected a variant
+        // On page load, even if variant is auto-selected, show default images
+        if (hasManuallySelectedVariant && selectedVariant && selectedVariant.images && selectedVariant.images.length > 0) {
+            // Return variant images
+            return selectedVariant.images.map(img => ({
+                url: img.url,
+                altText: img.altText || product.title,
+                isFeatured: img.isPrimary || false
+            }));
+        }
+
+        // Fallback to default product images (featured + gallery)
+        return getDefaultImages();
+    };
+
+    // Get display image based on selected index (for preview)
     const getDisplayImage = (index) => {
         if (!product) return '/images/placeholder.png';
 
-        const allImages = getAllImages();
-        if (allImages.length > 0 && index < allImages.length) {
-            return allImages[index].url;
+        const previewImages = getPreviewImages();
+        if (previewImages.length > 0 && index < previewImages.length) {
+            return previewImages[index].url;
         }
         return '/images/placeholder.png';
     };
 
-    // Get total number of images
-    const totalImages = product ? getAllImages().length : 0;
+    // Get total number of images for gallery slider (always default images)
+    const totalImages = product ? getDefaultImages().length : 0;
 
     if (loading) {
         return (
@@ -347,7 +383,7 @@ export default function ProductDetails({ productSlug }) {
 
     return (
         <div className="min-h-screen px-4 lg:px-4 py-4">
-            <div className="max-w-screen-2xl px-4 mx-auto">
+            <div className="max-w-screen-2xl  mx-auto">
                 {/* Breadcrumb */}
                 <div className="mb-6">
                     <nav className="flex text-sm text-gray-500">
@@ -423,25 +459,37 @@ export default function ProductDetails({ productSlug }) {
                                 className="thumbnail-swiper"
                             >
                                 {product && totalImages > 0 ? (
-                                    getAllImages()?.map((image, index) => (
-                                        <SwiperSlide key={index}>
-                                            <button
-                                                onClick={() => setSelectedImage(index)}
-                                                className={`aspect-square bg-white rounded-lg overflow-hidden border-2 transition-all cursor-pointer w-full ${selectedImage === index
-                                                    ? 'border-pink-500'
-                                                    : 'border-gray-200 hover:border-pink-300'
-                                                    }`}
-                                            >
-                                                <img
-                                                    src={image.url}
-                                                    alt={image.altText || `${product.title} ${index + 1}`}
-                                                    className="w-full h-full object-cover"
-                                                />
-                                                {/* Featured Image Badge */}
+                                    getDefaultImages()?.map((image, index) => {
+                                        // Highlight if: manually selected and index matches, OR showing default images and index matches
+                                        const isShowingDefaultImages = isManualImageSelection || 
+                                            !selectedVariant || 
+                                            !selectedVariant.images || 
+                                            selectedVariant.images.length === 0;
+                                        const isCurrentlyShown = isShowingDefaultImages && selectedImage === index;
+                                        
+                                        return (
+                                            <SwiperSlide key={index}>
+                                                <button
+                                                    onClick={() => {
+                                                        setIsManualImageSelection(true);
+                                                        setSelectedImage(index);
+                                                    }}
+                                                    className={`aspect-square bg-white rounded-lg overflow-hidden border-2 transition-all cursor-pointer w-full ${isCurrentlyShown
+                                                        ? 'border-pink-500'
+                                                        : 'border-gray-200 hover:border-pink-300'
+                                                        }`}
+                                                >
+                                                    <img
+                                                        src={image.url}
+                                                        alt={image.altText || `${product.title} ${index + 1}`}
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                    {/* Featured Image Badge */}
 
-                                            </button>
-                                        </SwiperSlide>
-                                    ))
+                                                </button>
+                                            </SwiperSlide>
+                                        );
+                                    })
                                 ) : (
                                     <SwiperSlide>
                                         <div className="aspect-square bg-white rounded-lg overflow-hidden border-2 border-gray-200">
@@ -556,18 +604,26 @@ export default function ProductDetails({ productSlug }) {
                                 <div className="space-y-2">
                                     <label className="block text-sm font-medium text-gray-700">Select Size</label>
                                     <div className="flex gap-2">
-                                        {uniqueSizes.map((size) => (
-                                            <button
-                                                key={size}
-                                                onClick={() => handleSizeChange(size)}
-                                                className={`w-8 h-8 rounded-md border-2 transition-all duration-200 flex items-center justify-center text-sm font-medium cursor-pointer ${selectedSize === size
-                                                    ? 'bg-pink-500 text-white border-pink-500 shadow-sm'
-                                                    : 'border-gray-300 text-gray-700 hover:border-pink-400 hover:bg-pink-50'
-                                                    }`}
-                                            >
-                                                {size}
-                                            </button>
-                                        ))}
+                                        {uniqueSizes.map((size) => {
+                                            const isSingleChar = size.length === 1;
+
+                                            return (
+                                                <button
+                                                    key={size}
+                                                    onClick={() => handleSizeChange(size)}
+                                                    className={`rounded-md border-2 transition-all duration-200 flex items-center justify-center font-medium cursor-pointer
+        ${selectedSize === size
+                                                            ? 'bg-pink-500 text-white border-pink-500 shadow-sm'
+                                                            : 'border-gray-300 text-gray-700 hover:border-pink-400 hover:bg-pink-50'
+                                                        }
+        ${isSingleChar ? 'w-10 h-10 text-base md:text-lg' : 'px-3 py-2 text-sm'}
+      `}
+                                                >
+                                                    {size}
+                                                </button>
+                                            );
+                                        })}
+
                                     </div>
                                 </div>
                             )}
@@ -728,7 +784,7 @@ export default function ProductDetails({ productSlug }) {
                         {/* Additional Information Tab */}
                         {activeTab === 'additional' && (
                             <div className="space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="grid grid-cols-2 md:grid-cols-2 gap-6">
                                     <div className="space-y-3">
                                         <div className="flex items-center justify-between py-2 border-b border-gray-100">
                                             <span className="text-sm font-medium text-gray-600">Brand</span>
@@ -760,7 +816,7 @@ export default function ProductDetails({ productSlug }) {
                                 {product.specifications && product.specifications.length > 0 && (
                                     <div className="pt-6 border-t border-gray-100">
                                         <h4 className="font-semibold text-gray-900 mb-3">Specifications</h4>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
                                             {product.specifications.map((spec, index) => (
                                                 <div key={index} className="flex items-center justify-between py-2 border-b border-gray-50">
                                                     <span className="text-sm font-medium text-gray-600">{spec.key}</span>
@@ -775,7 +831,7 @@ export default function ProductDetails({ productSlug }) {
                                 {(!product.specifications || product.specifications.length === 0) && (
                                     <div className="pt-6 border-t border-gray-100">
                                         <h4 className="font-semibold text-gray-900 mb-3">Specifications</h4>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
                                             <div className="flex items-center justify-between py-2 border-b border-gray-50">
                                                 <span className="text-sm font-medium text-gray-600">Material</span>
                                                 <span className="text-sm text-gray-900">18k White Gold</span>
@@ -811,7 +867,7 @@ export default function ProductDetails({ productSlug }) {
                                     </h4>
                                     <div className="text-sm text-gray-600 space-y-2">
                                         <p>• <strong>Delivery Time:</strong> 3-5 business days from order confirmation</p>
-                                        
+
                                         {/* Dynamic Delivery Charges */}
                                         {deliverySettingsLoading ? (
                                             <p>• <strong>Delivery Charges:</strong> Loading...</p>
@@ -828,7 +884,7 @@ export default function ProductDetails({ productSlug }) {
                                         ) : (
                                             <p>• <strong>Delivery Charge:</strong> Must be paid upfront with order</p>
                                         )}
-                                        
+
                                         <p>• <strong>Tracking:</strong> You will receive tracking information via SMS/Email</p>
                                         <p>• <strong>Delivery Areas:</strong> We deliver across Bangladesh</p>
                                         {product.shippingInfo?.weight && (

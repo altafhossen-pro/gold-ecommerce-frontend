@@ -185,9 +185,10 @@ function TrackingPageContent() {
           const couponDiscount = order.couponDiscount || 0;
           const upsellDiscount = order.upsellDiscount || 0;
           const loyaltyDiscount = order.loyaltyDiscount || 0;
+          const affiliateDiscount = order.affiliateOrder?.affiliateDiscount || 0;
           
           // Calculate final total: items + shipping - all discounts
-          const finalTotal = itemsSubtotal + shippingCost - discount - couponDiscount - upsellDiscount - loyaltyDiscount;
+          const finalTotal = itemsSubtotal + shippingCost - discount - couponDiscount - upsellDiscount - loyaltyDiscount - affiliateDiscount;
           
           return (
           <div className="space-y-6">
@@ -204,6 +205,65 @@ function TrackingPageContent() {
                 </div>
               </div>
             </div>
+
+            {/* Discount Breakdown */}
+            {/* {(discount > 0 || couponDiscount > 0 || upsellDiscount > 0 || loyaltyDiscount > 0 || affiliateDiscount > 0) && (
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Order Summary</h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-600">Items Subtotal:</span>
+                    <span className="font-medium text-gray-900">৳{itemsSubtotal.toFixed(2)}</span>
+                  </div>
+                  {shippingCost > 0 && (
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-gray-600">Shipping Cost:</span>
+                      <span className="font-medium text-gray-900">৳{shippingCost.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {discount > 0 && (
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-gray-600">General Discount:</span>
+                      <span className="font-semibold text-green-600">-৳{discount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {couponDiscount > 0 && (
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-gray-600">
+                        Coupon Discount {order.coupon && `(${order.coupon})`}:
+                      </span>
+                      <span className="font-semibold text-blue-600">-৳{couponDiscount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {upsellDiscount > 0 && (
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-gray-600">Upsell Discount:</span>
+                      <span className="font-semibold text-green-600">-৳{upsellDiscount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {affiliateDiscount > 0 && (
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-gray-600">
+                        Affiliate Discount {order.affiliateOrder?.affiliateCode && `(${order.affiliateOrder.affiliateCode})`}:
+                      </span>
+                      <span className="font-semibold text-green-600">-৳{affiliateDiscount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {loyaltyDiscount > 0 && (
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-gray-600">Loyalty Points Discount:</span>
+                      <span className="font-semibold text-pink-600">-৳{loyaltyDiscount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="border-t border-gray-200 pt-2 mt-2">
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold text-gray-900">Total Amount:</span>
+                      <span className="font-bold text-lg text-gray-900">৳{finalTotal.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )} */}
 
             {/* Tracking Timeline */}
             <div className="bg-white rounded-lg shadow-md p-6">

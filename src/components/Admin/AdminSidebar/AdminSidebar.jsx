@@ -79,6 +79,7 @@ const navigation = [
         type: 'group',
         children: [
             { name: 'All Customers', href: '/admin/dashboard/customers', icon: Users },
+            { name: 'All Staff', href: '/admin/dashboard/staff', icon: Shield },
         ]
     },
     { 
@@ -138,6 +139,9 @@ export default function AdminSidebar({ onMobileMenuClose }) {
         }
         if (child.href === '/admin/dashboard/customers') {
             return pathname === '/admin/dashboard/customers' || pathname === '/admin/dashboard/customers/'
+        }
+        if (child.href === '/admin/dashboard/staff') {
+            return pathname === '/admin/dashboard/staff' || pathname === '/admin/dashboard/staff/'
         }
         if (child.href === '/admin/dashboard/categories') {
             return pathname === '/admin/dashboard/categories' || pathname === '/admin/dashboard/categories/'

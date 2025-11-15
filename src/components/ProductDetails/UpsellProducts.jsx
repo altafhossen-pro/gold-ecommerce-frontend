@@ -231,7 +231,7 @@ const UpsellProducts = ({ currentProductId }) => {
     if (loading) {
         return (
             <div className="py-8">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="max-w-7xl mx-auto px-0  lg:px-8">
                     <h2 className="text-2xl font-bold text-gray-900 mb-6">Frequently Bought Together</h2>
                     <div className="flex items-center justify-center py-8">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
@@ -247,10 +247,10 @@ const UpsellProducts = ({ currentProductId }) => {
 
     return (
         <div className="py-8 bg-gray-50">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="max-w-7xl mx-auto px-0  lg:px-8">
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Frequently Bought Together</h2>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     {/* Products */}
                     {upsellData.linkedProducts.map((link, index) => (
                         <div key={link.product._id} className="relative">

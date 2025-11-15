@@ -7,6 +7,7 @@ import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import AppContext from '@/context/AppContext'
 import { userAPI } from '@/services/api'
+import MobileDashboardMenu from '@/components/Customer/MobileDashboardMenu/MobileDashboardMenu'
 
 // Dynamic import for CustomerSidebar to avoid SSR issues
 const CustomerSidebar = dynamic(() => import("@/components/Customer/CustomerSidebar/CustomerSidebar"), {
@@ -230,7 +231,9 @@ function CustomerDashboardLayoutContent({ children }) {
                 {/* Main Content Area - Scrollable */}
                 <div className="flex-1 overflow-y-auto">
                     <main className="p-6">
-                        <div className=" mx-auto">
+                        <div className="mx-auto">
+                            {/* Mobile Menu - Only visible on mobile, appears at top of content */}
+                            <MobileDashboardMenu />
                             {children}
                         </div>
                     </main>

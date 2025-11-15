@@ -10,7 +10,8 @@ import {
     TrendingUp,
     Calendar,
     User,
-    ArrowRight
+    Eye,
+    X
 } from 'lucide-react';
 import { inventoryAPI } from '@/services/api';
 import { getCookie } from 'cookies-next';
@@ -29,6 +30,9 @@ const StockAdjustmentPage = () => {
     const [checkingPermission, setCheckingPermission] = useState(true);
     const [hasReadPermission, setHasReadPermission] = useState(false);
     const [permissionError, setPermissionError] = useState(null);
+    const [showDetailsModal, setShowDetailsModal] = useState(false);
+    const [selectedAdjustment, setSelectedAdjustment] = useState(null);
+    const [loadingDetails, setLoadingDetails] = useState(false);
 
     useEffect(() => {
         if (!contextLoading) {
@@ -92,6 +96,25 @@ const StockAdjustmentPage = () => {
             'other': 'Other'
         };
         return reasonMap[reason] || reason;
+    };
+
+    const handleViewDetails = async (adjustmentId) => {
+        try {
+            setLoadingDetails(true);
+            const response = await inventoryAPI.getStockAdjustmentById(adjustmentId, token);
+            
+            if (response.success) {
+                setSelectedAdjustment(response.data);
+                setShowDetailsModal(true);
+            } else {
+                toast.error('Failed to fetch adjustment details');
+            }
+        } catch (error) {
+            console.error('Error fetching adjustment details:', error);
+            toast.error('Error fetching adjustment details');
+        } finally {
+            setLoadingDetails(false);
+        }
     };
 
     if (checkingPermission || contextLoading) {
@@ -182,22 +205,9 @@ const StockAdjustmentPage = () => {
                                                 {formatDate(adjustment.createdAt)}
                                             </td>
                                             <td className="px-6 py-4 text-sm text-gray-900">
-                                                <div className="max-w-xs">
-                                                    {adjustment.items?.slice(0, 2).map((item, idx) => (
-                                                        <div key={idx} className="text-xs">
-                                                            {item.product?.title || 'N/A'}
-                                                            {item.variant?.sku && ` (${item.variant.sku})`}
-                                                            <span className="text-red-600 ml-1">
-                                                                -{item.quantity} ({getReasonLabel(item.reason)})
-                                                            </span>
-                                                        </div>
-                                                    ))}
-                                                    {adjustment.items?.length > 2 && (
-                                                        <div className="text-xs text-gray-500">
-                                                            +{adjustment.items.length - 2} more items
-                                                        </div>
-                                                    )}
-                                                </div>
+                                                <span className="font-medium">
+                                                    {adjustment.items?.length || 0} {adjustment.items?.length === 1 ? 'item' : 'items'}
+                                                </span>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                 <span className="text-red-600 font-medium">
@@ -209,11 +219,12 @@ const StockAdjustmentPage = () => {
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm">
                                                 <button
-                                                    onClick={() => router.push(`/admin/dashboard/inventory/stock-adjustment/${adjustment._id}`)}
-                                                    className="text-blue-600 hover:text-blue-800 cursor-pointer flex items-center space-x-1"
+                                                    onClick={() => handleViewDetails(adjustment._id)}
+                                                    disabled={loadingDetails}
+                                                    className="text-blue-600 hover:text-blue-800 cursor-pointer flex items-center space-x-1 disabled:opacity-50"
                                                 >
+                                                    <Eye className="w-4 h-4" />
                                                     <span>View</span>
-                                                    <ArrowRight className="w-4 h-4" />
                                                 </button>
                                             </td>
                                         </tr>
@@ -272,6 +283,165 @@ const StockAdjustmentPage = () => {
                     </>
                 )}
             </div>
+
+            {/* Details Modal */}
+            {showDetailsModal && selectedAdjustment && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                            <div>
+                                <h3 className="text-xl font-semibold text-gray-900">
+                                    Stock Adjustment - {selectedAdjustment.adjustmentNumber}
+                                </h3>
+                                <p className="text-sm text-gray-500 mt-1">
+                                    {formatDate(selectedAdjustment.createdAt)} • {selectedAdjustment.items?.length || 0} items
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    setShowDetailsModal(false);
+                                    setSelectedAdjustment(null);
+                                }}
+                                className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                            >
+                                <X className="h-6 w-6" />
+                            </button>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="flex-1 overflow-y-auto p-6">
+                            {/* Adjustment Info */}
+                            <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="bg-gray-50 rounded-lg p-4">
+                                    <p className="text-xs text-gray-500 mb-1">Total Quantity Adjusted</p>
+                                    <p className="text-lg font-semibold text-red-600">-{selectedAdjustment.totalQuantity || 0}</p>
+                                </div>
+                                <div className="bg-gray-50 rounded-lg p-4">
+                                    <p className="text-xs text-gray-500 mb-1">Adjusted By</p>
+                                    <p className="text-sm font-medium text-gray-900">{selectedAdjustment.performedBy?.name || 'N/A'}</p>
+                                </div>
+                                <div className="bg-gray-50 rounded-lg p-4">
+                                    <p className="text-xs text-gray-500 mb-1">Date</p>
+                                    <p className="text-sm font-medium text-gray-900">{formatDate(selectedAdjustment.createdAt)}</p>
+                                </div>
+                            </div>
+
+                            {/* Notes */}
+                            {selectedAdjustment.notes && (
+                                <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                    <p className="text-xs font-medium text-blue-900 mb-1">Notes</p>
+                                    <p className="text-sm text-blue-800">{selectedAdjustment.notes}</p>
+                                </div>
+                            )}
+
+                            {/* Items Table */}
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className="bg-gray-50 sticky top-0">
+                                        <tr>
+                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                #
+                                            </th>
+                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Product
+                                            </th>
+                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                SKU
+                                            </th>
+                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Variant
+                                            </th>
+                                            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Quantity
+                                            </th>
+                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Reason
+                                            </th>
+                                            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Previous Stock
+                                            </th>
+                                            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                New Stock
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {selectedAdjustment.items?.map((item, index) => (
+                                            <tr key={index} className="hover:bg-gray-50">
+                                                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
+                                                    {index + 1}
+                                                </td>
+                                                <td className="px-4 py-2 text-sm text-gray-900 max-w-xs">
+                                                    <div className="truncate" title={item.product?.title || 'N/A'}>
+                                                        {item.product?.title || 'N/A'}
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-600">
+                                                    {item.variant?.sku ? (
+                                                        <span className="font-mono text-xs">{item.variant.sku}</span>
+                                                    ) : (
+                                                        <span className="text-gray-400">-</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-2 text-sm text-gray-600">
+                                                    {item.variant?.attributes && item.variant.attributes.length > 0 ? (
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {item.variant.attributes.map((attr, attrIdx) => (
+                                                                <span
+                                                                    key={attrIdx}
+                                                                    className="inline-block px-1.5 py-0.5 rounded text-xs bg-gray-100 text-gray-700"
+                                                                >
+                                                                    {attr.value}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-gray-400">-</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-2 whitespace-nowrap text-sm text-red-600 font-medium text-right">
+                                                    -{item.quantity || 0}
+                                                </td>
+                                                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-600">
+                                                    <span className="inline-block px-2 py-1 rounded text-xs bg-red-100 text-red-700">
+                                                        {getReasonLabel(item.reason)}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900 text-right">
+                                                    {item.previousStock || 0}
+                                                </td>
+                                                <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-green-600 text-right">
+                                                    {item.newStock || 0}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="border-t border-gray-200 p-6 bg-gray-50">
+                            <div className="flex items-center justify-between">
+                                <div className="text-sm text-gray-600">
+                                    <span className="font-medium">Total Items:</span> {selectedAdjustment.items?.length || 0} • 
+                                    <span className="font-medium ml-2">Total Quantity Adjusted:</span> <span className="text-red-600">-{selectedAdjustment.totalQuantity || 0}</span>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setShowDetailsModal(false);
+                                        setSelectedAdjustment(null);
+                                    }}
+                                    className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors cursor-pointer"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
