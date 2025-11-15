@@ -498,11 +498,9 @@ export const AppProvider = ({ children }) => {
         
         try {
             const code = getCookie('affiliateCode');
-            console.log('AppContext: loadAffiliateCode called, cookie value:', code);
             
             if (code) {
                 // Set affiliate code and mark as available
-                console.log('AppContext: Setting affiliate code in state:', code);
                 setAffiliateCode(code);
                 setIsAvailableAffiliateCode(true);
                 
@@ -514,7 +512,6 @@ export const AppProvider = ({ children }) => {
                     expiryDate = new Date(parseInt(expiryTimestamp));
                     // Check if expired
                     if (expiryDate < new Date()) {
-                        console.log('AppContext: Affiliate code expired, clearing');
                         deleteCookie('affiliateCode');
                         deleteCookie('affiliateCodeExpiry');
                         setAffiliateCode(null);
@@ -522,7 +519,6 @@ export const AppProvider = ({ children }) => {
                         setAffiliateCodeExpireTime(null);
                         return;
                     }
-                    console.log('AppContext: Using expiry from cookie:', expiryDate);
                 } else {
                     // If no expiry cookie, set default 15 minutes from now
                     // This handles old cookies that were set before we started storing expiry
@@ -533,14 +529,11 @@ export const AppProvider = ({ children }) => {
                         sameSite: 'lax',
                         path: '/'
                     });
-                    console.log('AppContext: No expiry cookie, setting default 15 minutes');
                 }
                 
                 setAffiliateCodeExpireTime(expiryDate);
-                console.log('AppContext: Affiliate code state updated successfully, expiry:', expiryDate);
             } else {
                 // No affiliate code in cookie, clear state and expiry cookie
-                console.log('AppContext: No affiliate code in cookie, clearing state');
                 deleteCookie('affiliateCodeExpiry');
                 setAffiliateCode(null);
                 setIsAvailableAffiliateCode(false);

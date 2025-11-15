@@ -504,7 +504,7 @@ export default function OrderDetailsPage() {
                             <div className="ml-4">
                                 <p className="text-sm font-medium text-slate-600">Total Amount</p>
                                 <p className="text-2xl font-bold text-slate-900">
-                                    ৳{order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0) + (order.shippingCost || 0) - (order.discount || 0) - (order.couponDiscount || 0) - (order.upsellDiscount || 0) - (order.loyaltyDiscount || 0)}
+                                    ৳{order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0) + (order.shippingCost || 0) - (order.discount || 0) - (order.couponDiscount || 0) - (order.upsellDiscount || 0) - (order.loyaltyDiscount || 0) - (order.affiliateOrder?.affiliateDiscount || 0)}
                                 </p>
                             </div>
                         </div>
@@ -832,10 +832,16 @@ export default function OrderDetailsPage() {
                                         <span className="font-bold text-pink-600">-৳{order.loyaltyDiscount}</span>
                                     </div>
                                 )}
+                                {order.affiliateOrder?.affiliateDiscount > 0 && (
+                                    <div className="flex justify-between items-center py-3 border-b border-slate-100">
+                                        <span className="text-slate-600 font-medium">Affiliate Discount {order.affiliateOrder?.affiliateCode && `(${order.affiliateOrder.affiliateCode})`}</span>
+                                        <span className="font-bold text-purple-600">-৳{order.affiliateOrder.affiliateDiscount}</span>
+                                    </div>
+                                )}
                                 <div className="pt-4">
                                     <div className="flex justify-between items-center">
                                         <span className="text-lg font-bold text-slate-900">Total</span>
-                                        <span className="text-2xl font-bold text-slate-900">৳{order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0) + order.shippingCost - (order.discount || 0) - (order.couponDiscount || 0) - (order.upsellDiscount || 0) - (order.loyaltyDiscount || 0)}</span>
+                                        <span className="text-2xl font-bold text-slate-900">৳{order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0) + order.shippingCost - (order.discount || 0) - (order.couponDiscount || 0) - (order.upsellDiscount || 0) - (order.loyaltyDiscount || 0) - (order.affiliateOrder?.affiliateDiscount || 0)}</span>
                                     </div>
                                 </div>
                                 {order.loyaltyPointsUsed > 0 && (

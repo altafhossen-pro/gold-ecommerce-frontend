@@ -171,14 +171,9 @@ export default function Checkout() {
     // Fetch affiliate settings - define before use
     const fetchAffiliateSettings = async () => {
         try {
-            console.log('Checkout: Fetching affiliate settings');
             const response = await settingsAPI.getAffiliateSettings();
-            console.log('Checkout: Affiliate settings response:', response);
             if (response.success && response.data) {
                 setAffiliateSettings(response.data);
-                console.log('Checkout: Affiliate settings set:', response.data);
-            } else {
-                console.log('Checkout: Failed to fetch affiliate settings:', response.message);
             }
         } catch (error) {
             console.error('Checkout: Error fetching affiliate settings:', error);
@@ -199,12 +194,10 @@ export default function Checkout() {
             const expireTime = new Date(parseInt(expiryTimestamp));
             // Check if expired
             if (expireTime < new Date()) {
-                console.log('Checkout: Affiliate code expired');
                 setAffiliateExpireTime(null);
                 setAffiliateDiscount(0);
                 return;
             }
-            console.log('Checkout: Using expiry from cookie:', expireTime);
             setAffiliateExpireTime(expireTime);
         } else {
             // If no expiry cookie, check affiliateCode cookie exists
@@ -219,7 +212,6 @@ export default function Checkout() {
                     path: '/'
                 });
                 setAffiliateExpireTime(expireTime);
-                console.log('Checkout: No expiry cookie, setting default');
             } else {
                 setAffiliateExpireTime(null);
                 setAffiliateDiscount(0);
@@ -232,19 +224,9 @@ export default function Checkout() {
         fetchLoyaltySettings();
         fetchAffiliateSettings();
         // Load affiliate code from cookie on mount
-        console.log('Checkout: Loading affiliate code from cookie');
         loadAffiliateCode();
         loadAffiliateCodeFromCookie();
     }, []);
-
-    // Debug: Log affiliate code state changes
-    useEffect(() => {
-        console.log('Checkout: Affiliate code state changed:', {
-            affiliateCode,
-            isAvailableAffiliateCode,
-            hasCookie: typeof window !== 'undefined' ? !!getCookie('affiliateCode') : false
-        });
-    }, [affiliateCode, isAvailableAffiliateCode]);
 
     // Reload affiliate code when it changes
     useEffect(() => {
@@ -255,30 +237,18 @@ export default function Checkout() {
 
     // Calculate affiliate discount
     useEffect(() => {
-        console.log('Checkout: Calculating affiliate discount', {
-            hasAffiliateSettings: !!affiliateSettings,
-            isAvailableAffiliateCode,
-            affiliateCode,
-            cartTotal,
-            hasUser: !!user,
-            affiliateSettingsData: affiliateSettings
-        });
-
         if (!affiliateSettings || !isAvailableAffiliateCode || !affiliateCode) {
-            console.log('Checkout: Missing requirements, setting discount to 0');
             setAffiliateDiscount(0);
             return;
         }
 
         if (!affiliateSettings.isAffiliateEnabled) {
-            console.log('Checkout: Affiliate is not enabled, setting discount to 0');
             setAffiliateDiscount(0);
             return;
         }
 
         // Only apply discount for guest users (as per requirements)
         if (user) {
-            console.log('Checkout: User is logged in, discount is 0 (only for guests)');
             setAffiliateDiscount(0);
             return;
         }
@@ -294,7 +264,6 @@ export default function Checkout() {
 
         // Max discount cannot exceed subtotal
         discount = Math.min(discount, currentSubtotal);
-        console.log('Checkout: Calculated affiliate discount:', discount);
         setAffiliateDiscount(discount);
     }, [affiliateSettings, isAvailableAffiliateCode, affiliateCode, cartTotal, user]);
 
@@ -959,7 +928,6 @@ export default function Checkout() {
                             setAffiliateCode(null);
                             setIsAvailableAffiliateCode(false);
                             setAffiliateCodeExpireTime(null);
-                            console.log('Checkout: Cleared affiliate code after successful order');
                         }
                         
                         // Clear cart and redirect to order confirmation with order details
