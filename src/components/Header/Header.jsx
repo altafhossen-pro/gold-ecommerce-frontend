@@ -153,7 +153,7 @@ function Header({ isTrackingShow = true }) {
                   alt="Logo"
                   width={170}
                   height={70}
-                  className="w-32 sm:w-40 -mt-3"
+                  className="w-32 sm:w-40 "
                   priority
                 />
               </Link>
