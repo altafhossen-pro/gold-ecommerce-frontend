@@ -28,7 +28,7 @@ export default function RootLayout({ children }) {
         {/* tag manager script here  */}
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${geistSans.className} antialiased`}
       >
         <AppProvider>
           <Suspense fallback={null}>

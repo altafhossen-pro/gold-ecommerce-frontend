@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { Plus, Edit, Trash2, Eye, Search, Filter, ChevronLeft, ChevronRight, TrendingUp } from 'lucide-react'
+import { Plus, Edit, Trash2, Eye, Search, Filter, ChevronLeft, ChevronRight, TrendingUp, Share2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { getCookie } from 'cookies-next'
 import { productAPI } from '@/services/api'
 import DeleteConfirmationModal from '@/components/Common/DeleteConfirmationModal'
+import ShareModal from '@/components/Common/ShareModal'
 import PermissionDenied from '@/components/Common/PermissionDenied'
 import { useAppContext } from '@/context/AppContext'
 
@@ -25,6 +26,8 @@ export default function AdminProductsPage() {
     const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
     const [productToDelete, setProductToDelete] = useState(null)
     const [permissionError, setPermissionError] = useState(null)
+    const [showShareModal, setShowShareModal] = useState(false)
+    const [productToShare, setProductToShare] = useState(null)
     const limit = 10
 
     const fetchProducts = useCallback(async () => {
@@ -127,7 +130,12 @@ export default function AdminProductsPage() {
 
         try {
             setDeleting(true)
-            const data = await productAPI.deleteProduct(productToDelete._id)
+            const token = getCookie('token')
+            if (!token) {
+                toast.error('Authentication required. Please login again.')
+                return
+            }
+            const data = await productAPI.deleteProduct(productToDelete._id, token)
             
             if (data.success) {
                 toast.success('Product deleted successfully!')
@@ -185,8 +193,13 @@ export default function AdminProductsPage() {
 
         try {
             setDeleting(true)
+            const token = getCookie('token')
+            if (!token) {
+                toast.error('Authentication required. Please login again.')
+                return
+            }
             const deletePromises = selectedProducts.map(productId => 
-                productAPI.deleteProduct(productId)
+                productAPI.deleteProduct(productId, token)
             )
 
             const results = await Promise.allSettled(deletePromises)
@@ -432,6 +445,16 @@ export default function AdminProductsPage() {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             <div className="flex items-center justify-end space-x-2">
+                                            <button
+                                                    onClick={() => {
+                                                        setProductToShare(product)
+                                                        setShowShareModal(true)
+                                                    }}
+                                                    className="text-pink-600 hover:text-pink-900 p-1 cursor-pointer"
+                                                    title="Share"
+                                                >
+                                                    <Share2 className="h-4 w-4" />
+                                                </button>
                                                 {hasPermission('product', 'read') && (
                                                     <Link
                                                         href={`/admin/dashboard/products/${product._id}`}
@@ -459,6 +482,7 @@ export default function AdminProductsPage() {
                                                         <Edit className="h-4 w-4" />
                                                     </Link>
                                                 )}
+                                                
                                                 {hasPermission('product', 'delete') && (
                                                     <button
                                                         onClick={() => handleDeleteProduct(product._id)}
@@ -578,6 +602,19 @@ export default function AdminProductsPage() {
                 cancelText="Cancel"
                 dangerLevel="high"
             />
+
+            {/* Share Modal */}
+            {productToShare && (
+                <ShareModal
+                    isOpen={showShareModal}
+                    onClose={() => {
+                        setShowShareModal(false)
+                        setProductToShare(null)
+                    }}
+                    url={`/product/${productToShare.slug}`}
+                    title="Share Product"
+                />
+            )}
         </div>
     )
 }

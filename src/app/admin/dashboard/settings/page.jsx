@@ -9,6 +9,7 @@ import {
   MapPin,
   Mail,
   Users,
+  Truck,
 } from 'lucide-react';
 import { useAppContext } from '@/context/AppContext';
 import PermissionDenied from '@/components/Common/PermissionDenied';
@@ -67,6 +68,14 @@ export default function AdminSettingsPage() {
       icon: Users,
       color: 'bg-purple-100 text-purple-600',
       href: '/admin/dashboard/settings/affiliate'
+    },
+    {
+      id: 'steadfast',
+      title: 'Steadfast Configuration',
+      description: 'Courier API settings',
+      icon: Truck,
+      color: 'bg-orange-100 text-orange-600',
+      href: '/admin/dashboard/settings/steadfast'
     }
   ];
 

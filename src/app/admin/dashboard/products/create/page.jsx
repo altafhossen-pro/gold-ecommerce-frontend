@@ -147,8 +147,9 @@ export default function CreateProductPage() {
     }
 
     const addVariant = () => {
-        if (!variantForm.size || !variantForm.currentPrice) {
-            toast.error('Please fill in size and current price')
+        // Only current price is required now, size is optional
+        if (!variantForm.currentPrice) {
+            toast.error('Please fill in current price')
             return
         }
 
@@ -158,25 +159,40 @@ export default function CreateProductPage() {
             return
         }
 
-        // Create attributes array - size is always required
-        const attributes = [
-            { name: 'Size', value: variantForm.size, displayValue: variantForm.size }
-        ]
+        // Create attributes array - size is optional now
+        const attributes = []
+        
+        // Add size only if provided
+        if (variantForm.size && variantForm.size.trim()) {
+            attributes.push({ 
+                name: 'Size', 
+                value: variantForm.size.trim(), 
+                displayValue: variantForm.size.trim() 
+            })
+        }
 
         // Add color only if color variants are enabled and color is provided
-        if (hasColorVariants && variantForm.color) {
+        if (hasColorVariants && variantForm.color && variantForm.color.trim()) {
             attributes.push({ 
                 name: 'Color', 
-                value: variantForm.color, 
-                displayValue: variantForm.color, 
+                value: variantForm.color.trim(), 
+                displayValue: variantForm.color.trim(), 
                 hexCode: variantForm.colorCode 
             })
         }
 
-        // Generate SKU
-        const skuSuffix = hasColorVariants && variantForm.color 
-            ? `${variantForm.size}-${variantForm.color}` 
-            : variantForm.size
+        // Generate SKU - handle optional size
+        let skuSuffix = ''
+        if (variantForm.size && variantForm.size.trim()) {
+            skuSuffix = variantForm.size.trim()
+        }
+        if (hasColorVariants && variantForm.color && variantForm.color.trim()) {
+            skuSuffix = skuSuffix ? `${skuSuffix}-${variantForm.color.trim()}` : variantForm.color.trim()
+        }
+        // Fallback if no size or color
+        if (!skuSuffix) {
+            skuSuffix = `variant-${Date.now()}`
+        }
         const sku = variantForm.sku || `${formData.title?.toLowerCase().replace(/\s+/g, '-')}-${skuSuffix}`
 
         const newVariant = {
@@ -220,7 +236,7 @@ export default function CreateProductPage() {
             .replace(/[^a-z0-9 -]/g, '')
             .replace(/\s+/g, '-')
             .replace(/-+/g, '-')
-            .trim('-')
+            .replace(/^-+|-+$/g, '') // Remove leading and trailing hyphens
         setFormData(prev => ({ ...prev, slug }))
     }
 
@@ -470,7 +486,7 @@ export default function CreateProductPage() {
 
                     <div className="mt-6">
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Full Description *
+                            Full Description (Optional)
                         </label>
                         <textarea
                             name="description"
@@ -478,7 +494,6 @@ export default function CreateProductPage() {
                             onChange={handleInputChange}
                             rows="6"
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            required
                             placeholder="Detailed description of the product"
                         />
                     </div>
@@ -812,13 +827,13 @@ export default function CreateProductPage() {
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Size *</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Size (Optional)</label>
                             <input
                                 type="text"
                                 name="size"
                                 value={variantForm.size}
                                 onChange={handleVariantInputChange}
-                                placeholder="S, M, L, XL"
+                                placeholder="S, M, L, XL (Optional)"
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             />
                         </div>
@@ -916,39 +931,77 @@ export default function CreateProductPage() {
                         <div className="border-t pt-6">
                             <h3 className="text-md font-medium text-gray-900 mb-4">Added Variants ({formData.variants.length})</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {formData.variants.map((variant, index) => (
-                                    <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <span className="text-sm font-medium text-gray-900">
-                                                {variant.attributes[0]?.value}
-                                                {variant.attributes[1] && ` - ${variant.attributes[1]?.value}`}
-                                            </span>
-                                            <button
-                                                type="button"
-                                                onClick={() => removeVariant(index)}
-                                                className="text-red-600 hover:text-red-800"
-                                            >
-                                                <X className="h-4 w-4" />
-                                            </button>
-                                        </div>
-                                        <div className="text-sm text-gray-600">
-                                            <div>Price: ${variant.currentPrice}</div>
-                                            {variant.originalPrice && <div>Old Price: ${variant.originalPrice}</div>}
-                                            <div>Stock: {variant.stockQuantity}</div>
-                                            {variant.attributes[1] && (
-                                                <div className="flex items-center mt-1">
-                                                    <span className="mr-2">Color:</span>
-                                                    <div 
-                                                        className="w-4 h-4 rounded-full border border-gray-300"
-                                                        style={{ backgroundColor: variant.attributes[1]?.hexCode || '#000000' }}
-                                                        title={variant.attributes[1]?.hexCode}
-                                                    ></div>
-                                                    <span className="ml-1 text-xs">{variant.attributes[1]?.hexCode}</span>
+                                {formData.variants.map((variant, index) => {
+                                    // Get variant display name
+                                    const variantDisplayName = variant.attributes.length > 0 
+                                        ? variant.attributes.map(attr => attr.value).join(' - ')
+                                        : 'Default Variant'
+                                    
+                                    // Get variant image
+                                    const variantImage = variant.images && variant.images.length > 0 
+                                        ? variant.images[0].url 
+                                        : null
+                                    
+                                    // Find size and color attributes
+                                    const sizeAttr = variant.attributes.find(attr => attr.name === 'Size')
+                                    const colorAttr = variant.attributes.find(attr => attr.name === 'Color')
+                                    
+                                    return (
+                                        <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50 hover:shadow-md transition-shadow">
+                                            {/* Variant Image Preview */}
+                                            {variantImage ? (
+                                                <div className="mb-3 rounded-lg overflow-hidden bg-white border border-gray-200">
+                                                    <img 
+                                                        src={variantImage} 
+                                                        alt={variantDisplayName}
+                                                        className="w-full h-32 object-cover"
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <div className="mb-3 rounded-lg overflow-hidden bg-gray-100 border border-gray-200 flex items-center justify-center h-32">
+                                                    <span className="text-xs text-gray-400">No image</span>
                                                 </div>
                                             )}
+                                            
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className="text-sm font-medium text-gray-900">
+                                                    {variantDisplayName}
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeVariant(index)}
+                                                    className="text-red-600 hover:text-red-800"
+                                                >
+                                                    <X className="h-4 w-4" />
+                                                </button>
+                                            </div>
+                                            <div className="text-sm text-gray-600 space-y-1">
+                                                <div>Price: ${variant.currentPrice}</div>
+                                                {variant.originalPrice && <div>Old Price: ${variant.originalPrice}</div>}
+                                                <div>Stock: {variant.stockQuantity}</div>
+                                                {sizeAttr && (
+                                                    <div className="mt-1">
+                                                        <span className="font-medium">Size:</span> {sizeAttr.value}
+                                                    </div>
+                                                )}
+                                                {colorAttr && (
+                                                    <div className="flex items-center mt-1">
+                                                        <span className="font-medium mr-2">Color:</span>
+                                                        <div 
+                                                            className="w-4 h-4 rounded-full border border-gray-300"
+                                                            style={{ backgroundColor: colorAttr.hexCode || '#000000' }}
+                                                            title={colorAttr.hexCode}
+                                                        ></div>
+                                                        <span className="ml-1 text-xs">{colorAttr.value}</span>
+                                                        {colorAttr.hexCode && (
+                                                            <span className="ml-1 text-xs text-gray-500">({colorAttr.hexCode})</span>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    )
+                                })}
                             </div>
                         </div>
                     )}

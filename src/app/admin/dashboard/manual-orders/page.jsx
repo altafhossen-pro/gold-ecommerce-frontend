@@ -306,12 +306,14 @@ export default function ManualOrderCreation() {
             const sizeAttr = firstVariant.attributes.find(attr => attr.name === 'Size');
             const colorAttr = firstVariant.attributes.find(attr => attr.name === 'Color');
 
-            // Size is mandatory - set it if available
+            // Size is optional - set it if available
             if (sizeAttr) {
                 setSelectedSize(sizeAttr.value);
+            } else {
+                setSelectedSize(""); // No size for this variant
             }
 
-            // Color is optional - only set if variant has color
+            // Color is optional - set if variant has color
             if (colorAttr) {
                 setSelectedColor(colorAttr.value);
             } else {
@@ -319,12 +321,12 @@ export default function ManualOrderCreation() {
             }
         } else {
             // If no variants, set default values
-            setSelectedSize("Default");
+            setSelectedSize("");
             setSelectedColor(""); // No color by default
         }
     };
 
-    // Get unique sizes from variants (mandatory)
+    // Get unique sizes from variants (optional)
     const getUniqueSizes = () => {
         if (!currentProduct?.variants) return [];
         const sizes = currentProduct.variants
@@ -346,30 +348,61 @@ export default function ManualOrderCreation() {
         );
     };
 
-    // Get available colors for selected size (optional)
+    // Get available colors for selected size (size is optional now)
     const getAvailableColorsForSize = (size) => {
         if (!currentProduct?.variants) return [];
-        return currentProduct.variants
-            .filter(variant => {
-                const sizeAttr = variant.attributes.find(attr => attr.name === 'Size');
-                return sizeAttr && sizeAttr.value === size;
-            })
-            .map(variant => {
-                const colorAttr = variant.attributes.find(attr => attr.name === 'Color');
-                return colorAttr ? { value: colorAttr.value, hexCode: colorAttr.hexCode } : null;
-            })
-            .filter(color => color); // Only include variants that have color
+        
+        // If size is provided, filter by size
+        if (size) {
+            return currentProduct.variants
+                .filter(variant => {
+                    const sizeAttr = variant.attributes.find(attr => attr.name === 'Size');
+                    return sizeAttr && sizeAttr.value === size;
+                })
+                .map(variant => {
+                    const colorAttr = variant.attributes.find(attr => attr.name === 'Color');
+                    return colorAttr ? { value: colorAttr.value, hexCode: colorAttr.hexCode } : null;
+                })
+                .filter(color => color); // Only include variants that have color
+        } else {
+            // If no size selected, show all colors from variants that don't have size
+            return currentProduct.variants
+                .filter(variant => {
+                    const sizeAttr = variant.attributes.find(attr => attr.name === 'Size');
+                    return !sizeAttr; // Only variants without size
+                })
+                .map(variant => {
+                    const colorAttr = variant.attributes.find(attr => attr.name === 'Color');
+                    return colorAttr ? { value: colorAttr.value, hexCode: colorAttr.hexCode } : null;
+                })
+                .filter(color => color) // Only include variants that have color
+                .filter((color, index, self) =>
+                    index === self.findIndex(c => c.value === color.value)
+                ); // Remove duplicates
+        }
     };
 
-    // Get selected variant (size mandatory, color optional)
+    // Get selected variant (size optional, color optional)
     const getSelectedVariant = () => {
         if (!currentProduct?.variants) return null;
         return currentProduct.variants.find(variant => {
             const sizeAttr = variant.attributes.find(attr => attr.name === 'Size');
             const colorAttr = variant.attributes.find(attr => attr.name === 'Color');
 
-            // Size must match (mandatory)
-            const sizeMatches = sizeAttr?.value === selectedSize;
+            // Size matching logic (optional):
+            // 1. If we have selectedSize and variant has size, both must match
+            // 2. If we have no selectedSize and variant has no size, it matches
+            // 3. If we have selectedSize but variant has no size, it doesn't match
+            // 4. If we have no selectedSize but variant has size, it doesn't match
+            let sizeMatches = true;
+            if (selectedSize && sizeAttr) {
+                sizeMatches = sizeAttr.value === selectedSize;
+            } else if (selectedSize && !sizeAttr) {
+                sizeMatches = false; // We have selected size but variant has no size
+            } else if (!selectedSize && sizeAttr) {
+                sizeMatches = false; // Variant has size but we don't have selected size
+            }
+            // If both selectedSize and variant size are null/empty, sizeMatches remains true
 
             // Color matching logic:
             // 1. If variant has color and we have selectedColor, both must match

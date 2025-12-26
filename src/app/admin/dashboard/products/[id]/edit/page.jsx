@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Save, Plus, X, Trash2 } from 'lucide-react'
+import { ArrowLeft, Save, Plus, X, Trash2, Share2 } from 'lucide-react'
 import ImageUpload from '@/components/Common/ImageUpload'
 import GalleryImageUpload from '@/components/Common/GalleryImageUpload'
+import ShareModal from '@/components/Common/ShareModal'
 import toast from 'react-hot-toast'
 import { productAPI, categoryAPI } from '@/services/api'
 import { getCookie } from 'cookies-next'
@@ -22,6 +23,7 @@ export default function EditProductPage() {
     const [fetching, setFetching] = useState(true)
     const [checkingPermission, setCheckingPermission] = useState(true)
     const [categories, setCategories] = useState([])
+    const [showShareModal, setShowShareModal] = useState(false)
     const [formData, setFormData] = useState({
         title: '',
         shortDescription: '',
@@ -291,8 +293,9 @@ export default function EditProductPage() {
     }
 
     const addVariant = () => {
-        if (!variantForm.size || !variantForm.currentPrice) {
-            toast.error('Please fill in size and current price')
+        // Only current price is required now, size is optional
+        if (!variantForm.currentPrice) {
+            toast.error('Please fill in current price')
             return
         }
 
@@ -302,25 +305,40 @@ export default function EditProductPage() {
             return
         }
 
-        // Create attributes array - size is always required
-        const attributes = [
-            { name: 'Size', value: variantForm.size, displayValue: variantForm.size }
-        ]
+        // Create attributes array - size is optional now
+        const attributes = []
+        
+        // Add size only if provided
+        if (variantForm.size && variantForm.size.trim()) {
+            attributes.push({ 
+                name: 'Size', 
+                value: variantForm.size.trim(), 
+                displayValue: variantForm.size.trim() 
+            })
+        }
 
         // Add color only if color variants are enabled and color is provided
-        if (hasColorVariants && variantForm.color) {
+        if (hasColorVariants && variantForm.color && variantForm.color.trim()) {
             attributes.push({ 
                 name: 'Color', 
-                value: variantForm.color, 
-                displayValue: variantForm.color, 
+                value: variantForm.color.trim(), 
+                displayValue: variantForm.color.trim(), 
                 hexCode: variantForm.colorCode 
             })
         }
 
-        // Generate SKU
-        const skuSuffix = hasColorVariants && variantForm.color 
-            ? `${variantForm.size}-${variantForm.color}` 
-            : variantForm.size
+        // Generate SKU - handle optional size
+        let skuSuffix = ''
+        if (variantForm.size && variantForm.size.trim()) {
+            skuSuffix = variantForm.size.trim()
+        }
+        if (hasColorVariants && variantForm.color && variantForm.color.trim()) {
+            skuSuffix = skuSuffix ? `${skuSuffix}-${variantForm.color.trim()}` : variantForm.color.trim()
+        }
+        // Fallback if no size or color
+        if (!skuSuffix) {
+            skuSuffix = `variant-${Date.now()}`
+        }
         const sku = variantForm.sku || `${formData.title?.toLowerCase().replace(/\s+/g, '-')}-${skuSuffix}`
 
         const newVariant = {
@@ -392,7 +410,7 @@ export default function EditProductPage() {
             .replace(/[^a-z0-9 -]/g, '')
             .replace(/\s+/g, '-')
             .replace(/-+/g, '-')
-            .trim('-')
+            .replace(/^-+|-+$/g, '') // Remove leading and trailing hyphens
         setFormData(prev => ({ ...prev, slug }))
     }
 
@@ -471,14 +489,21 @@ export default function EditProductPage() {
                             </p>
                         </div>
                     </div>
-                                         <div className="flex items-center space-x-3">
-                         <Link
-                             href="/admin/dashboard/products"
-                             className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors duration-200"
-                         >
-                             View All Products
-                         </Link>
-                     </div>
+                    <div className="flex items-center space-x-3">
+                        <button
+                            onClick={() => setShowShareModal(true)}
+                            className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors duration-200"
+                        >
+                            <Share2 className="h-4 w-4 mr-2" />
+                            Share
+                        </button>
+                        <Link
+                            href="/admin/dashboard/products"
+                            className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors duration-200"
+                        >
+                            View All Products
+                        </Link>
+                    </div>
                 </div>
             </div>
 
@@ -634,7 +659,7 @@ export default function EditProductPage() {
 
                     <div className="mt-6">
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Full Description *
+                            Full Description (Optional)
                         </label>
                         <textarea
                             name="description"
@@ -642,7 +667,6 @@ export default function EditProductPage() {
                             onChange={handleInputChange}
                             rows="6"
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            required
                             placeholder="Detailed description of the product"
                         />
                     </div>
@@ -1078,16 +1102,20 @@ export default function EditProductPage() {
                                     </div>
                                     
                                     {/* Variant Image Display */}
-                                    {variant.images && variant.images.length > 0 && (
+                                    {variant.images && variant.images.length > 0 ? (
                                         <div className="mb-4 aspect-square">
                                             <img
                                                 src={variant.images[0]?.url || variant.images[0]}
-                                                alt={`${variant.attributes[0]?.value} ${variant.attributes[1]?.value || ''}`}
+                                                alt={variant.attributes.map(attr => attr.value).join(' - ') || 'Variant image'}
                                                 className="w-full h-full object-cover rounded-lg border border-gray-200"
                                                 onError={(e) => {
                                                     e.target.src = '/images/placeholder.png'
                                                 }}
                                             />
+                                        </div>
+                                    ) : (
+                                        <div className="mb-4 aspect-square bg-gray-100 border border-gray-200 rounded-lg flex items-center justify-center">
+                                            <span className="text-xs text-gray-400">No image</span>
                                         </div>
                                     )}
                                     
@@ -1095,15 +1123,20 @@ export default function EditProductPage() {
                                         {/* First Line: Size and Stock */}
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             {/* Size */}
-                                            {variant.attributes[0] && (
+                                            {variant.attributes.find(attr => attr.name === 'Size') && (
                                                 <div>
                                                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                        Size *
+                                                        Size
                                                     </label>
                                                     <input
                                                         type="text"
-                                                        value={variant.attributes[0]?.value || ''}
-                                                        onChange={(e) => updateVariantAttribute(index, 0, 'value', e.target.value)}
+                                                        value={variant.attributes.find(attr => attr.name === 'Size')?.value || ''}
+                                                        onChange={(e) => {
+                                                            const sizeAttrIndex = variant.attributes.findIndex(attr => attr.name === 'Size')
+                                                            if (sizeAttrIndex !== -1) {
+                                                                updateVariantAttribute(index, sizeAttrIndex, 'value', e.target.value)
+                                                            }
+                                                        }}
                                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                                     />
                                                 </div>
@@ -1124,22 +1157,32 @@ export default function EditProductPage() {
                                         </div>
                                         
                                         {/* Second Line: Color (if exists) */}
-                                        {variant.attributes[1] && (
+                                        {variant.attributes.find(attr => attr.name === 'Color') && (
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                    Color *
+                                                    Color
                                                 </label>
                                                 <div className="flex flex-col sm:flex-row gap-2">
                                                     <input
                                                         type="text"
-                                                        value={variant.attributes[1]?.value || ''}
-                                                        onChange={(e) => updateVariantAttribute(index, 1, 'value', e.target.value)}
+                                                        value={variant.attributes.find(attr => attr.name === 'Color')?.value || ''}
+                                                        onChange={(e) => {
+                                                            const colorAttrIndex = variant.attributes.findIndex(attr => attr.name === 'Color')
+                                                            if (colorAttrIndex !== -1) {
+                                                                updateVariantAttribute(index, colorAttrIndex, 'value', e.target.value)
+                                                            }
+                                                        }}
                                                         className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                                     />
                                                     <input
                                                         type="color"
-                                                        value={variant.attributes[1]?.hexCode || '#000000'}
-                                                        onChange={(e) => updateVariantAttribute(index, 1, 'hexCode', e.target.value)}
+                                                        value={variant.attributes.find(attr => attr.name === 'Color')?.hexCode || '#000000'}
+                                                        onChange={(e) => {
+                                                            const colorAttrIndex = variant.attributes.findIndex(attr => attr.name === 'Color')
+                                                            if (colorAttrIndex !== -1) {
+                                                                updateVariantAttribute(index, colorAttrIndex, 'hexCode', e.target.value)
+                                                            }
+                                                        }}
                                                         className="w-full sm:w-16 h-10 border border-gray-300 rounded-lg cursor-pointer"
                                                         title="Pick color"
                                                     />
@@ -1235,13 +1278,13 @@ export default function EditProductPage() {
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Size *</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Size (Optional)</label>
                             <input
                                 type="text"
                                 name="size"
                                 value={variantForm.size}
                                 onChange={handleVariantInputChange}
-                                placeholder="S, M, L, XL"
+                                placeholder="S, M, L, XL (Optional)"
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             />
                         </div>
@@ -1416,6 +1459,16 @@ export default function EditProductPage() {
                  </div>
 
              </form>
+
+            {/* Share Modal */}
+            {formData.slug && (
+                <ShareModal
+                    isOpen={showShareModal}
+                    onClose={() => setShowShareModal(false)}
+                    url={`/product/${formData.slug}`}
+                    title="Share Product"
+                />
+            )}
          </div>
      )
  }

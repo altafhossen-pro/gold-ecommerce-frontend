@@ -21,14 +21,13 @@ const fallbackFooterData = {
   utilities: [
     { name: "Privacy Policy", href: "/privacy-policy" },
     { name: "Terms & Condition", href: "/terms-and-conditions" },
-    { name: "FAQ", href: "/faq" },
+    { name: "Return & Refund Policy", href: "/return-refund-policy" },
     { name: "Contact Us", href: "/contact-us" },
-    { name: "404 Not Found", href: "/not-found" }
   ],
   contact: {
-    address: "230 Park Avenue, Suite 210, New York, NY 10169, USA",
-    phone: "+8801XXXXXXXXX",
-    email: "forpink@gmail.com",
+    address: "Badda, Dhaka, Bangladesh - 1212",
+    phone: "+8801313664466",
+    email: "info@forpink.com",
     callToAction: "Feel free to call & mail us anytime!"
   },
   socialMedia: [
@@ -79,10 +78,10 @@ export default function Footer() {
     fetchFooterMenus();
   }, []);
   return (
-    <footer className="text-white" style={{ background: 'linear-gradient(280.37deg, #2C1A25 1.99%, #1C071B 53.16%, #200C25 99.63%)' }}>
+    <footer className=" text-black bg-gradient-to-r from-pink-100  to-purple-100" >
       {/* Main Footer Content */}
       <div className="max-w-screen-2xl mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
 
           {/* About Section */}
           <div className="space-y-4">
@@ -90,7 +89,7 @@ export default function Footer() {
             <div className="flex items-center">
               <Link className='' href="/">
                 <Image
-                  src="/images/footer_logo.png"
+                  src="/images/logo.svg"
                   alt="FORPINK.COM"
                   width={190}
                   height={80}
@@ -101,7 +100,7 @@ export default function Footer() {
             </div>
 
             {/* Description */}
-            <p className="text-gray-300 text-sm leading-relaxed">
+            <p className="text-black text-sm leading-relaxed">
               {footerData.about.description}
             </p>
 
@@ -137,7 +136,7 @@ export default function Footer() {
                     <Link
                       key={index}
                       href={social.href}
-                      className="text-white hover:text-pink-400 transition-colors duration-300"
+                      className="text-black hover:text-pink-400 transition-colors duration-300"
                       aria-label={social.name || social.label}
                     >
                       {getSocialIcon(social)}
@@ -146,40 +145,48 @@ export default function Footer() {
                 })
               )}
             </div>
-          </div>
 
-          {/* Quick Links Section */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-white">Quick Links</h3>
-            {loading ? (
-              <div className="space-y-2">
-                {[...Array(5)].map((_, index) => (
-                  <div key={index} className="h-4 bg-gray-600 rounded animate-pulse w-24"></div>
-                ))}
-              </div>
-            ) : (
-              <ul className="space-y-2">
-                {footerData.quickLinks.map((link, index) => (
-                  <li key={index}>
-                    <Link
-                      href={link.href}
-                      target={link.target || '_self'}
-                      className={`text-sm transition-colors duration-300 hover:text-pink-400 ${link.isActive
-                        ? 'text-pink-400 underline'
-                        : 'text-gray-300'
-                        }`}
-                    >
-                      {link.name}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
+            {/* App Store Download Buttons */}
+            <div className="flex flex-row gap-2 pt-4 w-fit">
+              {/* Apple App Store Badge */}
+              <a
+                href="https://apps.apple.com/app/forpink/id123456789"
+                target="_blank"
+                rel="noopener noreferrer"
+                className=" cursor-pointer hover:opacity-80 transition-opacity"
+                aria-label="Download on the App Store"
+              >
+                <Image
+                  src="/images/apple.svg"
+                  alt="Download on the App Store"
+                  width={135}
+                  height={40}
+                  className="h-10 w-auto object-contain"
+                />
+              </a>
+              
+              {/* Google Play Store Badge */}
+              <a
+                href="https://play.google.com/store/apps/details?id=com.forpink.app"
+                target="_blank"
+                rel="noopener noreferrer"
+                className=" cursor-pointer hover:opacity-80 transition-opacity"
+                aria-label="Get it on Google Play"
+              >
+                <Image
+                  src="/images/google.png"
+                  alt="Get it on Google Play"
+                  width={135}
+                  height={40}
+                  className="w-full h-auto max-h-10 object-contain"
+                />
+              </a>
+            </div>
           </div>
 
           {/* Utilities Section */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-white">Utilities</h3>
+            <h3 className="text-lg font-semibold text-black">Utilities</h3>
             {loading ? (
               <div className="space-y-2">
                 {[...Array(5)].map((_, index) => (
@@ -193,7 +200,7 @@ export default function Footer() {
                     <Link
                       href={utility.href}
                       target={utility.target || '_self'}
-                      className="text-gray-300 text-sm transition-colors duration-300 hover:text-pink-400"
+                      className="text-gray-600 text-sm transition-colors duration-300 hover:text-pink-600"
                     >
                       {utility.name}
                     </Link>
@@ -205,7 +212,7 @@ export default function Footer() {
 
           {/* Connect Section */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-white">Connect Forpink.com</h3>
+            <h3 className="text-lg font-semibold text-black">Connect Forpink.com</h3>
             {loading ? (
               <div className="space-y-3">
                 {[...Array(4)].map((_, index) => (
@@ -223,15 +230,15 @@ export default function Footer() {
                     const getContactIcon = (contactType) => {
                       switch (contactType) {
                         case 'address':
-                          return <MapPin className="w-4 h-4 text-gray-300 mt-0.5 flex-shrink-0" />;
+                          return <MapPin className="w-4 h-4 text-gray-900 mt-0.5 flex-shrink-0" />;
                         case 'phone':
-                          return <Phone className="w-4 h-4 text-gray-300 flex-shrink-0" />;
+                          return <Phone className="w-4 h-4 text-gray-900 flex-shrink-0" />;
                         case 'email':
-                          return <Mail className="w-4 h-4 text-gray-300 flex-shrink-0" />;
+                          return <Mail className="w-4 h-4 text-gray-900 flex-shrink-0" />;
                         case 'callToAction':
-                          return <MessageCircle className="w-4 h-4 text-gray-300 flex-shrink-0" />;
+                          return <MessageCircle className="w-4 h-4 text-gray-900 flex-shrink-0" />;
                         default:
-                          return <MessageCircle className="w-4 h-4 text-gray-300 flex-shrink-0" />;
+                          return <MessageCircle className="w-4 h-4 text-gray-900 flex-shrink-0" />;
                       }
                     };
 
@@ -272,12 +279,12 @@ export default function Footer() {
                             href={getContactLink(contact)}
                             target={contact.contactType === 'address' ? '_blank' : '_self'}
                             rel={contact.contactType === 'address' ? 'noopener noreferrer' : ''}
-                            className={`text-gray-300 text-sm hover:text-pink-400 transition-colors duration-300 ${contact.contactType === 'address' ? 'leading-relaxed' : ''}`}
+                            className={`text-gray-600 text-sm hover:text-pink-600 transition-colors duration-300 ${contact.contactType === 'address' ? 'leading-relaxed' : ''}`}
                           >
                             {getContactText(contact)}
                           </a>
                         ) : (
-                          <span className={`text-gray-300 text-sm ${contact.contactType === 'address' ? 'leading-relaxed' : ''}`}>
+                          <span className={`text-gray-600 text-sm ${contact.contactType === 'address' ? 'leading-relaxed' : ''}`}>
                             {getContactText(contact)}
                           </span>
                         )}
@@ -289,12 +296,12 @@ export default function Footer() {
                   <>
                     {/* Address */}
                     <div className="flex items-start space-x-3">
-                      <MapPin className="w-4 h-4 text-gray-300 mt-0.5 flex-shrink-0" />
+                      <MapPin className="w-4 h-4 text-gray-900 mt-0.5 flex-shrink-0" />
                       <a
                         href={`https://www.google.com/maps?q=${encodeURIComponent(footerData.contact?.address || '230 Park Avenue, Suite 210, New York, NY 10169, USA')}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-gray-300 text-sm leading-relaxed hover:text-pink-400 transition-colors duration-300"
+                        className="text-gray-900 text-sm leading-relaxed hover:text-pink-400 transition-colors duration-300"
                       >
                         {footerData.contact?.address || '230 Park Avenue, Suite 210, New York, NY 10169, USA'}
                       </a>
@@ -302,10 +309,10 @@ export default function Footer() {
 
                     {/* Phone */}
                     <div className="flex items-center space-x-3">
-                      <Phone className="w-4 h-4 text-gray-300 flex-shrink-0" />
+                      <Phone className="w-4 h-4 text-gray-900 flex-shrink-0" />
                       <a
                         href={`tel:${footerData.contact?.phone || '+8801XXXXXXXXX'}`}
-                        className="text-gray-300 text-sm hover:text-pink-400 transition-colors duration-300"
+                        className="text-gray-900 text-sm hover:text-pink-400 transition-colors duration-300"
                       >
                         Phone: {footerData.contact?.phone || '+8801XXXXXXXXX'}
                       </a>
@@ -313,10 +320,10 @@ export default function Footer() {
 
                     {/* Email */}
                     <div className="flex items-center space-x-3">
-                      <Mail className="w-4 h-4 text-gray-300 flex-shrink-0" />
+                      <Mail className="w-4 h-4 text-gray-900 flex-shrink-0" />
                       <a
                         href={`mailto:${footerData.contact?.email || 'forpink@gmail.com'}`}
-                        className="text-gray-300 text-sm hover:text-pink-400 transition-colors duration-300"
+                        className="text-gray-900 text-sm hover:text-pink-400 transition-colors duration-300"
                       >
                         Email: {footerData.contact?.email || 'forpink@gmail.com'}
                       </a>
@@ -324,8 +331,8 @@ export default function Footer() {
 
                     {/* Call to Action */}
                     <div className="flex items-center space-x-3 pt-2">
-                      <MessageCircle className="w-4 h-4 text-gray-300 flex-shrink-0" />
-                      <span className="text-gray-300 text-sm">
+                      <MessageCircle className="w-4 h-4 text-gray-900 flex-shrink-0" />
+                      <span className="text-gray-900 text-sm">
                         {footerData.contact?.callToAction || 'Feel free to call & mail us anytime!'}
                       </span>
                     </div>
@@ -341,8 +348,8 @@ export default function Footer() {
       <div className="border-t border-pink-400/30">
         <div className="max-w-screen-2xl mx-auto px-4 py-6">
           <div className="text-center">
-            <p className="text-gray-300 text-sm">
-              ©2025 Forpink. All rights reserved. Developed by <a href="https://altaf-hossen.netlify.app?utm_source=forpink_website" target="_blank" rel="noopener noreferrer" className="text-pink-400 hover:text-pink-500 transition-colors duration-300">ALTAF</a>
+            <p className="text-gray-900 text-sm">
+              ©2025 Forpink. All rights reserved. Developed by <span className="text-pink-400 font-semibold hover:text-pink-500 transition-colors duration-300">Forpink</span>
             </p>
           </div>
         </div>

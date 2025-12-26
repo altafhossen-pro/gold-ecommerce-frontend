@@ -7,6 +7,37 @@ import Link from 'next/link';
 function ProductCard({ product, onWishlistToggle, onAddToCart, showWishlistOnHover = true }) {
     // Stock checking state
     const [stockData, setStockData] = useState(null);
+    
+    // Hover state for image change
+    const [isHovered, setIsHovered] = useState(false);
+    
+    // Get next variant image for hover
+    const getNextVariantImage = () => {
+        if (!product.variants || product.variants.length === 0) {
+            return null;
+        }
+        
+        // Find first variant with an image
+        const variantWithImage = product.variants.find(variant => {
+            if (variant.images && variant.images.length > 0) {
+                // Check if images array has objects with url property or direct URLs
+                const firstImage = variant.images[0];
+                return firstImage?.url || (typeof firstImage === 'string' ? firstImage : null);
+            }
+            return false;
+        });
+        
+        if (variantWithImage && variantWithImage.images && variantWithImage.images.length > 0) {
+            const firstImage = variantWithImage.images[0];
+            // Handle both object format {url: "...", ...} and direct string URL
+            return firstImage?.url || (typeof firstImage === 'string' ? firstImage : null);
+        }
+        
+        return null;
+    };
+    
+    const hoverImage = getNextVariantImage();
+    const displayImage = isHovered && hoverImage ? hoverImage : product.image;
 
     // Simple stock checking function
     const checkStock = useCallback(() => {
@@ -71,15 +102,32 @@ function ProductCard({ product, onWishlistToggle, onAddToCart, showWishlistOnHov
     const outOfStock = isOutOfStock();
 
     return (
-        <div className="relative group overflow-hidden rounded-xl shadow-lg border border-[#E7E7E7] hover:shadow-lg transition-all bg-[#F6F6F6] duration-300 hover:ring-1 hover:ring-[#F7AABC]">
+        <div 
+            className="relative group overflow-hidden rounded-xl shadow-lg border border-[#E7E7E7] hover:shadow-lg transition-all bg-[#F6F6F6] duration-300 hover:ring-1 hover:ring-[#F7AABC]"
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+        >
             {/* Product Image */}
-            <div className="relative aspect-square overflow-hidden ">
-                <Link href={`/product/${product.slug}`}>
+            <div className="relative aspect-square overflow-hidden">
+                <Link href={`/product/${product.slug}`} className="block w-full h-full relative">
+                    {/* Default Image */}
                     <img
                         src={product.image}
                         alt={product.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        className={`absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-all duration-600 ease-in-out ${
+                            isHovered && hoverImage ? 'opacity-0' : 'opacity-100'
+                        }`}
                     />
+                    {/* Hover Image (Variant) */}
+                    {hoverImage && (
+                        <img
+                            src={hoverImage}
+                            alt={product.name}
+                            className={`absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-all duration-600 ease-in-out ${
+                                isHovered ? 'opacity-100' : 'opacity-0'
+                            }`}
+                        />
+                    )}
                 </Link>
 
                 {/* Wishlist Icon */}
@@ -112,13 +160,13 @@ function ProductCard({ product, onWishlistToggle, onAddToCart, showWishlistOnHov
                     </Link>
                     <div className="flex items-center gap-1 flex-shrink-0">
                         <Star className="w-3 h-3 sm:w-4 sm:h-4 fill-yellow-400 text-yellow-400" />
-                        <span className="text-xs sm:text-sm text-gray-600">{product.rating}</span>
+                        <span className="text-xs sm:text-sm text-gray-600">{product.rating ? Number(product.rating).toFixed(1) : '0.0'}</span>
                     </div>
                 </div>
 
                 {/* Price */}
                 <div className="flex items-center gap-2 mb-3">
-                    <span className="font-semibold text-sm sm:text-base text-gray-900">{product?.price?.toFixed(2)} BDT</span>
+                    <span className="font-semibold text-sm sm:text-base text-pink-500">{product?.price?.toFixed(2)} BDT</span>
                     {product?.originalPrice && (
                         <span className="text-gray-500 line-through text-xs sm:text-sm">{product?.originalPrice?.toFixed(2)} BDT</span>
                     )}

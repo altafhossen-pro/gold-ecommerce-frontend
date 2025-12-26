@@ -92,7 +92,7 @@ const SimilarProducts = ({ currentProductId, currentProductCategory }) => {
   if (loading) {
     return (
       <div className="py-12">
-        <div className="xl:2xl:max-w-7xl xl:max-w-6xl   max-w-xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-screen-2xl  mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-8">Similar Products</h2>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
             {[...Array(4)].map((_, index) => (
@@ -114,9 +114,9 @@ const SimilarProducts = ({ currentProductId, currentProductCategory }) => {
 
   return (
     <div className="py-12 ">
-      <div className="xl:2xl:max-w-7xl xl:max-w-6xl  max-w-xl mx-auto px-0  lg:px-8">
+      <div className="max-w-screen-2xl  mx-auto px-0  lg:px-0">
         <h2 className="text-2xl font-bold text-gray-900 mb-8">Similar Products</h2>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-6">
           {similarProducts.map((product) => (
             <ProductCard
               key={product._id || product.id}

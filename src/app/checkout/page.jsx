@@ -303,6 +303,235 @@ export default function Checkout() {
         }
     }, [user]);
 
+    // Auto-fill form data when user is logged in
+    useEffect(() => {
+        if (user && user.email) {
+            // Only auto-fill if fields are empty (so user can edit if needed)
+            setFormData(prev => ({
+                ...prev,
+                fullName: prev.fullName || user.name || '',
+                mobileNumber: prev.mobileNumber || user.phone || ''
+            }));
+
+            // Auto-fill address from latest order if phone number is available
+            if (user.phone) {
+                autoFillAddressFromOrder(user.phone);
+            }
+        }
+    }, [user]);
+
+    // Auto-fill customer info when mobile number is entered (11 digits)
+    useEffect(() => {
+        const phoneNumber = formData.mobileNumber.trim();
+        // Only auto-fill if phone number is 11 digits and not already filled by logged-in user
+        if (phoneNumber.length === 11 && /^\d+$/.test(phoneNumber)) {
+            // Don't auto-fill if user is logged in and this is their phone number (already handled above)
+            if (!user || user.phone !== phoneNumber) {
+                autoFillCustomerInfoByPhone(phoneNumber);
+            }
+        }
+    }, [formData.mobileNumber]);
+
+    // Auto-fill address from latest order
+    const autoFillAddressFromOrder = async (phoneNumber) => {
+        try {
+            // Token is optional - API works for guest users too
+            const token = getCookie('token') || null;
+            const response = await orderAPI.getCustomerInfoByPhone(phoneNumber, token);
+
+            if (response.success && response.data) {
+                const data = response.data;
+                
+                // Set street address in deliveryAddress field
+                if (data.street && !formData.deliveryAddress) {
+                    setFormData(prev => ({
+                        ...prev,
+                        deliveryAddress: data.street
+                    }));
+                }
+
+                // Auto-fill division, district, upazila, area if IDs are available
+                if (data.divisionId) {
+                    // Find division by ID and set it
+                    const division = divisions.find(div => div.id === data.divisionId);
+                    if (division) {
+                        setFormData(prev => ({
+                            ...prev,
+                            division: division.name,
+                            divisionId: data.divisionId
+                        }));
+                        
+                        // Fetch districts for this division and wait for response
+                        const districtsResponse = await addressAPI.getDistrictsByDivision(data.divisionId);
+                        if (districtsResponse.success && districtsResponse.data) {
+                            const fetchedDistricts = districtsResponse.data;
+                            setDistricts(fetchedDistricts);
+                            
+                            // If districtId is available, set district
+                            if (data.districtId) {
+                                const district = fetchedDistricts.find(dist => dist.id === data.districtId);
+                                if (district) {
+                                    setFormData(prev => ({
+                                        ...prev,
+                                        district: district.name,
+                                        districtId: data.districtId
+                                    }));
+                                    
+                                    // Check if it's Dhaka (ID 65)
+                                    if (data.districtId === '65') {
+                                        const areasResponse = await addressAPI.getAllDhakaCityAreas();
+                                        if (areasResponse.success && areasResponse.data) {
+                                            const fetchedAreas = areasResponse.data;
+                                            setDhakaAreas(fetchedAreas);
+                                            
+                                            // Set area if areaId is available
+                                            if (data.areaId) {
+                                                const area = fetchedAreas.find(a => a._id === data.areaId);
+                                                if (area) {
+                                                    setFormData(prev => ({
+                                                        ...prev,
+                                                        area: area.name,
+                                                        areaId: data.areaId
+                                                    }));
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        // Fetch upazilas for non-Dhaka districts
+                                        const upazilasResponse = await addressAPI.getUpazilasByDistrict(data.districtId);
+                                        if (upazilasResponse.success && upazilasResponse.data) {
+                                            const fetchedUpazilas = upazilasResponse.data;
+                                            setUpazilas(fetchedUpazilas);
+                                            
+                                            // Set upazila if upazilaId is available
+                                            if (data.upazilaId) {
+                                                const upazila = fetchedUpazilas.find(u => u.id === data.upazilaId);
+                                                if (upazila) {
+                                                    setFormData(prev => ({
+                                                        ...prev,
+                                                        upazila: upazila.name,
+                                                        upazilaId: data.upazilaId
+                                                    }));
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error auto-filling address from order:', error);
+            // Silent fail - don't show error to user
+        }
+    };
+
+    // Auto-fill customer info by phone number
+    const autoFillCustomerInfoByPhone = async (phoneNumber) => {
+        try {
+            // Token is optional - API works for guest users too
+            const token = getCookie('token') || null;
+            const response = await orderAPI.getCustomerInfoByPhone(phoneNumber, token);
+
+            if (response.success && response.data) {
+                const data = response.data;
+                const { name, street } = data;
+
+                // Only update if we found some data and fields are empty
+                setFormData(prev => ({
+                    ...prev,
+                    fullName: prev.fullName || name || '',
+                    deliveryAddress: prev.deliveryAddress || street || ''
+                }));
+
+                // Auto-fill division, district, upazila, area if IDs are available
+                if (data.divisionId) {
+                    // Find division by ID and set it
+                    const division = divisions.find(div => div.id === data.divisionId);
+                    if (division) {
+                        setFormData(prev => ({
+                            ...prev,
+                            division: division.name,
+                            divisionId: data.divisionId
+                        }));
+                        
+                        // Fetch districts for this division and wait for response
+                        const districtsResponse = await addressAPI.getDistrictsByDivision(data.divisionId);
+                        if (districtsResponse.success && districtsResponse.data) {
+                            const fetchedDistricts = districtsResponse.data;
+                            setDistricts(fetchedDistricts);
+                            
+                            // If districtId is available, set district
+                            if (data.districtId) {
+                                const district = fetchedDistricts.find(dist => dist.id === data.districtId);
+                                if (district) {
+                                    setFormData(prev => ({
+                                        ...prev,
+                                        district: district.name,
+                                        districtId: data.districtId
+                                    }));
+                                    
+                                    // Check if it's Dhaka (ID 65)
+                                    if (data.districtId === '65') {
+                                        const areasResponse = await addressAPI.getAllDhakaCityAreas();
+                                        if (areasResponse.success && areasResponse.data) {
+                                            const fetchedAreas = areasResponse.data;
+                                            setDhakaAreas(fetchedAreas);
+                                            
+                                            // Set area if areaId is available
+                                            if (data.areaId) {
+                                                const area = fetchedAreas.find(a => a._id === data.areaId);
+                                                if (area) {
+                                                    setFormData(prev => ({
+                                                        ...prev,
+                                                        area: area.name,
+                                                        areaId: data.areaId
+                                                    }));
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        // Fetch upazilas for non-Dhaka districts
+                                        const upazilasResponse = await addressAPI.getUpazilasByDistrict(data.districtId);
+                                        if (upazilasResponse.success && upazilasResponse.data) {
+                                            const fetchedUpazilas = upazilasResponse.data;
+                                            setUpazilas(fetchedUpazilas);
+                                            
+                                            // Set upazila if upazilaId is available
+                                            if (data.upazilaId) {
+                                                const upazila = fetchedUpazilas.find(u => u.id === data.upazilaId);
+                                                if (upazila) {
+                                                    setFormData(prev => ({
+                                                        ...prev,
+                                                        upazila: upazila.name,
+                                                        upazilaId: data.upazilaId
+                                                    }));
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (name && street) {
+                    toast.success('Customer info auto-filled from last order');
+                } else if (name) {
+                    toast.success('Customer name auto-filled');
+                } else if (street) {
+                    toast.success('Address auto-filled from last order');
+                }
+            }
+        } catch (error) {
+            console.error('Error auto-filling customer info:', error);
+            // Silent fail - don't show error to user
+        }
+    };
+
     // Load divisions on component mount
     useEffect(() => {
         fetchDivisions();
@@ -1012,6 +1241,7 @@ export default function Checkout() {
                                         value={formData.fullName}
                                         onChange={handleInputChange}
                                         placeholder="Enter your full name here"
+                                        autoComplete="name"
                                         className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-pink-500 focus:border-pink-500"
                                     />
                                 </div>
@@ -1027,6 +1257,7 @@ export default function Checkout() {
                                         value={formData.mobileNumber}
                                         onChange={handleInputChange}
                                         placeholder="Enter your mobile number here"
+                                        autoComplete="tel"
                                         className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-pink-500 focus:border-pink-500"
                                     />
                                 </div>

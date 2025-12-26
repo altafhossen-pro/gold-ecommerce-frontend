@@ -3,11 +3,12 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Edit, Trash2, Package, Tag, Calendar, DollarSign, Star, Eye, EyeOff } from 'lucide-react'
+import { ArrowLeft, Edit, Trash2, Package, Tag, Calendar, DollarSign, Star, Eye, EyeOff, Share2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { getCookie } from 'cookies-next'
 import { productAPI } from '@/services/api'
 import PermissionDenied from '@/components/Common/PermissionDenied'
+import ShareModal from '@/components/Common/ShareModal'
 import { useAppContext } from '@/context/AppContext'
 
 export default function ProductDetailsPage() {
@@ -20,6 +21,7 @@ export default function ProductDetailsPage() {
     const [loading, setLoading] = useState(true)
     const [deleting, setDeleting] = useState(false)
     const [permissionError, setPermissionError] = useState(null)
+    const [showShareModal, setShowShareModal] = useState(false)
 
     useEffect(() => {
         fetchProduct()
@@ -72,7 +74,12 @@ export default function ProductDetailsPage() {
 
         try {
             setDeleting(true)
-            const data = await productAPI.deleteProduct(productId)
+            const token = getCookie('token')
+            if (!token) {
+                toast.error('Authentication required. Please login again.')
+                return
+            }
+            const data = await productAPI.deleteProduct(productId, token)
             
             if (data.success) {
                 toast.success('Product deleted successfully!')
@@ -188,6 +195,13 @@ export default function ProductDetailsPage() {
                         </div>
                     </div>
                     <div className="flex items-center space-x-3">
+                        <button
+                            onClick={() => setShowShareModal(true)}
+                            className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors duration-200"
+                        >
+                            <Share2 className="h-4 w-4 mr-2" />
+                            Share
+                        </button>
                         {hasPermission('product', 'update') && (
                             <Link
                                 href={`/admin/dashboard/products/${productId}/edit`}
@@ -441,34 +455,53 @@ export default function ProductDetailsPage() {
                     </div>
 
                     {/* Quick Actions */}
-                    {(hasPermission('product', 'update') || hasPermission('product', 'delete')) && (
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                            <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
-                            <div className="space-y-3">
-                                {hasPermission('product', 'update') && (
-                                    <Link
-                                        href={`/admin/dashboard/products/${productId}/edit`}
-                                        className="w-full inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                                    >
-                                        <Edit className="h-4 w-4 mr-2" />
-                                        Edit Product
-                                    </Link>
-                                )}
-                                {hasPermission('product', 'delete') && (
-                                    <button
-                                        onClick={handleDeleteProduct}
-                                        disabled={deleting}
-                                        className="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 disabled:opacity-50"
-                                    >
-                                        <Trash2 className="h-4 w-4 mr-2" />
-                                        {deleting ? 'Deleting...' : 'Delete Product'}
-                                    </button>
-                                )}
-                            </div>
+                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                        <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
+                        <div className="space-y-3">
+                            <button
+                                onClick={() => setShowShareModal(true)}
+                                className="w-full inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                            >
+                                <Share2 className="h-4 w-4 mr-2" />
+                                Share Product
+                            </button>
+                            {(hasPermission('product', 'update') || hasPermission('product', 'delete')) && (
+                                <>
+                                    {hasPermission('product', 'update') && (
+                                        <Link
+                                            href={`/admin/dashboard/products/${productId}/edit`}
+                                            className="w-full inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                                        >
+                                            <Edit className="h-4 w-4 mr-2" />
+                                            Edit Product
+                                        </Link>
+                                    )}
+                                    {hasPermission('product', 'delete') && (
+                                        <button
+                                            onClick={handleDeleteProduct}
+                                            disabled={deleting}
+                                            className="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 disabled:opacity-50"
+                                        >
+                                            <Trash2 className="h-4 w-4 mr-2" />
+                                            {deleting ? 'Deleting...' : 'Delete Product'}
+                                        </button>
+                                    )}
+                                </>
+                            )}
                         </div>
-                    )}
+                    </div>
                 </div>
             </div>
+
+            {/* Share Modal */}
+            {product && (
+                <ShareModal
+                    isOpen={showShareModal}
+                    onClose={() => setShowShareModal(false)}
+                    url={`/product/${product.slug}`}
+                    title="Share Product"
+                />
+            )}
         </div>
     )
 }

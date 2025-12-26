@@ -66,10 +66,18 @@ export const AppProvider = ({ children }) => {
 
     // Cart functions
     const addToCart = (product, selectedVariant, quantity = 1) => {
-        // Create variant key for unique identification
+        // Create variant key for unique identification (size is optional now)
         const variantKey = selectedVariant ? 
-            `${product._id}-${selectedVariant.size}-${selectedVariant.color || 'no-color'}` : 
+            `${product._id}-${selectedVariant.size || 'no-size'}-${selectedVariant.color || 'no-color'}` : 
             product._id;
+        
+        // Create variant display string (size is optional now)
+        const variantDisplay = selectedVariant ? (() => {
+            const parts = [];
+            if (selectedVariant.size) parts.push(`Size: ${selectedVariant.size}`);
+            if (selectedVariant.color) parts.push(`Color: ${selectedVariant.color}`);
+            return parts.length > 0 ? parts.join(', ') : 'Default';
+        })() : 'Default';
         
         const cartItem = {
             id: Date.now(), // Unique cart item ID
@@ -83,9 +91,7 @@ export const AppProvider = ({ children }) => {
             },
             variantKey: variantKey,
             name: product.title,
-            variant: selectedVariant ? 
-                `Size: ${selectedVariant.size}${selectedVariant.color ? `, Color: ${selectedVariant.color}` : ''}` : 
-                'Default',
+            variant: variantDisplay,
             price: selectedVariant?.currentPrice || product.basePrice || 0,
             originalPrice: selectedVariant?.originalPrice || null,
             image: product.featuredImage || '/images/placeholder.png',
@@ -138,8 +144,16 @@ export const AppProvider = ({ children }) => {
         
         items.forEach(({ product, selectedVariant, quantity = 1 }) => {
             const variantKey = selectedVariant ? 
-                `${product._id}-${selectedVariant.size}-${selectedVariant.color || 'no-color'}` : 
+                `${product._id}-${selectedVariant.size || 'no-size'}-${selectedVariant.color || 'no-color'}` : 
                 product._id;
+            
+            // Create variant display string (size is optional now)
+            const variantDisplay = selectedVariant ? (() => {
+                const parts = [];
+                if (selectedVariant.size) parts.push(`Size: ${selectedVariant.size}`);
+                if (selectedVariant.color) parts.push(`Color: ${selectedVariant.color}`);
+                return parts.length > 0 ? parts.join(', ') : 'Default';
+            })() : 'Default';
             
             const cartItem = {
                 id: Date.now() + Math.random(), // Unique cart item ID
@@ -153,9 +167,7 @@ export const AppProvider = ({ children }) => {
                 },
                 variantKey: variantKey,
                 name: product.title,
-                variant: selectedVariant ? 
-                    `Size: ${selectedVariant.size}${selectedVariant.color ? `, Color: ${selectedVariant.color}` : ''}` : 
-                    'Default',
+                variant: variantDisplay,
                 price: selectedVariant?.currentPrice || product.basePrice || 0,
                 originalPrice: selectedVariant?.originalPrice || null,
                 image: product.featuredImage || '/images/placeholder.png',
@@ -281,7 +293,7 @@ export const AppProvider = ({ children }) => {
                 const colorAttr = firstVariant.attributes?.find(attr => attr.name === 'Color');
                 
                 selectedVariant = {
-                    size: sizeAttr?.value || 'Default', // Size is mandatory
+                    size: sizeAttr?.value || null, // Size is optional now
                     color: colorAttr?.value || null, // Color is optional
                     hexCode: colorAttr?.hexCode || null, // Only set if color exists
                     currentPrice: firstVariant.currentPrice || wishlistItem.price,
@@ -293,7 +305,7 @@ export const AppProvider = ({ children }) => {
             } else {
                 // If no variants, create a default variant
                 selectedVariant = {
-                    size: 'Default', // Size is mandatory
+                    size: null, // Size is optional now
                     color: null, // Color is optional
                     hexCode: null, // No color by default
                     currentPrice: wishlistItem.price,

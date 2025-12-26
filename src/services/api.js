@@ -71,6 +71,15 @@ export const productAPI = {
         return apiCall(`/product/new-arrivals?limit=${limit}`);
     },
 
+    // Get random products
+    getRandomProducts: (limit = 5, excludeIds = []) => {
+        const params = new URLSearchParams({ limit: limit.toString() });
+        if (excludeIds.length > 0) {
+            params.append('exclude', excludeIds.join(','));
+        }
+        return apiCall(`/product/random?${params.toString()}`);
+    },
+
     // Get discounted products
     getDiscountedProducts: (limit = 10) => {
         return apiCall(`/product/discounted?limit=${limit}`);
@@ -141,9 +150,13 @@ export const productAPI = {
     },
 
     // Admin: Delete product
-    deleteProduct: (id) => {
+    deleteProduct: (id, token) => {
         return apiCall(`/product/${id}`, {
             method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
         });
     },
 
@@ -204,6 +217,11 @@ export const categoryAPI = {
     // Get featured categories for homepage
     getFeaturedCategories: (limit = 6) => {
         return apiCall(`/category/featured?limit=${limit}`);
+    },
+
+    // Get categories with children for megamenu
+    getCategoriesForMegamenu: () => {
+        return apiCall('/category/megamenu');
     },
 
     // Get single category by ID
@@ -589,11 +607,14 @@ export const orderAPI = {
     },
 
     // Get customer info by phone number (unified API)
+    // Token is optional - API works without authentication for guest users
     getCustomerInfoByPhone: (phoneNumber, token) => {
+        const headers = {};
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
         return apiCall(`/order/get-customer-info/${phoneNumber}`, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-            },
+            headers,
         });
     },
 
@@ -660,6 +681,17 @@ export const orderAPI = {
     // Track order by order ID
     trackOrder: (orderId) => {
         return apiCall(`/order/track/${orderId}`);
+    },
+
+    // Admin: Add order to Steadfast
+    addOrderToSteadfast: (orderId, token) => {
+        return apiCall(`/order/${orderId}/add-to-steadfast`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
     },
 };
 
@@ -1328,6 +1360,23 @@ export const settingsAPI = {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify(deliveryChargeData),
+        });
+    },
+    
+    // Get steadfast settings only
+    getSteadfastSettings: () => {
+        return apiCall('/settings/steadfast');
+    },
+    
+    // Update steadfast settings only (Admin only)
+    updateSteadfastSettings: (steadfastData, token) => {
+        return apiCall('/settings/steadfast', {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(steadfastData),
         });
     },
 };

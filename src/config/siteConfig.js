@@ -5,7 +5,7 @@ export const siteConfig = {
   shortName: "Forpink",
   description: "Premium jewelry and accessories for every occasion",
   url: "https://forpink.com",
-  
+
   // SEO Meta Tags
   seo: {
     title: "Forpink - Premium Jewelry & Accessories",
@@ -38,8 +38,8 @@ export const siteConfig = {
   // Contact Information
   contact: {
     email: "info@forpink.com",
-    phone: "+1 (555) 123-4567",
-    address: "123 Jewelry Street, Fashion District, NY 10001",
+    phone: "+8801313664466",
+    address: "Badda, Dhaka, Bangladesh - 1212",
     hours: "Mon-Fri: 9AM-6PM, Sat: 10AM-4PM",
   },
 
@@ -136,10 +136,10 @@ export const siteConfig = {
 // Helper function to get page metadata
 export const getPageMetadata = (pageKey, dynamicData = {}) => {
   const pageConfig = siteConfig.pages[pageKey] || siteConfig.pages.home;
-  
+
   let title = pageConfig.title;
   let description = pageConfig.description;
-  
+
   // Replace dynamic placeholders
   if (dynamicData.productName) {
     title = title.replace('{{productName}}', dynamicData.productName);
@@ -147,7 +147,7 @@ export const getPageMetadata = (pageKey, dynamicData = {}) => {
   if (dynamicData.productDescription) {
     description = description.replace('{{productDescription}}', dynamicData.productDescription);
   }
-  
+
   return {
     ...pageConfig,
     title,
@@ -164,7 +164,7 @@ export const getFullPageTitle = (pageTitle) => {
 export const getSEOMetaTags = (pageKey, dynamicData = {}) => {
   const pageMeta = getPageMetadata(pageKey, dynamicData);
   const fullTitle = getFullPageTitle(pageMeta.title);
-  
+
   return {
     title: fullTitle,
     description: pageMeta.description,

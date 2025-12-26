@@ -10,6 +10,7 @@ import CartModal from '@/components/Cart/CartModal';
 import WishlistModal from '@/components/Wishlist/WishlistModal';
 import SearchBar from './SearchBar';
 import { menuAPI } from '@/services/api';
+import CategoryMegamenu from './CategoryMegamenu';
 
 // Fallback navigation menu
 const fallbackNavigationMenu = [
@@ -148,7 +149,7 @@ function Header({ isTrackingShow = true }) {
             <div className="flex items-center">
               <Link href="/">
                 <Image
-                  src="/images/logo.png"
+                  src="/images/logo.svg"
                   alt="Logo"
                   width={170}
                   height={70}
@@ -261,8 +262,12 @@ function Header({ isTrackingShow = true }) {
           <div className="px-4 py-3">
             <div className="max-w-screen-2xl mx-auto">
               <nav className="flex items-center justify-between">
-                {/* Left side - Main menu */}
+                {/* Left side - Categories Megamenu and Main menu */}
                 <div className="flex items-center space-x-8">
+                  {/* Categories Megamenu */}
+                  <CategoryMegamenu />
+                  
+                  {/* Other navigation items */}
                   {menuLoading ? (
                     <div className="flex space-x-8">
                       {[...Array(6)].map((_, index) => (

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { AlertTriangle, X, Trash2 } from 'lucide-react';
+import { AlertTriangle, X, Trash2, Truck } from 'lucide-react';
 
 const DeleteConfirmationModal = ({
     isOpen,
@@ -110,11 +110,15 @@ const DeleteConfirmationModal = ({
                             {isLoading ? (
                                 <>
                                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                    Deleting...
+                                    {confirmText === 'Add to Steadfast' ? 'Adding...' : 'Deleting...'}
                                 </>
                             ) : (
                                 <>
-                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    {confirmText === 'Add to Steadfast' ? (
+                                        <Truck className="h-4 w-4 mr-2" />
+                                    ) : (
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                    )}
                                     {confirmText}
                                 </>
                             )}

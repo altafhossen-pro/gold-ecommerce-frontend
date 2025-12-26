@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Eye, Trash2, Package, Calendar, User, MapPin, CreditCard, Mail, Edit, MoreVertical, Copy, Download } from 'lucide-react';
+import { Eye, Trash2, Package, Calendar, User, MapPin, CreditCard, Mail, Edit, MoreVertical, Copy, Download, Truck, CheckCircle2, AlertTriangle, X } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { formatDateForTable } from '@/utils/formatDate';
@@ -33,6 +33,15 @@ export default function AdminOrdersPage() {
     const [exportStartDate, setExportStartDate] = useState('');
     const [exportEndDate, setExportEndDate] = useState('');
     const [exporting, setExporting] = useState(false);
+    const [addingToSteadfast, setAddingToSteadfast] = useState(false);
+    const [orderAddingToSteadfast, setOrderAddingToSteadfast] = useState(null);
+    const [showSteadfastModal, setShowSteadfastModal] = useState(false);
+    const [orderToAddToSteadfast, setOrderToAddToSteadfast] = useState(null);
+    const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [successData, setSuccessData] = useState(null);
+    const [captchaValue, setCaptchaValue] = useState('');
+    const [captchaMatch, setCaptchaMatch] = useState('');
     
     // Filter states
     const [filters, setFilters] = useState({
@@ -370,7 +379,7 @@ export default function AdminOrdersPage() {
         
         const viewportWidth = window.innerWidth;
         const viewportHeight = window.innerHeight;
-        const menuWidth = 192; // w-48
+        const menuWidth = 240; // w-60 (15rem = 240px)
         const menuHeight = contextMenu.hasSelection ? 250 : 200; // Approximate
         
         let left = contextMenu.x;
@@ -436,6 +445,119 @@ export default function AdminOrdersPage() {
         setOrderToDelete(order);
         setShowDeleteModal(true);
     };
+
+    // Generate random captcha
+    const generateCaptcha = () => {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        let result = '';
+        for (let i = 0; i < 5; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return result;
+    };
+
+    const handleAddToSteadfastClick = (orderId) => {
+        if (!hasPermission('order', 'update')) {
+            toast.error("You don't have permission to update orders");
+            return;
+        }
+
+        const order = orders.find(o => o._id === orderId);
+        if (!order) {
+            toast.error('Order not found');
+            return;
+        }
+
+        if (order.status !== 'processing') {
+            toast.error('Only orders with "processing" status can be added to Steadfast');
+            return;
+        }
+
+        // If already added, show duplicate modal
+        if (order.isAddedIntoSteadfast) {
+            setOrderToAddToSteadfast(order);
+            setCaptchaMatch(generateCaptcha());
+            setCaptchaValue('');
+            setShowDuplicateModal(true);
+            setOpenDropdownId(null);
+            return;
+        }
+
+        setOrderToAddToSteadfast(order);
+        setShowSteadfastModal(true);
+        setOpenDropdownId(null);
+    };
+
+    const confirmAddToSteadfast = async () => {
+        if (!orderToAddToSteadfast) return;
+
+        const orderId = orderToAddToSteadfast._id;
+
+        try {
+            setAddingToSteadfast(true);
+            setOrderAddingToSteadfast(orderId);
+            const token = getCookie('token');
+            const response = await orderAPI.addOrderToSteadfast(orderId, token);
+
+            if (response.success) {
+                // Update order in local state (status changes to shipped when added to Steadfast)
+                const updatedOrders = orders.map(o => 
+                    o._id === orderId 
+                        ? { 
+                            ...o, 
+                            isAddedIntoSteadfast: true, 
+                            status: 'shipped',
+                            steadfastConsignmentId: response.data?.order?.steadfastConsignmentId, 
+                            steadfastTrackingCode: response.data?.order?.steadfastTrackingCode 
+                        }
+                        : o
+                );
+                setOrders(updatedOrders);
+                setFilteredOrders(updatedOrders);
+                
+                // Show success modal with tracking info
+                setSuccessData({
+                    consignmentId: response.data?.order?.steadfastConsignmentId || response.data?.steadfastResponse?.consignment?.consignment_id,
+                    trackingCode: response.data?.order?.steadfastTrackingCode || response.data?.steadfastResponse?.consignment?.tracking_code
+                });
+                setShowSteadfastModal(false);
+                setShowDuplicateModal(false);
+                setOrderToAddToSteadfast(null);
+                setShowSuccessModal(true);
+            } else {
+                toast.error(response.message || 'Failed to add order to Steadfast');
+            }
+        } catch (error) {
+            console.error('Error adding order to Steadfast:', error);
+            if (error.status === 403 || error.response?.status === 403) {
+                toast.error("You don't have permission to update orders");
+            } else {
+                toast.error(error.response?.data?.message || 'Error adding order to Steadfast');
+            }
+        } finally {
+            setAddingToSteadfast(false);
+            setOrderAddingToSteadfast(null);
+        }
+    };
+
+    // Handle Enter key press in modal
+    useEffect(() => {
+        const handleKeyPress = (event) => {
+            if (showSteadfastModal && event.key === 'Enter' && !addingToSteadfast) {
+                event.preventDefault();
+                confirmAddToSteadfast();
+            }
+        };
+
+        if (showSteadfastModal) {
+            document.addEventListener('keydown', handleKeyPress);
+        }
+
+        return () => {
+            document.removeEventListener('keydown', handleKeyPress);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [showSteadfastModal, addingToSteadfast]);
 
     const confirmDeleteOrder = async () => {
         if (!orderToDelete) return;
@@ -925,6 +1047,16 @@ export default function AdminOrdersPage() {
                                             <div className="text-sm font-medium text-gray-900">
                                                 #{order.orderId || order._id.slice(-8).toUpperCase()}
                                             </div>
+                                            {order.status === 'shipped' && order.isAddedIntoSteadfast && order.steadfastConsignmentId && (
+                                                <a
+                                                    href={`https://steadfast.com.bd/user/consignment/${order.steadfastConsignmentId}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-xs font-medium text-pink-600 mt-1 hover:text-pink-700 hover:underline cursor-pointer block"
+                                                >
+                                                    Steadfast: {order.steadfastConsignmentId}
+                                                </a>
+                                            )}
                                         </td>
                                         
                                         <td className="px-6 py-4 whitespace-nowrap">
@@ -1193,10 +1325,250 @@ export default function AdminOrdersPage() {
                 dangerLevel="high"
             />
 
+            {/* Add to Steadfast Confirmation Modal */}
+            <DeleteConfirmationModal
+                isOpen={showSteadfastModal}
+                onClose={() => {
+                    setShowSteadfastModal(false);
+                    setOrderToAddToSteadfast(null);
+                }}
+                onConfirm={confirmAddToSteadfast}
+                title="Add Order to Steadfast"
+                message="Are you sure you want to add this order to Steadfast Courier? The order will be sent to Steadfast for delivery."
+                itemName={orderToAddToSteadfast ? `Order #${orderToAddToSteadfast.orderId || orderToAddToSteadfast._id.slice(-8).toUpperCase()}` : ''}
+                itemType=""
+                isLoading={addingToSteadfast}
+                confirmText="Add to Steadfast"
+                cancelText="Cancel"
+                dangerLevel="medium"
+            />
+
+            {/* Duplicate Order Modal */}
+            {showDuplicateModal && orderToAddToSteadfast && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+                        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                            <div className="flex items-center space-x-3">
+                                <div className="p-2 bg-orange-100 rounded-full">
+                                    <AlertTriangle className="h-6 w-6 text-orange-600" />
+                                </div>
+                                <h3 className="text-lg font-semibold text-gray-900">
+                                    Order Already Added to Steadfast
+                                </h3>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    setShowDuplicateModal(false);
+                                    setOrderToAddToSteadfast(null);
+                                    setCaptchaValue('');
+                                    setCaptchaMatch('');
+                                }}
+                                disabled={addingToSteadfast}
+                                className="p-2 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-50 cursor-pointer"
+                            >
+                                <X className="h-5 w-5 text-gray-500" />
+                            </button>
+                        </div>
+
+                        <div className="p-6">
+                            <p className="text-gray-600 mb-4">
+                                This order has already been added to Steadfast Courier. The system detected a duplicate order.
+                            </p>
+                            <p className="text-gray-700 mb-4">
+                                <strong>Order:</strong> #{orderToAddToSteadfast.orderId || orderToAddToSteadfast._id.slice(-8).toUpperCase()}
+                            </p>
+                            <p className="text-sm text-gray-600 mb-6">
+                                If you delete or want to add as a new entry, then you can add from here. Please confirm by matching the captcha below.
+                            </p>
+
+                            {/* Captcha */}
+                            <div className="mb-6">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Match Captcha: <span className="font-mono text-lg font-bold text-orange-600">{captchaMatch}</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={captchaValue}
+                                    onChange={(e) => setCaptchaValue(e.target.value.toUpperCase())}
+                                    placeholder="Enter captcha"
+                                    disabled={addingToSteadfast}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:border-orange-500 uppercase font-mono"
+                                    maxLength={5}
+                                />
+                            </div>
+
+                            <div className="flex justify-end space-x-3">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowDuplicateModal(false);
+                                        setOrderToAddToSteadfast(null);
+                                        setCaptchaValue('');
+                                        setCaptchaMatch('');
+                                    }}
+                                    disabled={addingToSteadfast}
+                                    className="px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (captchaValue !== captchaMatch) {
+                                            toast.error('Captcha does not match');
+                                            return;
+                                        }
+                                        confirmAddToSteadfast();
+                                    }}
+                                    disabled={addingToSteadfast || captchaValue !== captchaMatch}
+                                    className="px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer inline-flex items-center"
+                                >
+                                    {addingToSteadfast ? (
+                                        <>
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                            Adding...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Truck className="h-4 w-4 mr-2" />
+                                            Add to Steadfast
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Success Modal */}
+            {showSuccessModal && successData && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+                        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                            <div className="flex items-center space-x-3">
+                                <div className="p-2 bg-green-100 rounded-full">
+                                    <CheckCircle2 className="h-6 w-6 text-green-600" />
+                                </div>
+                                <h3 className="text-lg font-semibold text-gray-900">
+                                    Order Added Successfully
+                                </h3>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    setShowSuccessModal(false);
+                                    setSuccessData(null);
+                                }}
+                                className="p-2 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
+                            >
+                                <X className="h-5 w-5 text-gray-500" />
+                            </button>
+                        </div>
+
+                        <div className="p-6">
+                            <p className="text-gray-600 mb-4">
+                                Order has been successfully added to Steadfast Courier for delivery.
+                            </p>
+
+                            {/* Consignment ID */}
+                            {successData.consignmentId && (
+                                <div className="mb-4">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Consignment ID:
+                                    </label>
+                                    <div className="flex items-center space-x-2">
+                                        <span className="px-3 py-2 bg-gray-100 rounded-md font-mono text-sm flex-1">
+                                            {successData.consignmentId}
+                                        </span>
+                                        <button
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(successData.consignmentId);
+                                                toast.success('Consignment ID copied!');
+                                            }}
+                                            className="p-2 hover:bg-gray-200 rounded-md transition-colors cursor-pointer"
+                                            title="Copy Consignment ID"
+                                        >
+                                            <Copy className="h-4 w-4 text-gray-600" />
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Tracking Code */}
+                            {successData.trackingCode && (
+                                <div className="mb-4">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Tracking Code:
+                                    </label>
+                                    <div className="flex items-center space-x-2">
+                                        <span className="px-3 py-2 bg-gray-100 rounded-md font-mono text-sm flex-1">
+                                            {successData.trackingCode}
+                                        </span>
+                                        <button
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(successData.trackingCode);
+                                                toast.success('Tracking code copied!');
+                                            }}
+                                            className="p-2 hover:bg-gray-200 rounded-md transition-colors cursor-pointer"
+                                            title="Copy Tracking Code"
+                                        >
+                                            <Copy className="h-4 w-4 text-gray-600" />
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Tracking URL */}
+                            {successData.trackingCode && (
+                                <div className="mb-6">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Tracking URL:
+                                    </label>
+                                    <div className="flex items-center space-x-2">
+                                        <a
+                                            href={`https://steadfast.com.bd/t/${successData.trackingCode}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="px-3 py-2 bg-blue-50 text-blue-600 rounded-md text-sm flex-1 hover:bg-blue-100 transition-colors break-all"
+                                        >
+                                            https://steadfast.com.bd/t/{successData.trackingCode}
+                                        </a>
+                                        <button
+                                            onClick={() => {
+                                                const url = `https://steadfast.com.bd/t/${successData.trackingCode}`;
+                                                navigator.clipboard.writeText(url);
+                                                toast.success('Tracking URL copied!');
+                                            }}
+                                            className="p-2 hover:bg-gray-200 rounded-md transition-colors cursor-pointer"
+                                            title="Copy Tracking URL"
+                                        >
+                                            <Copy className="h-4 w-4 text-gray-600" />
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="flex justify-end">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowSuccessModal(false);
+                                        setSuccessData(null);
+                                    }}
+                                    className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all cursor-pointer"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Floating Dropdown Menu (Portal) */}
             {openDropdownId && typeof window !== 'undefined' && createPortal(
                 <div 
-                    className="dropdown-menu-container w-48 bg-white rounded-md shadow-lg border border-gray-200"
+                    className="dropdown-menu-container w-60 bg-white rounded-md shadow-lg border border-gray-200"
                     style={dropdownPosition[openDropdownId] || {}}
                     onClick={(e) => e.stopPropagation()}
                 >
@@ -1208,7 +1580,7 @@ export default function AdminOrdersPage() {
                                     e.stopPropagation();
                                     setOpenDropdownId(null);
                                 }}
-                                className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
                             >
                                 <Eye className="h-4 w-4 mr-2" />
                                 View
@@ -1222,7 +1594,7 @@ export default function AdminOrdersPage() {
                                         e.stopPropagation();
                                         setOpenDropdownId(null);
                                     }}
-                                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
                                 >
                                     <Edit className="h-4 w-4 mr-2" />
                                     Edit
@@ -1236,12 +1608,26 @@ export default function AdminOrdersPage() {
                                             openStatusModal(order);
                                         }
                                     }}
-                                    className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                    className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
                                 >
                                     <Edit className="h-4 w-4 mr-2" />
                                     Edit Status
                                 </button>
                             </>
+                        )}
+                        {hasPermission('order', 'update') && orders.find(o => o._id === openDropdownId)?.status === 'processing' && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleAddToSteadfastClick(openDropdownId);
+                                }}
+                                className="w-full flex items-center px-4 py-2 text-sm text-orange-700 hover:bg-orange-50 cursor-pointer"
+                            >
+                                <Truck className="h-4 w-4 mr-2" />
+                                {orders.find(o => o._id === openDropdownId)?.isAddedIntoSteadfast 
+                                    ? 'Add to Steadfast (Duplicate)' 
+                                    : 'Add to Steadfast'}
+                            </button>
                         )}
                         {hasPermission('order', 'delete') && (
                             <button
@@ -1250,7 +1636,7 @@ export default function AdminOrdersPage() {
                                     setOpenDropdownId(null);
                                     handleDeleteOrder(openDropdownId);
                                 }}
-                                className="w-full flex items-center px-4 py-2 text-sm text-red-700 hover:bg-red-50"
+                                className="w-full flex items-center px-4 py-2 text-sm text-red-700 hover:bg-red-50 cursor-pointer"
                             >
                                 <Trash2 className="h-4 w-4 mr-2" />
                                 Delete
@@ -1264,7 +1650,7 @@ export default function AdminOrdersPage() {
             {/* Right-Click Context Menu (Portal) */}
             {contextMenu.open && contextMenu.orderId && typeof window !== 'undefined' && createPortal(
                 <div 
-                    className="context-menu-container w-48 bg-white rounded-md shadow-lg border border-gray-200"
+                    className="context-menu-container w-60 bg-white rounded-md shadow-lg border border-gray-200"
                     style={getContextMenuPosition()}
                 >
                     <div className="py-1">
@@ -1272,7 +1658,7 @@ export default function AdminOrdersPage() {
                         {contextMenu.hasSelection && (
                             <button
                                 onClick={handleCopy}
-                                className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
                             >
                                 <Copy className="h-4 w-4 mr-2" />
                                 Copy
@@ -1289,7 +1675,7 @@ export default function AdminOrdersPage() {
                             <Link
                                 href={`/admin/dashboard/orders/${contextMenu.orderId}`}
                                 onClick={() => setContextMenu({ open: false, orderId: null, x: 0, y: 0, hasSelection: false })}
-                                className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
                             >
                                 <Eye className="h-4 w-4 mr-2" />
                                 View
@@ -1300,7 +1686,7 @@ export default function AdminOrdersPage() {
                                 <Link
                                     href={`/admin/dashboard/orders/${contextMenu.orderId}/edit`}
                                     onClick={() => setContextMenu({ open: false, orderId: null, x: 0, y: 0, hasSelection: false })}
-                                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
                                 >
                                     <Edit className="h-4 w-4 mr-2" />
                                     Edit
@@ -1313,12 +1699,26 @@ export default function AdminOrdersPage() {
                                             openStatusModal(order);
                                         }
                                     }}
-                                    className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                    className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
                                 >
                                     <Edit className="h-4 w-4 mr-2" />
                                     Edit Status
                                 </button>
                             </>
+                        )}
+                        {hasPermission('order', 'update') && orders.find(o => o._id === contextMenu.orderId)?.status === 'processing' && (
+                            <button
+                                onClick={() => {
+                                    setContextMenu({ open: false, orderId: null, x: 0, y: 0, hasSelection: false });
+                                    handleAddToSteadfastClick(contextMenu.orderId);
+                                }}
+                                className="w-full flex items-center px-4 py-2 text-sm text-orange-700 hover:bg-orange-50 cursor-pointer"
+                            >
+                                <Truck className="h-4 w-4 mr-2" />
+                                {orders.find(o => o._id === contextMenu.orderId)?.isAddedIntoSteadfast 
+                                    ? 'Add to Steadfast (Duplicate)' 
+                                    : 'Add to Steadfast'}
+                            </button>
                         )}
                         {hasPermission('order', 'delete') && (
                             <button
@@ -1326,7 +1726,7 @@ export default function AdminOrdersPage() {
                                     setContextMenu({ open: false, orderId: null, x: 0, y: 0, hasSelection: false });
                                     handleDeleteOrder(contextMenu.orderId);
                                 }}
-                                className="w-full flex items-center px-4 py-2 text-sm text-red-700 hover:bg-red-50"
+                                className="w-full flex items-center px-4 py-2 text-sm text-red-700 hover:bg-red-50 cursor-pointer"
                             >
                                 <Trash2 className="h-4 w-4 mr-2" />
                                 Delete
@@ -1420,3 +1820,4 @@ export default function AdminOrdersPage() {
         </div>
     );
 }
+

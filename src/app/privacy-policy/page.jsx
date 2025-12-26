@@ -3,7 +3,7 @@
 import React from 'react';
 import Header from "@/components/Header/Header";
 import Footer from "@/components/Footer/Footer";
-import { Shield, Lock, Eye, FileText, Users, Database, Bell, Mail, Phone } from 'lucide-react';
+import { Shield, Database, Users, Lock, FileText, Mail } from 'lucide-react';
 
 export default function PrivacyPolicy() {
   const lastUpdated = "January 15, 2025";
@@ -11,125 +11,70 @@ export default function PrivacyPolicy() {
   const sections = [
     {
       id: "introduction",
-      title: "Introduction",
+      title: "Privacy Policy",
       icon: Shield,
-      content: `Welcome to Forpink.com ("we," "our," or "us"). We are committed to protecting your privacy and ensuring the security of your personal information. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our website, use our services, or make purchases from our online jewelry store.`
+      content: `Welcome to FORPINK.COM. Your privacy is very important to us. This Privacy Policy explains how we collect, use, and protect your personal information when you visit or purchase from our website.`
     },
     {
       id: "information-collection",
-      title: "Information We Collect",
+      title: "1. Information We Collect",
       icon: Database,
-      content: `We collect information you provide directly to us, such as when you create an account, make a purchase, or contact us. This may include:
-      • Personal identification information (name, email address, phone number)
-      • Shipping and billing addresses
-      • Payment information (processed securely through our payment partners)
-      • Order history and preferences
-      • Communication preferences and marketing opt-ins`
-    },
-    {
-      id: "automated-collection",
-      title: "Automated Information Collection",
-      icon: Eye,
-      content: `We automatically collect certain information when you visit our website:
-      • Device information (IP address, browser type, operating system)
-      • Usage data (pages visited, time spent, links clicked)
-      • Cookies and similar technologies to enhance your experience
-      • Analytics data to improve our services and user experience`
+      content: `When you use our website, we may collect the following information:
+      • Full Name
+      • Phone Number
+      • Email Address
+      • Shipping & Billing Address
+      • Payment-related information (we do not store card details)
+      • Browsing data (cookies, IP address, device info)`
     },
     {
       id: "information-use",
-      title: "How We Use Your Information",
+      title: "2. How We Use Your Information",
       icon: Users,
-      content: `We use the collected information for various purposes:
-      • Processing and fulfilling your orders
-      • Providing customer support and responding to inquiries
-      • Sending order confirmations and shipping updates
-      • Personalizing your shopping experience
-      • Sending marketing communications (with your consent)
-      • Improving our website and services
-      • Preventing fraud and ensuring security`
+      content: `We use your information to:
+      • Process and deliver your orders
+      • Contact you regarding your order or support requests
+      • Improve our products, services, and website experience
+      • Send promotional offers (only if you agree)`
+    },
+    {
+      id: "information-protection",
+      title: "3. Information Protection",
+      icon: Lock,
+      content: `We take reasonable security measures to protect your personal data from unauthorized access, misuse, or disclosure.`
     },
     {
       id: "information-sharing",
-      title: "Information Sharing and Disclosure",
+      title: "4. Sharing Information",
       icon: Lock,
-      content: `We do not sell, trade, or rent your personal information to third parties. We may share your information in the following circumstances:
-      • With trusted service providers who assist in our operations
-      • With payment processors to complete transactions
-      • With shipping partners to deliver your orders
-      • When required by law or to protect our rights
-      • With your explicit consent`
-    },
-    {
-      id: "data-security",
-      title: "Data Security",
-      icon: Shield,
-      content: `We implement appropriate security measures to protect your personal information:
-      • Encryption of sensitive data during transmission
-      • Secure storage of personal information
-      • Regular security assessments and updates
-      • Limited access to personal information on a need-to-know basis
-      • Compliance with industry security standards`
+      content: `We do not sell or rent your personal information. Your data may only be shared with:
+      • Delivery partners
+      • Payment service providers
+      • Legal authorities if required by law`
     },
     {
       id: "cookies",
-      title: "Cookies and Tracking Technologies",
+      title: "5. Cookies",
       icon: FileText,
-      content: `We use cookies and similar technologies to:
-      • Remember your preferences and settings
-      • Analyze website traffic and usage patterns
-      • Provide personalized content and recommendations
-      • Improve website functionality and performance
-      • Enable certain features and services`
+      content: `FORPINK.COM uses cookies to improve your browsing experience and analyze website traffic.`
     },
     {
-      id: "marketing",
-      title: "Marketing Communications",
-      icon: Mail,
-      content: `We may send you marketing communications about our products, services, and promotions. You can:
-      • Opt-in to receive marketing emails during account creation
-      • Unsubscribe from marketing communications at any time
-      • Update your communication preferences in your account settings
-      • Contact us to manage your marketing preferences`
-    },
-    {
-      id: "your-rights",
-      title: "Your Rights and Choices",
-      icon: Users,
-      content: `You have the following rights regarding your personal information:
-      • Access and review your personal information
-      • Update or correct inaccurate information
-      • Request deletion of your personal information
-      • Opt-out of marketing communications
-      • Control cookie preferences through your browser settings
-      • Contact us with privacy-related questions or concerns`
-    },
-    {
-      id: "children",
-      title: "Children's Privacy",
+      id: "consent",
+      title: "6. Your Consent",
       icon: Shield,
-      content: `Our website is not intended for children under the age of 13. We do not knowingly collect personal information from children under 13. If you believe we have collected information from a child under 13, please contact us immediately, and we will take steps to remove such information.`
-    },
-    {
-      id: "international",
-      title: "International Data Transfers",
-      icon: Database,
-      content: `Your information may be transferred to and processed in countries other than your own. We ensure that such transfers comply with applicable data protection laws and implement appropriate safeguards to protect your information.`
+      content: `By using our website, you consent to our Privacy Policy.`
     },
     {
       id: "changes",
-      title: "Changes to This Privacy Policy",
-      icon: Bell,
-      content: `We may update this Privacy Policy from time to time. We will notify you of any material changes by:
-      • Posting the updated policy on our website
-      • Sending an email notification to registered users
-      • Updating the "Last Updated" date at the top of this policy
-      We encourage you to review this policy periodically.`
+      title: "7. Changes to Privacy Policy",
+      icon: Shield,
+      content: `We reserve the right to update this policy at any time. Changes will be posted on this page.`
     }
   ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50">
+      <Header />
       
       {/* Main Content */}
       <div className="max-w-4xl mx-auto px-4 py-12">
@@ -175,18 +120,17 @@ export default function PrivacyPolicy() {
         {/* Contact Section */}
         <div className="mt-12 bg-white rounded-lg p-8 shadow-sm border border-gray-100">
           <div className="text-center">
-            <h3 className="text-2xl font-semibold text-gray-900 mb-4">Questions About This Privacy Policy?</h3>
+            <div className="inline-flex items-center justify-center w-12 h-12 bg-pink-100 rounded-full mb-4">
+              <Mail className="w-6 h-6 text-pink-500" />
+            </div>
+            <h3 className="text-2xl font-semibold text-gray-900 mb-4">Contact Us</h3>
             <p className="text-gray-600 mb-6">
-              If you have any questions about this Privacy Policy or our privacy practices, please contact us:
+              If you have any questions, please contact us at:
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div className="flex items-center justify-center space-x-2 text-gray-600">
+            <div className="text-sm">
+              <div className="flex items-center justify-center space-x-2 text-gray-700 mb-2">
                 <Mail className="w-4 h-4 text-pink-500" />
-                <span>forpink@gmail.com</span>
-              </div>
-              <div className="flex items-center justify-center space-x-2 text-gray-600">
-                <Phone className="w-4 h-4 text-pink-500" />
-                <span>+8801XXXXXXXXX</span>
+                <span className="font-medium">Email: support@forpink.com</span>
               </div>
             </div>
           </div>

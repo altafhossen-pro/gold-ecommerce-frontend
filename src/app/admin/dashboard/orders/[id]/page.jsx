@@ -57,6 +57,8 @@ export default function OrderDetailsPage() {
     const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
     const [returnQuantities, setReturnQuantities] = useState({});
     const [selectedItems, setSelectedItems] = useState(new Set());
+    const [hoveredImage, setHoveredImage] = useState(null);
+    const [imagePosition, setImagePosition] = useState({ x: 0, y: 0 });
 
     useEffect(() => {
         // Check permission first
@@ -245,6 +247,28 @@ export default function OrderDetailsPage() {
 
     const clearAllItems = () => {
         setSelectedItems(new Set());
+    };
+
+    // Image zoom handlers
+    const handleImageMouseEnter = (e, imageUrl) => {
+        setHoveredImage(imageUrl);
+        updateImagePosition(e);
+    };
+
+    const handleImageMouseMove = (e) => {
+        if (hoveredImage) {
+            updateImagePosition(e);
+        }
+    };
+
+    const handleImageMouseLeave = () => {
+        setHoveredImage(null);
+    };
+
+    const updateImagePosition = (e) => {
+        const x = e.clientX;
+        const y = e.clientY;
+        setImagePosition({ x, y });
     };
 
     // Get available status options based on current status
@@ -690,17 +714,42 @@ export default function OrderDetailsPage() {
                                                     </div>
                                                 </div>
 
-                                                <div className="relative">
+                                                <div 
+                                                    className="relative"
+                                                    onMouseEnter={(e) => handleImageMouseEnter(e, item.image)}
+                                                    onMouseMove={handleImageMouseMove}
+                                                    onMouseLeave={handleImageMouseLeave}
+                                                >
                                                     <img
                                                         src={item.image}
                                                         alt={item.name}
-                                                        className="h-24 w-24 rounded-xl object-cover border-2 border-white shadow-lg"
+                                                        className="h-24 w-24 rounded-xl object-cover border-2 border-white shadow-lg cursor-zoom-in"
                                                     />
-                                                    <div className={`absolute -top-2 -right-2 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center ${
+                                                    <div className={`absolute -top-2 -right-2 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center z-10 ${
                                                         isSelected ? 'bg-emerald-600' : 'bg-blue-600'
                                                     }`}>
                                                         {item.quantity}
                                                     </div>
+                                                    {/* Zoom Popup */}
+                                                    {hoveredImage === item.image && (
+                                                        <div 
+                                                            className="fixed z-[9999] bg-white border-2 border-gray-300 rounded-lg shadow-2xl overflow-hidden pointer-events-none"
+                                                            style={{
+                                                                width: '400px',
+                                                                height: '400px',
+                                                                left: `${imagePosition.x + 20}px`,
+                                                                top: `${imagePosition.y - 200}px`,
+                                                                maxWidth: 'calc(100vw - 40px)',
+                                                                maxHeight: 'calc(100vh - 40px)'
+                                                            }}
+                                                        >
+                                                            <img
+                                                                src={item.image}
+                                                                alt={item.name}
+                                                                className="w-full h-full object-contain"
+                                                            />
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 
                                                 <div className="flex-1 min-w-0">
@@ -1157,18 +1206,43 @@ export default function OrderDetailsPage() {
                                 <div key={index} className="border border-gray-200 rounded-md p-3 bg-gray-50 hover:bg-gray-100 transition-colors">
                                     <div className="flex items-start justify-between mb-2">
                                         <div className="flex items-start space-x-3 flex-1">
-                                            <div className="relative flex-shrink-0">
+                                            <div 
+                                                className="relative flex-shrink-0"
+                                                onMouseEnter={(e) => handleImageMouseEnter(e, item.featuredImage || item.image || '/images/placeholder.png')}
+                                                onMouseMove={handleImageMouseMove}
+                                                onMouseLeave={handleImageMouseLeave}
+                                            >
                                                 <img
                                                     src={item.featuredImage || item.image || '/images/placeholder.png'}
                                                     alt={item.name}
-                                                    className="h-10 w-10 rounded-md object-cover border border-white shadow-sm"
+                                                    className="h-10 w-10 rounded-md object-cover border border-white shadow-sm cursor-zoom-in"
                                                     onError={(e) => {
                                                         e.target.src = '/images/placeholder.png';
                                                     }}
                                                 />
-                                                <div className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-medium">
+                                                <div className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-medium z-10">
                                                     {item.quantity}
                                                 </div>
+                                                {/* Zoom Popup */}
+                                                {hoveredImage === (item.featuredImage || item.image || '/images/placeholder.png') && (
+                                                    <div 
+                                                        className="fixed z-[9999] bg-white border-2 border-gray-300 rounded-lg shadow-2xl overflow-hidden pointer-events-none"
+                                                        style={{
+                                                            width: '350px',
+                                                            height: '350px',
+                                                            left: `${imagePosition.x + 20}px`,
+                                                            top: `${imagePosition.y - 175}px`,
+                                                            maxWidth: 'calc(100vw - 40px)',
+                                                            maxHeight: 'calc(100vh - 40px)'
+                                                        }}
+                                                    >
+                                                        <img
+                                                            src={item.featuredImage || item.image || '/images/placeholder.png'}
+                                                            alt={item.name}
+                                                            className="w-full h-full object-contain"
+                                                        />
+                                                    </div>
+                                                )}
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <h4 className="font-semibold text-gray-900 text-sm mb-1 break-words">{item.name}</h4>

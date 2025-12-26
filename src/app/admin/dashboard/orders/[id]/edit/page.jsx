@@ -174,7 +174,7 @@ export default function OrderEditPage() {
             quantity: newItemQuantity,
             subtotal: newItemPrice * newItemQuantity,
             variant: selectedVariant ? {
-                size: selectedVariant.attributes?.find(attr => attr.name === 'Size')?.value || 'Default',
+                size: selectedVariant.attributes?.find(attr => attr.name === 'Size')?.value || null,
                 color: selectedVariant.attributes?.find(attr => attr.name === 'Color')?.value || null,
                 colorHexCode: selectedVariant.attributes?.find(attr => attr.name === 'Color')?.hexCode || null,
                 sku: selectedVariant.sku,

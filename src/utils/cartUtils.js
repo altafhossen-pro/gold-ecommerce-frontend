@@ -33,7 +33,7 @@ export const addProductToCart = (product, addToCart, quantity = 1) => {
       const colorAttr = selectedVariantData.attributes?.find(attr => attr.name === 'Color');
       
       selectedVariant = {
-        size: sizeAttr?.value || 'Default', // Size is mandatory
+        size: sizeAttr?.value || null, // Size is optional now
         color: colorAttr?.value || null, // Color is optional
         hexCode: colorAttr?.hexCode || null, // Only set if color exists
         currentPrice: selectedVariantData.currentPrice || product.price,
@@ -53,7 +53,7 @@ export const addProductToCart = (product, addToCart, quantity = 1) => {
       }
       
       selectedVariant = {
-        size: 'Default', // Size is mandatory
+        size: null, // Size is optional now
         color: null, // Color is optional
         hexCode: null, // No color by default
         currentPrice: product.price,

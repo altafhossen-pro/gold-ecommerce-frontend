@@ -109,7 +109,7 @@ const UpsellProducts = ({ currentProductId }) => {
                             
                             // Don't apply discount here - discount is applied to total, not individual products
                             selectedVariant = {
-                                size: sizeAttr?.value || 'Default',
+                                size: sizeAttr?.value || null, // Size is optional now
                                 color: colorAttr?.value || null,
                                 hexCode: colorAttr?.hexCode || null,
                                 currentPrice: selectedVariantData.currentPrice || product.price,
@@ -131,7 +131,7 @@ const UpsellProducts = ({ currentProductId }) => {
                             
                             // Don't apply discount here - discount is applied to total, not individual products
                             selectedVariant = {
-                                size: 'Default',
+                                size: null, // Size is optional now
                                 color: null,
                                 hexCode: null,
                                 currentPrice: product.price,

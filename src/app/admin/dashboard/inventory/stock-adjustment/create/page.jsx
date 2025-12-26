@@ -170,7 +170,7 @@ const CreateStockAdjustmentPage = () => {
             }
         } else {
             // If no variants, set default values
-            setSelectedSize("Default");
+            setSelectedSize("");
             setSelectedColor(""); // No color by default
         }
     };
