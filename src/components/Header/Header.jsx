@@ -15,7 +15,6 @@ import CategoryMegamenu from './CategoryMegamenu';
 // Fallback navigation menu
 const fallbackNavigationMenu = [
   { id: 1, name: "Home", href: "/", isActive: true },
-  { id: 2, name: "Categories", href: "/categories", isActive: false },
   { id: 3, name: "Shop", href: "/shop", isActive: false },
   { id: 4, name: "New Arrivals", href: "/shop?sort=new-arrivals", isActive: false },
   { id: 5, name: "Offers", href: "/offers", isActive: false },
