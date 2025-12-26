@@ -31,6 +31,7 @@ function ShopPageContent() {
     // State for filters
     const [categories, setCategories] = useState([]);
     const [selectedCategories, setSelectedCategories] = useState([]);
+    const [categoriesLoaded, setCategoriesLoaded] = useState(false);
     const [selectedBraceletSizes, setSelectedBraceletSizes] = useState([]);
     const [selectedRingSizes, setSelectedRingSizes] = useState([]);
     const [priceRange, setPriceRange] = useState({ min: '', max: '' });
@@ -68,17 +69,23 @@ function ShopPageContent() {
                 const response = await categoryAPI.getMainCategories();
                 if (response.success) {
                     setCategories(response.data || []);
+                    setCategoriesLoaded(true);
 
                     // If category slug is provided in URL, automatically select that category
                     if (categorySlug) {
                         const category = response.data.find(cat => cat.slug === categorySlug);
                         if (category) {
                             setSelectedCategories([category._id]);
+                            // Fetch available sizes for the selected category
+                            fetchAvailableSizes([category._id]);
                         }
                     }
+                } else {
+                    setCategoriesLoaded(true);
                 }
             } catch (error) {
                 console.error('Error fetching main categories:', error);
+                setCategoriesLoaded(true);
             }
         };
         fetchCategories();
@@ -180,15 +187,14 @@ function ShopPageContent() {
         }
     };
 
-    // Apply filters and sorting
+    // Apply filters and sorting - only fetch after categories are loaded to avoid race condition
     useEffect(() => {
-        fetchProducts();
-    }, [selectedCategories, selectedBraceletSizes, selectedRingSizes, priceRange, sortBy, currentPage]);
-
-    // Initial fetch when page loads
-    useEffect(() => {
-        fetchProducts();
-    }, []);
+        // Wait for categories to be loaded before fetching products
+        // This ensures category ID is properly set from URL slug before API call
+        if (categoriesLoaded) {
+            fetchProducts();
+        }
+    }, [selectedCategories, selectedBraceletSizes, selectedRingSizes, priceRange, sortBy, currentPage, categoriesLoaded]);
 
     // Update products wishlist state when global wishlist changes
     useEffect(() => {
