@@ -448,6 +448,18 @@ export const userAPI = {
         });
     },
 
+    // Admin - Create staff member (Super Admin only)
+    createStaff: (staffData, token) => {
+        return apiCall('/admin/user/staff', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(staffData),
+        });
+    },
+
     // Upload profile picture
     uploadProfilePicture: (formData, token) => {
         return apiCall('/user/profile-picture', {

@@ -226,19 +226,54 @@ export default function ProductDetails({ productSlug }) {
     const handleSizeChange = (size) => {
         setSelectedSize(size);
         setHasManuallySelectedVariant(true); // User manually selected variant
-        // Reset color when size changes - get available colors for new size (or all colors if size empty)
-        const colorsForSize = getAvailableColorsForSize(size);
-        if (colorsForSize.length > 0) {
-            setSelectedColor(colorsForSize[0].value);
+        // Reset color when size changes - get available variants for new size and select first one
+        const variantsForSize = getAvailableVariantsForSize(size);
+        if (variantsForSize.length > 0) {
+            const firstVariant = variantsForSize[0];
+            const colorAttr = firstVariant.attributes.find(attr => attr.name === 'Color');
+            if (colorAttr) {
+                setSelectedColor(colorAttr.value);
+            } else {
+                setSelectedColor("");
+            }
         } else {
-            // If no colors available for this size, clear selected color
+            // If no variants available for this size, clear selected color
             setSelectedColor("");
         }
     };
 
-    const handleColorChange = (color) => {
-        setSelectedColor(color);
-        setHasManuallySelectedVariant(true); // User manually selected variant
+    // Commented out - now using variant image selection instead
+    // const handleColorChange = (color) => {
+    //     setSelectedColor(color);
+    //     setHasManuallySelectedVariant(true); // User manually selected variant
+    // };
+
+    // Handle variant image selection (replaces color selection)
+    const handleVariantImageChange = (variant) => {
+        const colorAttr = variant.attributes.find(attr => attr.name === 'Color');
+        if (colorAttr) {
+            setSelectedColor(colorAttr.value);
+        }
+        setHasManuallySelectedVariant(true);
+    };
+
+    // Get available variants for selected size (to show variant images)
+    const getAvailableVariantsForSize = (size) => {
+        if (!product?.variants) return [];
+        
+        if (size) {
+            // Filter variants by selected size
+            return product.variants.filter(variant => {
+                const sizeAttr = variant.attributes.find(attr => attr.name === 'Size');
+                return sizeAttr && sizeAttr.value === size;
+            });
+        } else {
+            // If no size selected, show variants without size
+            return product.variants.filter(variant => {
+                const sizeAttr = variant.attributes.find(attr => attr.name === 'Size');
+                return !sizeAttr;
+            });
+        }
     };
 
     const handleAddToCart = () => {
@@ -581,7 +616,7 @@ export default function ProductDetails({ productSlug }) {
                     {/* Product Info - Right Panel */}
                     <div className="lg:w-[60%]  flex flex-col lg:flex-row justify-between gap-8">
                         {/* Left Part - Product Details */}
-                        <div className="space-y-6 lg:flex-1">
+                        <div className="space-y-3 lg:flex-1">
                             {/* Product Title */}
                             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
                                 {product.title}
@@ -632,8 +667,8 @@ export default function ProductDetails({ productSlug }) {
                                 </div>
                             </div>
 
-                            {/* Size and Color Selectors */}
-                            <div className="flex items-center gap-8">
+                            {/* Size and Variant Image Selectors */}
+                            <div className="flex flex-col gap-4">
                                 {/* Size Selector */}
                                 {uniqueSizes.length > 0 && (
                                     <div className="space-y-2">
@@ -663,8 +698,50 @@ export default function ProductDetails({ productSlug }) {
                                     </div>
                                 )}
 
-                                {/* Color Selector - Show if colors are available */}
+                                {/* Variant Image Selector - Show variant images instead of color selector */}
                                 {(() => {
+                                    const variantsToShow = getAvailableVariantsForSize(selectedSize);
+                                    
+                                    return variantsToShow.length > 0 && (
+                                        <div className="space-y-2">
+                                            <label className="block text-sm font-medium text-gray-700">Select Variant</label>
+                                            <div className="flex flex-wrap gap-2">
+                                                {variantsToShow.map((variant) => {
+                                                    const colorAttr = variant.attributes.find(attr => attr.name === 'Color');
+                                                    const isSelected = colorAttr && selectedColor === colorAttr.value;
+                                                    const variantImage = variant.image || product?.featuredImage;
+                                                    
+                                                    return (
+                                                        <button
+                                                            key={variant.sku || variant._id}
+                                                            onClick={() => handleVariantImageChange(variant)}
+                                                            className={`w-12 h-12 rounded-md border-2 transition-all duration-200 flex items-center justify-center cursor-pointer overflow-hidden ${isSelected
+                                                                ? 'border-pink-500 ring-2 ring-pink-200 shadow-sm'
+                                                                : 'border-gray-300 hover:border-pink-400 hover:shadow-sm'
+                                                                }`}
+                                                            title={colorAttr?.value || 'Variant'}
+                                                        >
+                                                            {variantImage ? (
+                                                                <img
+                                                                    src={variantImage}
+                                                                    alt={colorAttr?.value || 'Variant'}
+                                                                    className="w-full h-full object-cover"
+                                                                />
+                                                            ) : (
+                                                                <div className="w-full h-full bg-gray-200 flex items-center justify-center text-xs text-gray-500">
+                                                                    {colorAttr?.value || 'Variant'}
+                                                                </div>
+                                                            )}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
+
+                                {/* Color Selector - Commented out, now using variant images instead */}
+                                {/* {(() => {
                                     // Use availableColors if we have a selected size, otherwise show all unique colors (for variants without size)
                                     const colorsToShow = availableColors.length > 0
                                         ? availableColors
@@ -698,7 +775,7 @@ export default function ProductDetails({ productSlug }) {
                                             </div>
                                         </div>
                                     );
-                                })()}
+                                })()} */}
                             </div>
 
                             {/* <div className='mb-2'>

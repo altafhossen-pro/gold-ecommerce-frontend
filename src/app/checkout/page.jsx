@@ -303,32 +303,12 @@ export default function Checkout() {
         }
     }, [user]);
 
-    // Auto-fill form data when user is logged in
-    useEffect(() => {
-        if (user && user.email) {
-            // Only auto-fill if fields are empty (so user can edit if needed)
-            setFormData(prev => ({
-                ...prev,
-                fullName: prev.fullName || user.name || '',
-                mobileNumber: prev.mobileNumber || user.phone || ''
-            }));
-
-            // Auto-fill address from latest order if phone number is available
-            if (user.phone) {
-                autoFillAddressFromOrder(user.phone);
-            }
-        }
-    }, [user]);
-
     // Auto-fill customer info when mobile number is entered (11 digits)
     useEffect(() => {
         const phoneNumber = formData.mobileNumber.trim();
-        // Only auto-fill if phone number is 11 digits and not already filled by logged-in user
+        // Only auto-fill if phone number is 11 digits
         if (phoneNumber.length === 11 && /^\d+$/.test(phoneNumber)) {
-            // Don't auto-fill if user is logged in and this is their phone number (already handled above)
-            if (!user || user.phone !== phoneNumber) {
-                autoFillCustomerInfoByPhone(phoneNumber);
-            }
+            autoFillCustomerInfoByPhone(phoneNumber);
         }
     }, [formData.mobileNumber]);
 

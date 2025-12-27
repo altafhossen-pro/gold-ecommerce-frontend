@@ -28,8 +28,8 @@ function CategoryCard({ category, isActive = false, onCategoryClick }) {
                             <Image
                                 src={category.image}
                                 alt={category.name}
-                                width={64}
-                                height={64}
+                                width={500}
+                                height={500}
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
                                     // Fallback to default icon if image fails to load

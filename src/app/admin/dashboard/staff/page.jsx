@@ -17,10 +17,12 @@ import {
     Phone,
     Calendar,
     MoreVertical,
-    Shield
+    Shield,
+    Plus,
+    X
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { userAPI } from '@/services/api'
+import { userAPI, roleAPI } from '@/services/api'
 import { getCookie } from 'cookies-next'
 import { useAppContext } from '@/context/AppContext'
 import PermissionDenied from '@/components/Common/PermissionDenied'
@@ -44,6 +46,21 @@ export default function AdminStaffPage() {
     const [showDeleteModal, setShowDeleteModal] = useState(false)
     const [userToDelete, setUserToDelete] = useState(null)
     const [deleting, setDeleting] = useState(false)
+    
+    // Create Staff Modal states
+    const [showCreateModal, setShowCreateModal] = useState(false)
+    const [creating, setCreating] = useState(false)
+    const [roles, setRoles] = useState([])
+    const [loadingRoles, setLoadingRoles] = useState(false)
+    const [createFormData, setCreateFormData] = useState({
+        name: '',
+        email: '',
+        phone: '',
+        password: '',
+        confirmPassword: '',
+        roleId: '',
+        status: 'active'
+    })
 
     useEffect(() => {
         if (!contextLoading) {
@@ -188,6 +205,115 @@ export default function AdminStaffPage() {
         setCurrentPage(1)
     }
 
+    // Fetch roles for create staff modal
+    const fetchRoles = async () => {
+        try {
+            setLoadingRoles(true)
+            const token = getCookie('token')
+            const data = await roleAPI.getRoles({ limit: 100 }, token)
+            
+            if (data.success) {
+                setRoles(data.data || [])
+            }
+        } catch (error) {
+            console.error('Error fetching roles:', error)
+        } finally {
+            setLoadingRoles(false)
+        }
+    }
+
+    // Open create staff modal
+    const handleOpenCreateModal = () => {
+        setCreateFormData({
+            name: '',
+            email: '',
+            phone: '',
+            password: '',
+            confirmPassword: '',
+            roleId: '',
+            status: 'active'
+        })
+        setShowCreateModal(true)
+        fetchRoles()
+    }
+
+    // Handle create staff form input change
+    const handleCreateFormChange = (e) => {
+        const { name, value } = e.target
+        setCreateFormData(prev => ({
+            ...prev,
+            [name]: value
+        }))
+    }
+
+    // Handle create staff form submission
+    const handleCreateStaff = async (e) => {
+        e.preventDefault()
+        
+        // Validate form
+        if (!createFormData.name || !createFormData.email || !createFormData.password) {
+            toast.error('Name, email, and password are required')
+            return
+        }
+
+        if (createFormData.password !== createFormData.confirmPassword) {
+            toast.error('Passwords do not match')
+            return
+        }
+
+        if (createFormData.password.length < 6) {
+            toast.error('Password must be at least 6 characters long')
+            return
+        }
+
+        try {
+            setCreating(true)
+            const token = getCookie('token')
+            
+            const staffData = {
+                name: createFormData.name,
+                email: createFormData.email,
+                password: createFormData.password,
+                status: createFormData.status
+            }
+
+            if (createFormData.phone) {
+                staffData.phone = createFormData.phone
+            }
+
+            if (createFormData.roleId) {
+                staffData.roleId = createFormData.roleId
+            }
+
+            const data = await userAPI.createStaff(staffData, token)
+            
+            if (data.success) {
+                toast.success('Staff member created successfully!')
+                setShowCreateModal(false)
+                setCreateFormData({
+                    name: '',
+                    email: '',
+                    phone: '',
+                    password: '',
+                    confirmPassword: '',
+                    roleId: '',
+                    status: 'active'
+                })
+                fetchUsers() // Refresh the list
+            } else {
+                toast.error(data.message || 'Failed to create staff member')
+            }
+        } catch (error) {
+            console.error('Error creating staff:', error)
+            toast.error(error?.data?.message || 'Error creating staff member')
+        } finally {
+            setCreating(false)
+        }
+    }
+
+    // Check if current user is super admin
+    const isSuperAdmin = roleDetails?.isSuperAdmin === true
+
 
     if (checkingPermission || contextLoading) {
         return (
@@ -220,9 +346,16 @@ export default function AdminStaffPage() {
                         </p>
                     </div>
                     <div className="flex items-center space-x-3">
-                        <div className="text-sm text-gray-500">
-                            Total: {totalItems} staff members
-                        </div>
+                        
+                        {isSuperAdmin && (
+                            <button
+                                onClick={handleOpenCreateModal}
+                                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                            >
+                                <Plus className="h-4 w-4 mr-2" />
+                                Create Staff
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
@@ -525,6 +658,189 @@ export default function AdminStaffPage() {
                     onConfirm={confirmDeleteUser}
                     isLoading={deleting}
                 />
+            )}
+
+            {/* Create Staff Modal */}
+            {showCreateModal && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg w-full max-w-md max-h-[90vh] flex flex-col">
+                        {/* Modal Header */}
+                        <div className="flex-shrink-0 p-6 border-b border-gray-200 flex items-center justify-between">
+                            <h2 className="text-xl font-bold text-gray-900">Create Staff Member</h2>
+                            <button
+                                onClick={() => setShowCreateModal(false)}
+                                className="text-gray-400 hover:text-gray-600 transition-colors"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        
+                        {/* Modal Body - Scrollable */}
+                        <div className="flex-1 overflow-y-auto p-6">
+                            <form onSubmit={handleCreateStaff} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Name <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="name"
+                                        required
+                                        value={createFormData.name}
+                                        onChange={handleCreateFormChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        placeholder="Enter staff name"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Email <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="email"
+                                        name="email"
+                                        required
+                                        value={createFormData.email}
+                                        onChange={handleCreateFormChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        placeholder="Enter email address"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Phone (Optional)
+                                    </label>
+                                    <input
+                                        type="tel"
+                                        name="phone"
+                                        value={createFormData.phone}
+                                        onChange={handleCreateFormChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        placeholder="Enter phone number"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Password <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="password"
+                                        name="password"
+                                        required
+                                        value={createFormData.password}
+                                        onChange={handleCreateFormChange}
+                                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                                            createFormData.password && createFormData.password.length < 6
+                                                ? 'border-red-300 focus:ring-red-500'
+                                                : 'border-gray-300'
+                                        }`}
+                                        placeholder="Enter password (min 6 characters)"
+                                        minLength={6}
+                                    />
+                                    {createFormData.password && createFormData.password.length < 6 && (
+                                        <p className="mt-1 text-xs text-red-600">Password must be at least 6 characters</p>
+                                    )}
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Confirm Password <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="password"
+                                        name="confirmPassword"
+                                        required
+                                        value={createFormData.confirmPassword}
+                                        onChange={handleCreateFormChange}
+                                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                                            createFormData.confirmPassword && createFormData.password !== createFormData.confirmPassword
+                                                ? 'border-red-300 focus:ring-red-500'
+                                                : createFormData.confirmPassword && createFormData.password === createFormData.confirmPassword
+                                                ? 'border-green-300 focus:ring-green-500'
+                                                : 'border-gray-300'
+                                        }`}
+                                        placeholder="Confirm password"
+                                    />
+                                    {createFormData.confirmPassword && (
+                                        <>
+                                            {createFormData.password !== createFormData.confirmPassword ? (
+                                                <p className="mt-1 text-xs text-red-600 flex items-center gap-1">
+                                                    <X className="h-3 w-3" />
+                                                    Passwords do not match
+                                                </p>
+                                            ) : (
+                                                <p className="mt-1 text-xs text-green-600 flex items-center gap-1">
+                                                    <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                    </svg>
+                                                    Passwords match
+                                                </p>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Role (Optional)
+                                    </label>
+                                    <select
+                                        name="roleId"
+                                        value={createFormData.roleId}
+                                        onChange={handleCreateFormChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        disabled={loadingRoles}
+                                    >
+                                        <option value="">Select a role</option>
+                                        {roles.map((role) => (
+                                            <option key={role._id} value={role._id}>
+                                                {role.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Status <span className="text-red-500">*</span>
+                                    </label>
+                                    <select
+                                        name="status"
+                                        required
+                                        value={createFormData.status}
+                                        onChange={handleCreateFormChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    >
+                                        <option value="active">Active</option>
+                                        <option value="inactive">Inactive</option>
+                                    </select>
+                                </div>
+
+                                {/* Modal Footer */}
+                                <div className="flex-shrink-0 pt-4 flex items-center justify-end space-x-3 border-t border-gray-200 mt-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowCreateModal(false)}
+                                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                                        disabled={creating}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        disabled={creating}
+                                    >
+                                        {creating ? 'Creating...' : 'Create Staff'}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     )

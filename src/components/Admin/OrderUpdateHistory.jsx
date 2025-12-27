@@ -88,8 +88,48 @@ const OrderUpdateHistory = ({ updateHistory }) => {
         }
     };
 
+    const formatAddress = (address) => {
+        if (!address || typeof address !== 'object') return 'N/A';
+        
+        const lines = [];
+        
+        // Street as first line with label
+        if (address.street) {
+            lines.push(`Street: ${address.street}`);
+        }
+        
+        // Area/Upazila, District, Division with labels
+        if (address.upazila) {
+            lines.push(`Upazila: ${address.upazila}`);
+        } else if (address.area) {
+            lines.push(`Area: ${address.area}`);
+        }
+        
+        if (address.district) {
+            lines.push(`District: ${address.district}`);
+        }
+        
+        if (address.division) {
+            lines.push(`Division: ${address.division}`);
+        }
+        
+        return lines.length > 0 ? lines.join('\n') : 'N/A';
+    };
+
     const formatValue = (value, field) => {
+        // For adminNotes and orderNotes, return empty string if value is empty/null/undefined/N/A
+        if (field === 'adminNotes' || field === 'orderNotes') {
+            if (value === null || value === undefined || value === '' || value === 'N/A') {
+                return '';
+            }
+        }
+        
         if (value === null || value === undefined) return 'N/A';
+        
+        // Format address fields properly
+        if ((field === 'shippingAddress' || field === 'billingAddress') && typeof value === 'object') {
+            return formatAddress(value);
+        }
         
         if (field === 'items' && Array.isArray(value)) {
             return `${value.length} item(s)`;
@@ -177,24 +217,76 @@ const OrderUpdateHistory = ({ updateHistory }) => {
                                     <div className="mb-4">
                                         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
                                             <div className="space-y-3">
-                                                {update.changes.filter(change => change && change.field).map((change, changeIndex) => (
-                                                    <div key={changeIndex} className="bg-white rounded-lg p-3 border border-gray-200">
-                                                        <div className="flex items-center justify-between mb-2">
-                                                            <h4 className="text-sm font-semibold text-gray-800">
-                                                                {formatFieldName(change.field, change)}
-                                                            </h4>
-                                                            <div className="flex items-center space-x-2">
-                                                                <span className="text-xs text-red-600 font-medium">
-                                                                    {formatValue(change.oldValue, change.field)}
-                                                                </span>
-                                                                <ArrowRight className="h-3 w-3 text-gray-400" />
-                                                                <span className="text-xs text-green-600 font-medium">
-                                                                    {formatValue(change.newValue, change.field)}
-                                                                </span>
+                                                {update.changes.filter(change => {
+                                                    // Filter out changes where both old and new values are N/A or empty (for adminNotes and orderNotes)
+                                                    if (!change || !change.field) return false;
+                                                    
+                                                    const oldVal = change.oldValue;
+                                                    const newVal = change.newValue;
+                                                    
+                                                    // For adminNotes and orderNotes, hide if both are N/A, null, undefined, or empty string
+                                                    if (change.field === 'adminNotes' || change.field === 'orderNotes') {
+                                                        const oldIsEmpty = !oldVal || oldVal === 'N/A' || oldVal === '';
+                                                        const newIsEmpty = !newVal || newVal === 'N/A' || newVal === '';
+                                                        if (oldIsEmpty && newIsEmpty) return false;
+                                                    }
+                                                    
+                                                    return true;
+                                                }).map((change, changeIndex) => {
+                                                    const isAddressField = change.field === 'shippingAddress' || change.field === 'billingAddress';
+                                                    return (
+                                                        <div key={changeIndex} className="bg-white rounded-lg p-3 border border-gray-200">
+                                                            <div className={isAddressField ? 'space-y-3' : 'flex items-center justify-between'}>
+                                                                <h4 className="text-sm font-semibold text-gray-800">
+                                                                    {formatFieldName(change.field, change)}
+                                                                </h4>
+                                                                {isAddressField ? (
+                                                                    <div className="space-y-3 mt-2">
+                                                                        <div className="space-y-1">
+                                                                            <span className="text-xs text-red-600 font-medium">From:</span>
+                                                                            <div className="text-xs text-red-600 whitespace-pre-line">
+                                                                                {formatValue(change.oldValue, change.field)}
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="flex items-center">
+                                                                            <ArrowRight className="h-3 w-3 text-gray-400" />
+                                                                        </div>
+                                                                        <div className="space-y-1">
+                                                                            <span className="text-xs text-green-600 font-medium">To:</span>
+                                                                            <div className="text-xs text-green-600 whitespace-pre-line">
+                                                                                {formatValue(change.newValue, change.field)}
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="flex items-center space-x-2">
+                                                                        {(() => {
+                                                                            const oldVal = formatValue(change.oldValue, change.field);
+                                                                            const newVal = formatValue(change.newValue, change.field);
+                                                                            
+                                                                            // Don't show if both values are empty (for notes fields)
+                                                                            if ((change.field === 'adminNotes' || change.field === 'orderNotes') && !oldVal && !newVal) {
+                                                                                return null;
+                                                                            }
+                                                                            
+                                                                            return (
+                                                                                <>
+                                                                                    <span className="text-xs text-red-600 font-medium">
+                                                                                        {oldVal || 'N/A'}
+                                                                                    </span>
+                                                                                    <ArrowRight className="h-3 w-3 text-gray-400" />
+                                                                                    <span className="text-xs text-green-600 font-medium">
+                                                                                        {newVal || 'N/A'}
+                                                                                    </span>
+                                                                                </>
+                                                                            );
+                                                                        })()}
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                ))}
+                                                    );
+                                                })}
                                             </div>
                                         </div>
                                     </div>
