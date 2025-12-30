@@ -129,7 +129,7 @@ export default function CategoryMegamenu() {
     >
       {/* Menu Button */}
       <button
-        className="flex items-center gap-2 px-4 py-2 font-medium text-gray-700 hover:text-pink-500 transition-colors cursor-pointer"
+        className="flex items-center gap-2 px-4 py-2 font-medium text-gray-700 hover:text-[#f18daa] transition-colors cursor-pointer"
       >
         <Menu className="w-5 h-5 -mb-[1px]" />
         <span>Categories</span>
@@ -140,7 +140,7 @@ export default function CategoryMegamenu() {
         <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 w-[600px] overflow-hidden">
           {loading ? (
             <div className="p-8 text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500 mx-auto"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#f18daa] mx-auto"></div>
             </div>
           ) : categories.length === 0 ? (
             <div className="p-8 text-center text-gray-500">
@@ -154,7 +154,7 @@ export default function CategoryMegamenu() {
                   <div
                     key={category._id}
                     className={`group cursor-pointer border-b border-gray-100 ${hoveredCategory?._id === category._id
-                      ? 'bg-pink-50'
+                      ? 'bg-[#f18daa]'
                       : 'hover:bg-gray-50'
                       } transition-colors`}
                     onMouseEnter={() => setHoveredCategory(category)}
@@ -164,7 +164,7 @@ export default function CategoryMegamenu() {
                       <div className="flex items-center gap-3 flex-1 min-w-0">
                         {/* Category Icon/Image */}
                         {category.image ? (
-                          <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-pink-100">
+                          <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-[#f18daa]">
                             <img
                               src={category.image}
                               alt={category.name}
@@ -172,7 +172,7 @@ export default function CategoryMegamenu() {
                             />
                           </div>
                         ) : (
-                          <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center flex-shrink-0">
+                          <div className="w-10 h-10 rounded-full bg-[#f18daa] flex items-center justify-center flex-shrink-0">
                             <span className="text-pink-600 text-sm font-semibold">
                               {category.name?.charAt(0)?.toUpperCase() || 'C'}
                             </span>
@@ -194,7 +194,7 @@ export default function CategoryMegamenu() {
                       {category.childCategories && category.childCategories.length > 0 && (
                         <ChevronRight
                           className={`w-4 h-4 flex-shrink-0 ${hoveredCategory?._id === category._id
-                            ? 'text-pink-600'
+                            ? 'text-[#f18daa]'
                             : 'text-gray-400'
                             } transition-colors`}
                         />
@@ -211,15 +211,15 @@ export default function CategoryMegamenu() {
                     {hoveredCategory.childCategories.map((subcategory, index) => (
                       <div
                         key={subcategory._id || index}
-                        className="group cursor-pointer py-2 px-3 rounded-lg hover:bg-pink-50 transition-colors mb-1"
+                        className="group cursor-pointer py-2 px-3 rounded-lg hover:bg-[#f18daa] transition-colors mb-1"
                         onClick={() => handleSubcategoryClick(subcategory)}
                       >
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-gray-700 group-hover:text-pink-600 transition-colors">
+                          <span className="text-sm font-medium text-gray-700 group-hover:text-[#f18daa] transition-colors">
                             {subcategory.name}
                           </span>
                           {subcategory.childCategories && subcategory.childCategories.length > 0 && (
-                            <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-pink-600 transition-colors" />
+                            <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-[#f18daa] transition-colors" />
                           )}
                         </div>
                       </div>
@@ -230,7 +230,7 @@ export default function CategoryMegamenu() {
                     <p className="text-sm">No subcategories available</p>
                     <button
                       onClick={() => handleCategoryClick(hoveredCategory)}
-                      className="mt-4 px-4 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition-colors text-sm font-medium cursor-pointer"
+                      className="mt-4 px-4 py-2 bg-[#f18daa] text-white rounded-lg hover:bg-[#f18daa] transition-colors text-sm font-medium cursor-pointer"
                     >
                       View All Products
                     </button>

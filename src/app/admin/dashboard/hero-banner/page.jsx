@@ -28,29 +28,11 @@ export default function HeroBannerManagement() {
 
     // Form data
     const [formData, setFormData] = useState({
-        title: '',
-        description: '',
-        modelImage: '',
-        backgroundGradient: 'from-pink-100 via-pink-50 to-pink-100',
-        button1Text: 'Shop Now',
-        button1Link: '/shop',
-        button2Text: 'Explore Now',
-        button2Link: '/categories',
+        image: '',
+        link: '',
         isActive: true,
         order: 0
     });
-
-    // Background gradient options
-    const gradientOptions = [
-        { value: 'from-pink-100 via-pink-50 to-pink-100', label: 'Pink Gradient' },
-        { value: 'from-purple-100 via-purple-50 to-purple-100', label: 'Purple Gradient' },
-        { value: 'from-rose-100 via-rose-50 to-rose-100', label: 'Rose Gradient' },
-        { value: 'from-blue-100 via-blue-50 to-blue-100', label: 'Blue Gradient' },
-        { value: 'from-green-100 via-green-50 to-green-100', label: 'Green Gradient' },
-        { value: 'from-yellow-100 via-yellow-50 to-yellow-100', label: 'Yellow Gradient' },
-        { value: 'from-indigo-100 via-indigo-50 to-indigo-100', label: 'Indigo Gradient' },
-        { value: 'from-orange-100 via-orange-50 to-orange-100', label: 'Orange Gradient' }
-    ];
 
     useEffect(() => {
         if (contextLoading) return;
@@ -101,14 +83,8 @@ export default function HeroBannerManagement() {
     const handleAddNew = () => {
         setEditingBanner(null);
         setFormData({
-            title: '',
-            description: '',
-            modelImage: '',
-            backgroundGradient: 'from-pink-100 via-pink-50 to-pink-100',
-            button1Text: 'Shop Now',
-            button1Link: '/shop',
-            button2Text: 'Explore Now',
-            button2Link: '/categories',
+            image: '',
+            link: '',
             isActive: true,
             order: banners.length
         });
@@ -118,14 +94,8 @@ export default function HeroBannerManagement() {
     const handleEdit = (banner) => {
         setEditingBanner(banner);
         setFormData({
-            title: banner.title || '',
-            description: banner.description || '',
-            modelImage: banner.modelImage || '',
-            backgroundGradient: banner.backgroundGradient || 'from-pink-100 via-pink-50 to-pink-100',
-            button1Text: banner.button1Text || 'Shop Now',
-            button1Link: banner.button1Link || '/shop',
-            button2Text: banner.button2Text || 'Explore Now',
-            button2Link: banner.button2Link || '/categories',
+            image: banner.image || '',
+            link: banner.link || '',
             isActive: banner.isActive !== false,
             order: banner.order || 0
         });
@@ -215,7 +185,12 @@ export default function HeroBannerManagement() {
         }
         try {
             const token = getCookie('token');
-            const updatedData = { ...banner, isActive: !banner.isActive };
+            const updatedData = {
+                image: banner.image,
+                link: banner.link || '',
+                isActive: !banner.isActive,
+                order: banner.order || 0
+            };
             const response = await heroBannerAPI.updateHeroBanner(banner._id, updatedData, token);
             
             if (response.success) {
@@ -300,7 +275,7 @@ export default function HeroBannerManagement() {
                             <thead className="bg-gray-50">
                                 <tr>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Preview</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Link</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -311,14 +286,17 @@ export default function HeroBannerManagement() {
                                     <tr key={banner._id} className="hover:bg-gray-50">
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex items-center">
-                                                <div className={`w-16 h-10 rounded-lg bg-gradient-to-r ${banner.backgroundGradient} flex items-center justify-center`}>
-                                                    <span className="text-xs font-medium text-gray-700">Banner</span>
-                                                </div>
+                                                <img
+                                                    src={banner.image}
+                                                    alt="Banner preview"
+                                                    className="w-20 h-12 object-cover rounded-lg"
+                                                />
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div className="text-sm font-medium text-gray-900">{banner.title}</div>
-                                            <div className="text-sm text-gray-500 truncate max-w-xs">{banner.description}</div>
+                                            <div className="text-sm text-gray-900">
+                                                {banner.link || <span className="text-gray-400 italic">No link</span>}
+                                            </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <button
@@ -390,62 +368,31 @@ export default function HeroBannerManagement() {
                         </div>
 
                         <form onSubmit={handleSubmit} className="p-6 space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="md:col-span-2">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Title *
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="title"
-                                        value={formData.title}
-                                        onChange={handleInputChange}
-                                        required
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500"
-                                        placeholder="Enter banner title"
-                                    />
-                                </div>
-
-                                <div className="md:col-span-2">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Description *
-                                    </label>
-                                    <textarea
-                                        name="description"
-                                        value={formData.description}
-                                        onChange={handleInputChange}
-                                        required
-                                        rows={3}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500"
-                                        placeholder="Enter banner description"
-                                    />
-                                </div>
-
-                                <div className="md:col-span-2">
+                            <div className="space-y-6">
+                                <div>
                                     <ImageUpload
-                                        onImageUpload={(url) => setFormData(prev => ({ ...prev, modelImage: url }))}
-                                        onImageRemove={() => setFormData(prev => ({ ...prev, modelImage: '' }))}
-                                        currentImage={formData.modelImage}
-                                        label="Model Image"
+                                        onImageUpload={(url) => setFormData(prev => ({ ...prev, image: url }))}
+                                        onImageRemove={() => setFormData(prev => ({ ...prev, image: '' }))}
+                                        currentImage={formData.image}
+                                        label="Banner Image *"
                                     />
                                 </div>
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Background Gradient *
+                                        Link (Optional)
                                     </label>
-                                    <select
-                                        name="backgroundGradient"
-                                        value={formData.backgroundGradient}
+                                    <input
+                                        type="text"
+                                        name="link"
+                                        value={formData.link}
                                         onChange={handleInputChange}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500"
-                                    >
-                                        {gradientOptions.map((option) => (
-                                            <option key={option.value} value={option.value}>
-                                                {option.label}
-                                            </option>
-                                        ))}
-                                    </select>
+                                        placeholder="e.g., /shop or https://example.com"
+                                    />
+                                    <p className="mt-1 text-xs text-gray-500">
+                                        URL to navigate when banner is clicked. Leave empty if banner should not be clickable.
+                                    </p>
                                 </div>
 
                                 <div>
@@ -460,69 +407,12 @@ export default function HeroBannerManagement() {
                                         min="0"
                                         className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500"
                                     />
+                                    <p className="mt-1 text-xs text-gray-500">
+                                        Lower numbers appear first. Default: 0
+                                    </p>
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Button 1 Text *
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="button1Text"
-                                        value={formData.button1Text}
-                                        onChange={handleInputChange}
-                                        required
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500"
-                                        placeholder="e.g., Shop Now"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Button 1 Link *
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="button1Link"
-                                        value={formData.button1Link}
-                                        onChange={handleInputChange}
-                                        required
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500"
-                                        placeholder="e.g., /shop"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Button 2 Text *
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="button2Text"
-                                        value={formData.button2Text}
-                                        onChange={handleInputChange}
-                                        required
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500"
-                                        placeholder="e.g., Explore Now"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Button 2 Link *
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="button2Link"
-                                        value={formData.button2Link}
-                                        onChange={handleInputChange}
-                                        required
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500"
-                                        placeholder="e.g., /categories"
-                                    />
-                                </div>
-
-                                <div className="md:col-span-2">
                                     <div className="flex items-center">
                                         <input
                                             type="checkbox"
@@ -565,7 +455,7 @@ export default function HeroBannerManagement() {
                 onConfirm={handleDeleteConfirm}
                 title="Delete Hero Banner"
                 message="Are you sure you want to delete this hero banner? This action cannot be undone."
-                itemName={bannerToDelete?.title}
+                itemName="Hero Banner"
                 itemType="banner"
                 isLoading={deleting}
                 dangerLevel="high"

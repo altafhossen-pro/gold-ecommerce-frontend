@@ -181,19 +181,12 @@ export default function CreateProductPage() {
             })
         }
 
-        // Generate SKU - handle optional size
-        let skuSuffix = ''
-        if (variantForm.size && variantForm.size.trim()) {
-            skuSuffix = variantForm.size.trim()
+        // Generate SKU with timestamp for uniqueness
+        const generateUniqueSKU = () => {
+            const timestamp = Date.now(); // Unique timestamp
+            return `SKU-${timestamp}`;
         }
-        if (hasColorVariants && variantForm.color && variantForm.color.trim()) {
-            skuSuffix = skuSuffix ? `${skuSuffix}-${variantForm.color.trim()}` : variantForm.color.trim()
-        }
-        // Fallback if no size or color
-        if (!skuSuffix) {
-            skuSuffix = `variant-${Date.now()}`
-        }
-        const sku = variantForm.sku || `${formData.title?.toLowerCase().replace(/\s+/g, '-')}-${skuSuffix}`
+        const sku = variantForm.sku || generateUniqueSKU()
 
         const newVariant = {
             sku,
