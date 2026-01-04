@@ -2148,6 +2148,57 @@ export const affiliateAPI = {
     },
 };
 
+// Contact API functions
+export const contactAPI = {
+    // Submit contact form (Public)
+    submitContact: (formData) => {
+        return apiCall('/contact/submit', {
+            method: 'POST',
+            body: JSON.stringify(formData),
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+    },
+    // Get all contacts (Admin)
+    getAllContacts: (params = {}, token) => {
+        const queryString = new URLSearchParams(params).toString();
+        return apiCall(`/contact?${queryString}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+    // Get contact by ID (Admin)
+    getContactById: (contactId, token) => {
+        return apiCall(`/contact/${contactId}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+    // Update contact status (Admin)
+    updateContactStatus: (contactId, updateData, token) => {
+        return apiCall(`/contact/${contactId}/status`, {
+            method: 'PATCH',
+            body: JSON.stringify(updateData),
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+    },
+    // Delete contact (Admin)
+    deleteContact: (contactId, token) => {
+        return apiCall(`/contact/${contactId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+};
+
 export default {
     productAPI,
     categoryAPI,
@@ -2172,5 +2223,6 @@ export default {
     roleAPI,
     adsAPI,
     affiliateAPI,
+    contactAPI,
     transformProductData,
 };

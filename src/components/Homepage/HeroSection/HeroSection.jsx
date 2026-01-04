@@ -236,7 +236,8 @@ export default function HeroSection() {
             <div className="max-w-screen-2xl mx-auto">
                 <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 lg:items-start">
                     {/* Left Slider - Full width on mobile, 64% on desktop */}
-                    <div className="w-full lg:w-[64%] h-[296px] sm:h-[336px] md:h-[384px]">
+                    {/* Aspect ratio: 983/384 ≈ 2.56:1 (approximately 21:8) */}
+                    <div className="w-full lg:w-[64%] aspect-[983/384]">
                         <HeroSlider sliderData={sliderData} loading={loading} />
                     </div>
 

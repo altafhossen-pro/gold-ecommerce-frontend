@@ -11,32 +11,67 @@ function ProductCard({ product, onWishlistToggle, onAddToCart, showWishlistOnHov
     // Hover state for image change
     const [isHovered, setIsHovered] = useState(false);
     
-    // Get next variant image for hover
-    const getNextVariantImage = () => {
-        if (!product.variants || product.variants.length === 0) {
-            return null;
+    // Get hover image: variant image if multiple variants, else next gallery image
+    const getHoverImage = () => {
+        const variantCount = product.variants?.length || 0;
+        
+        // If multiple variants (>1), show variant image
+        if (variantCount > 1) {
+            // Find first variant with an image
+            const variantWithImage = product.variants.find(variant => {
+                if (variant.images && variant.images.length > 0) {
+                    // Check if images array has objects with url property or direct URLs
+                    const firstImage = variant.images[0];
+                    return firstImage?.url || (typeof firstImage === 'string' ? firstImage : null);
+                }
+                return false;
+            });
+            
+            if (variantWithImage && variantWithImage.images && variantWithImage.images.length > 0) {
+                const firstImage = variantWithImage.images[0];
+                // Handle both object format {url: "...", ...} and direct string URL
+                const variantImage = firstImage?.url || (typeof firstImage === 'string' ? firstImage : null);
+                if (variantImage) {
+                    return variantImage;
+                }
+            }
         }
         
-        // Find first variant with an image
-        const variantWithImage = product.variants.find(variant => {
-            if (variant.images && variant.images.length > 0) {
-                // Check if images array has objects with url property or direct URLs
-                const firstImage = variant.images[0];
-                return firstImage?.url || (typeof firstImage === 'string' ? firstImage : null);
-            }
-            return false;
-        });
-        
-        if (variantWithImage && variantWithImage.images && variantWithImage.images.length > 0) {
-            const firstImage = variantWithImage.images[0];
+        // If single variant (===1) or no variants (===0), show next gallery image
+        // (featured image is already shown, so show first gallery image)
+        if (product.gallery && product.gallery.length > 0) {
+            const firstGalleryImage = product.gallery[0];
             // Handle both object format {url: "...", ...} and direct string URL
-            return firstImage?.url || (typeof firstImage === 'string' ? firstImage : null);
+            const galleryImageUrl = firstGalleryImage?.url || (typeof firstGalleryImage === 'string' ? firstGalleryImage : null);
+            // Only return if it's different from the current featured image
+            if (galleryImageUrl && galleryImageUrl !== product.image) {
+                return galleryImageUrl;
+            }
+            // If first gallery image is same as featured, try next one
+            if (product.gallery.length > 1) {
+                const secondGalleryImage = product.gallery[1];
+                return secondGalleryImage?.url || (typeof secondGalleryImage === 'string' ? secondGalleryImage : null);
+            }
+        }
+        
+        // Also check if product has gallery property directly (from API)
+        if (product.gallery && Array.isArray(product.gallery) && product.gallery.length > 0) {
+            const firstGallery = product.gallery[0];
+            const galleryUrl = firstGallery?.url || (typeof firstGallery === 'string' ? firstGallery : null);
+            if (galleryUrl && galleryUrl !== product.image) {
+                return galleryUrl;
+            }
+            // If first gallery image is same as featured, try next one
+            if (product.gallery.length > 1) {
+                const secondGallery = product.gallery[1];
+                return secondGallery?.url || (typeof secondGallery === 'string' ? secondGallery : null);
+            }
         }
         
         return null;
     };
     
-    const hoverImage = getNextVariantImage();
+    const hoverImage = getHoverImage();
     const displayImage = isHovered && hoverImage ? hoverImage : product.image;
 
     // Simple stock checking function

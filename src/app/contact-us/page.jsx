@@ -18,9 +18,12 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Footer from '@/components/Footer/Footer'
+import { siteConfig } from '@/config/siteConfig'
+import { contactAPI } from '@/services/api'
 
 export default function ContactUsPage() {
     const [loading, setLoading] = useState(false)
+    const [errors, setErrors] = useState({})
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -33,7 +36,7 @@ export default function ContactUsPage() {
     const socialLinks = [
         {
             name: 'Facebook',
-            url: 'https://facebook.com/goldecommerce',
+            url: 'https://facebook.com/forpink',
             icon: Facebook,
             color: 'bg-blue-600',
             followers: '25.2K',
@@ -41,7 +44,7 @@ export default function ContactUsPage() {
         },
         {
             name: 'Instagram',
-            url: 'https://instagram.com/goldecommerce',
+            url: 'https://instagram.com/forpink',
             icon: Instagram,
             color: 'bg-pink-600',
             followers: '18.7K',
@@ -49,7 +52,7 @@ export default function ContactUsPage() {
         },
         {
             name: 'Twitter',
-            url: 'https://twitter.com/goldecommerce',
+            url: 'https://twitter.com/forpink',
             icon: Twitter,
             color: 'bg-blue-400',
             followers: '12.3K',
@@ -57,7 +60,7 @@ export default function ContactUsPage() {
         },
         {
             name: 'LinkedIn',
-            url: 'https://linkedin.com/company/goldecommerce',
+            url: 'https://linkedin.com/company/forpink',
             icon: Linkedin,
             color: 'bg-blue-700',
             followers: '8.9K',
@@ -65,7 +68,7 @@ export default function ContactUsPage() {
         },
         {
             name: 'YouTube',
-            url: 'https://youtube.com/goldecommerce',
+            url: 'https://youtube.com/forpink',
             icon: Youtube,
             color: 'bg-red-600',
             followers: '15.6K',
@@ -73,7 +76,7 @@ export default function ContactUsPage() {
         },
         {
             name: 'GitHub',
-            url: 'https://github.com/goldecommerce',
+            url: 'https://github.com/forpink',
             icon: Github,
             color: 'bg-gray-800',
             followers: '2.1K',
@@ -87,27 +90,100 @@ export default function ContactUsPage() {
             ...prev,
             [name]: value
         }))
+        // Clear error when user starts typing
+        if (errors[name]) {
+            setErrors(prev => ({
+                ...prev,
+                [name]: ''
+            }))
+        }
+    }
+
+    const validateForm = () => {
+        const newErrors = {}
+
+        // Name validation
+        if (!formData.name.trim()) {
+            newErrors.name = 'Name is required'
+        } else if (formData.name.trim().length < 2) {
+            newErrors.name = 'Name must be at least 2 characters'
+        }
+
+        // Email validation
+        if (!formData.email.trim()) {
+            newErrors.email = 'Email is required'
+        } else {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+            if (!emailRegex.test(formData.email)) {
+                newErrors.email = 'Please enter a valid email address'
+            }
+        }
+
+        // Phone validation (optional but if provided, should be valid)
+        if (formData.phone.trim()) {
+            const phoneRegex = /^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,9}$/
+            if (!phoneRegex.test(formData.phone.trim())) {
+                newErrors.phone = 'Please enter a valid phone number'
+            }
+        }
+
+        // Subject validation
+        if (!formData.subject.trim()) {
+            newErrors.subject = 'Subject is required'
+        } else if (formData.subject.trim().length < 3) {
+            newErrors.subject = 'Subject must be at least 3 characters'
+        }
+
+        // Message validation
+        if (!formData.message.trim()) {
+            newErrors.message = 'Message is required'
+        } else if (formData.message.trim().length < 10) {
+            newErrors.message = 'Message must be at least 10 characters'
+        } else if (formData.message.trim().length > 2000) {
+            newErrors.message = 'Message must be less than 2000 characters'
+        }
+
+        setErrors(newErrors)
+        return Object.keys(newErrors).length === 0
     }
 
     const handleSubmit = async (e) => {
         e.preventDefault()
+        
+        // Validate form
+        if (!validateForm()) {
+            toast.error('Please fix the errors in the form')
+            return
+        }
+
         setLoading(true)
 
         try {
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 1000))
-            
-            toast.success('Message sent successfully! We\'ll get back to you soon.')
-            setFormData({
-                name: '',
-                email: '',
-                phone: '',
-                subject: '',
-                message: ''
+            const response = await contactAPI.submitContact({
+                name: formData.name.trim(),
+                email: formData.email.trim(),
+                phone: formData.phone.trim() || undefined,
+                subject: formData.subject.trim(),
+                message: formData.message.trim()
             })
+            
+            if (response.success) {
+                toast.success('Message sent successfully! We\'ll get back to you soon.')
+                setFormData({
+                    name: '',
+                    email: '',
+                    phone: '',
+                    subject: '',
+                    message: ''
+                })
+                setErrors({})
+            } else {
+                toast.error(response.message || 'Failed to send message. Please try again.')
+            }
         } catch (error) {
-            console.error('Error:', error)
-            toast.error('Failed to send message. Please try again.')
+            console.error('Error submitting contact form:', error)
+            const errorMessage = error.response?.data?.message || error.message || 'Failed to send message. Please try again.'
+            toast.error(errorMessage)
         } finally {
             setLoading(false)
         }
@@ -128,7 +204,7 @@ export default function ContactUsPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
                                     <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                                        Full Name
+                                        Full Name <span className="text-red-500">*</span>
                                     </label>
                                     <div className="relative">
                                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -141,15 +217,22 @@ export default function ContactUsPage() {
                                             required
                                             value={formData.name}
                                             onChange={handleInputChange}
-                                            className="block w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                                            className={`block w-full pl-12 pr-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all duration-200 ${
+                                                errors.name 
+                                                    ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
+                                                    : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                                            }`}
                                             placeholder="Enter your full name"
                                         />
                                     </div>
+                                    {errors.name && (
+                                        <p className="mt-1 text-sm text-red-600">{errors.name}</p>
+                                    )}
                                 </div>
 
                                 <div>
                                     <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                                        Email Address
+                                        Email Address <span className="text-red-500">*</span>
                                     </label>
                                     <div className="relative">
                                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -162,16 +245,23 @@ export default function ContactUsPage() {
                                             required
                                             value={formData.email}
                                             onChange={handleInputChange}
-                                            className="block w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                                            className={`block w-full pl-12 pr-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all duration-200 ${
+                                                errors.email 
+                                                    ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
+                                                    : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                                            }`}
                                             placeholder="Enter your email"
                                         />
                                     </div>
+                                    {errors.email && (
+                                        <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+                                    )}
                                 </div>
                             </div>
 
                             <div>
                                 <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
-                                    Phone Number
+                                    Phone Number <span className="text-gray-400 text-xs">(Optional)</span>
                                 </label>
                                 <div className="relative">
                                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -183,15 +273,22 @@ export default function ContactUsPage() {
                                         type="tel"
                                         value={formData.phone}
                                         onChange={handleInputChange}
-                                        className="block w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                                        className={`block w-full pl-12 pr-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all duration-200 ${
+                                            errors.phone 
+                                                ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
+                                                : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                                        }`}
                                         placeholder="Enter your phone number"
                                     />
                                 </div>
+                                {errors.phone && (
+                                    <p className="mt-1 text-sm text-red-600">{errors.phone}</p>
+                                )}
                             </div>
 
                             <div>
                                 <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-2">
-                                    Subject
+                                    Subject <span className="text-red-500">*</span>
                                 </label>
                                 <input
                                     id="subject"
@@ -200,14 +297,24 @@ export default function ContactUsPage() {
                                     required
                                     value={formData.subject}
                                     onChange={handleInputChange}
-                                    className="block w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                                    className={`block w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all duration-200 ${
+                                        errors.subject 
+                                            ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
+                                            : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                                    }`}
                                     placeholder="What is this about?"
                                 />
+                                {errors.subject && (
+                                    <p className="mt-1 text-sm text-red-600">{errors.subject}</p>
+                                )}
                             </div>
 
                             <div>
                                 <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-2">
-                                    Message
+                                    Message <span className="text-red-500">*</span>
+                                    <span className="text-gray-400 text-xs font-normal ml-2">
+                                        ({formData.message.length}/2000 characters)
+                                    </span>
                                 </label>
                                 <div className="relative">
                                     <div className="absolute top-3 left-4 flex items-start pointer-events-none">
@@ -220,10 +327,18 @@ export default function ContactUsPage() {
                                         required
                                         value={formData.message}
                                         onChange={handleInputChange}
-                                        className="block w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 resize-none"
+                                        maxLength={2000}
+                                        className={`block w-full pl-12 pr-4 py-3 border rounded-xl focus:outline-none focus:ring-2 transition-all duration-200 resize-none ${
+                                            errors.message 
+                                                ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
+                                                : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                                        }`}
                                         placeholder="Tell us more about your inquiry..."
                                     />
                                 </div>
+                                {errors.message && (
+                                    <p className="mt-1 text-sm text-red-600">{errors.message}</p>
+                                )}
                             </div>
 
                             <button
@@ -257,8 +372,7 @@ export default function ContactUsPage() {
                                     </div>
                                     <div className="ml-4">
                                         <h3 className="text-lg font-semibold text-gray-900">Email</h3>
-                                        <p className="text-gray-600">support@goldecommerce.com</p>
-                                        <p className="text-gray-600">info@goldecommerce.com</p>
+                                        <p className="text-gray-600">{siteConfig.contact.email}</p>
                                     </div>
                                 </div>
                             </div>
@@ -272,8 +386,7 @@ export default function ContactUsPage() {
                                     </div>
                                     <div className="ml-4">
                                         <h3 className="text-lg font-semibold text-gray-900">Phone</h3>
-                                        <p className="text-gray-600">+1 (555) 123-4567</p>
-                                        <p className="text-gray-600">+1 (555) 987-6543</p>
+                                        <p className="text-gray-600">{siteConfig.contact.phone}</p>
                                     </div>
                                 </div>
                             </div>
@@ -288,10 +401,12 @@ export default function ContactUsPage() {
                                     <div className="ml-4">
                                         <h3 className="text-lg font-semibold text-gray-900">Address</h3>
                                         <p className="text-gray-600">
-                                            123 Commerce Street<br />
-                                            Business District<br />
-                                            New York, NY 10001<br />
-                                            United States
+                                            {siteConfig.contact.address.split(', ').map((line, index, array) => (
+                                                <span key={index}>
+                                                    {line}
+                                                    {index < array.length - 1 && <br />}
+                                                </span>
+                                            ))}
                                         </p>
                                     </div>
                                 </div>
@@ -306,9 +421,9 @@ export default function ContactUsPage() {
                                     </div>
                                     <div className="ml-4">
                                         <h3 className="text-lg font-semibold text-gray-900">Business Hours</h3>
-                                        <p className="text-gray-600">Monday - Friday: 9:00 AM - 6:00 PM</p>
-                                        <p className="text-gray-600">Saturday: 10:00 AM - 4:00 PM</p>
-                                        <p className="text-gray-600">Sunday: Closed</p>
+                                        {siteConfig.contact.hours.split(', ').map((hour, index) => (
+                                            <p key={index} className="text-gray-600">{hour}</p>
+                                        ))}
                                     </div>
                                 </div>
                             </div>
