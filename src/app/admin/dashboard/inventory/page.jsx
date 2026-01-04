@@ -40,6 +40,8 @@ const InventoryPage = () => {
     const [currentProduct, setCurrentProduct] = useState(null);
     const [selectedSize, setSelectedSize] = useState("");
     const [selectedColor, setSelectedColor] = useState("");
+    const [hasManuallySelectedVariant, setHasManuallySelectedVariant] = useState(false);
+    const [selectedVariantSku, setSelectedVariantSku] = useState(null);
     
     const token = getCookie('token');
     const [checkingPermission, setCheckingPermission] = useState(true);
@@ -167,34 +169,54 @@ const InventoryPage = () => {
     const handleProductSelect = (product) => {
         setCurrentProduct(product);
         setProductSearchTerm(product.title);
-        setSelectedSize("");
-        setSelectedColor("");
+        setHasManuallySelectedVariant(false);
+        setSelectedVariantSku(null);
         setShowProductDropdown(false);
 
-        // Set default size and color if available
+        // If product has variants with size, auto-select first size
         if (product.variants && product.variants.length > 0) {
-            const firstVariant = product.variants[0];
-            const sizeAttr = firstVariant.attributes?.find(attr => attr.name === 'Size');
-            const colorAttr = firstVariant.attributes?.find(attr => attr.name === 'Color');
-
-            // Size is optional - set it if available
-            if (sizeAttr) {
-                setSelectedSize(sizeAttr.value);
+            // Get unique sizes from variants
+            const sizes = product.variants
+                .map(variant => variant.attributes?.find(attr => attr.name === 'Size'))
+                .filter(size => size)
+                .map(size => size.value);
+            const uniqueSizes = [...new Set(sizes)];
+            
+            if (uniqueSizes.length > 0) {
+                // Auto-select first size if sizes exist
+                const firstSize = uniqueSizes[0];
+                setSelectedSize(firstSize);
+                
+                // Auto-select first color for this size if available
+                const variantsForSize = product.variants.filter(variant => {
+                    const sizeAttr = variant.attributes?.find(attr => attr.name === 'Size');
+                    return sizeAttr && sizeAttr.value === firstSize;
+                });
+                
+                if (variantsForSize.length > 0) {
+                    const firstVariant = variantsForSize[0];
+                    const colorAttr = firstVariant.attributes?.find(attr => attr.name === 'Color');
+                    if (colorAttr) {
+                        setSelectedColor(colorAttr.value);
+                    } else {
+                        setSelectedColor("");
+                    }
+                } else {
+                    setSelectedColor("");
+                }
             } else {
-                setSelectedSize(""); // No size for this variant
-            }
-
-            // Color is optional - set if variant has color
-            if (colorAttr) {
-                setSelectedColor(colorAttr.value);
-            } else {
-                setSelectedColor(""); // No color for this variant
+                // No sizes, so no size selected
+                setSelectedSize("");
+                setSelectedColor("");
             }
         } else {
-            // If no variants, set default values
+            // No variants, so no size/color
             setSelectedSize("");
-            setSelectedColor(""); // No color by default
+            setSelectedColor("");
         }
+
+        // Don't auto-select first variant - let user choose
+        // This prevents the first variant from being auto-selected
     };
 
     // Get unique sizes from variants (optional)
@@ -253,9 +275,77 @@ const InventoryPage = () => {
         }
     };
 
+    // Get available variants for selected size (to show variant images) - like product details page
+    const getAvailableVariantsForSize = (size) => {
+        if (!currentProduct?.variants) return [];
+        
+        if (size) {
+            // Filter variants by selected size
+            return currentProduct.variants.filter(variant => {
+                const sizeAttr = variant.attributes?.find(attr => attr.name === 'Size');
+                return sizeAttr && sizeAttr.value === size;
+            });
+        } else {
+            // If no size selected, check if any variant has size
+            const hasAnySize = currentProduct.variants.some(variant => {
+                const sizeAttr = variant.attributes?.find(attr => attr.name === 'Size');
+                return sizeAttr;
+            });
+            
+            if (hasAnySize) {
+                // If variants have size but no size is selected, show all variants
+                // This allows user to see all variants and select one
+                return currentProduct.variants;
+            } else {
+                // If no variant has size, show all variants (all are without size)
+                return currentProduct.variants;
+            }
+        }
+    };
+
+    // Handle variant image selection (like product details page)
+    const handleVariantImageChange = (variant) => {
+        // Set size if variant has size, otherwise clear it
+        const sizeAttr = variant.attributes?.find(attr => attr.name === 'Size');
+        if (sizeAttr) {
+            setSelectedSize(sizeAttr.value);
+        } else {
+            // If variant has no size, clear selectedSize to match variants without size
+            setSelectedSize("");
+        }
+        
+        // Set color if variant has color, otherwise clear it
+        const colorAttr = variant.attributes?.find(attr => attr.name === 'Color');
+        if (colorAttr) {
+            setSelectedColor(colorAttr.value);
+        } else {
+            // If variant has no color, clear selectedColor to match variants without color
+            setSelectedColor("");
+        }
+        
+        // Store the selected variant SKU to uniquely identify it
+        setSelectedVariantSku(variant.sku || variant._id);
+        
+        // Mark that user has manually selected a variant
+        setHasManuallySelectedVariant(true);
+    };
+
     // Get selected variant (size optional, color optional)
     const getSelectedVariant = () => {
         if (!currentProduct?.variants) return null;
+        
+        // Only return a variant if user has manually selected one
+        // This prevents auto-selection of first variant
+        if (!hasManuallySelectedVariant || !selectedVariantSku) return null;
+        
+        // First try to find by SKU (most reliable)
+        const variantBySku = currentProduct.variants.find(variant => 
+            (variant.sku || variant._id) === selectedVariantSku
+        );
+        
+        if (variantBySku) return variantBySku;
+        
+        // Fallback to size/color matching if SKU not found
         return currentProduct.variants.find(variant => {
             const sizeAttr = variant.attributes?.find(attr => attr.name === 'Size');
             const colorAttr = variant.attributes?.find(attr => attr.name === 'Color');
@@ -275,16 +365,20 @@ const InventoryPage = () => {
             }
             // If both selectedSize and variant size are null/empty, sizeMatches remains true
 
-            // Color matching logic
+            // Color matching logic (optional):
+            // 1. If we have selectedColor and variant has color, both must match
+            // 2. If we have no selectedColor and variant has no color, it matches
+            // 3. If we have selectedColor but variant has no color, it doesn't match
+            // 4. If we have no selectedColor but variant has color, it doesn't match
             let colorMatches = true;
-            if (colorAttr && selectedColor) {
+            if (selectedColor && colorAttr) {
                 colorMatches = colorAttr.value === selectedColor;
-            } else if (colorAttr && !selectedColor) {
-                colorMatches = false; // Variant has color but we don't have selected color
-            } else if (!colorAttr && selectedColor) {
+            } else if (selectedColor && !colorAttr) {
                 colorMatches = false; // We have selected color but variant has no color
+            } else if (!selectedColor && colorAttr) {
+                colorMatches = false; // Variant has color but we don't have selected color
             }
-            // If both variant and selectedColor are null/empty, colorMatches remains true
+            // If both selectedColor and variant color are null/empty, colorMatches remains true
 
             return sizeMatches && colorMatches;
         });
@@ -297,6 +391,9 @@ const InventoryPage = () => {
 
     const handleSizeChange = (size) => {
         setSelectedSize(size);
+        // Clear variant SKU when size changes - user needs to select variant again
+        setSelectedVariantSku(null);
+        setHasManuallySelectedVariant(false);
         // Reset color when size changes
         const colorsForSize = getAvailableColorsForSize(size);
         if (colorsForSize.length > 0) {
@@ -309,6 +406,9 @@ const InventoryPage = () => {
 
     const handleColorChange = (color) => {
         setSelectedColor(color);
+        // Clear variant SKU when color changes - user needs to select variant again
+        setSelectedVariantSku(null);
+        setHasManuallySelectedVariant(false);
     };
 
     // Add variant to purchase list (like manual orders)
@@ -383,6 +483,8 @@ const InventoryPage = () => {
         setCurrentProduct(null);
         setSelectedSize("");
         setSelectedColor("");
+        setHasManuallySelectedVariant(false);
+        setSelectedVariantSku(null);
         setProductSearchTerm('');
     };
 
@@ -474,6 +576,10 @@ const InventoryPage = () => {
                 setProductSearchTerm('');
                 setProductResults([]);
                 setCurrentProduct(null);
+                setSelectedSize("");
+                setSelectedColor("");
+                setHasManuallySelectedVariant(false);
+                setSelectedVariantSku(null);
                 fetchPurchases();
             } else {
                 toast.error(response.message || 'Failed to create purchase');
@@ -640,6 +746,8 @@ const InventoryPage = () => {
                                         setCurrentProduct(null);
                                         setSelectedSize("");
                                         setSelectedColor("");
+                                        setHasManuallySelectedVariant(false);
+                                        setSelectedVariantSku(null);
                                     }}
                                     className="text-gray-400 hover:text-gray-600 cursor-pointer"
                                 >
@@ -671,29 +779,104 @@ const InventoryPage = () => {
                                 </div>
                             )}
 
-                            {/* Color Selection */}
-                            {availableColors.length > 0 && (
-                                <div className="mb-4">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Color
-                                    </label>
-                                    <div className="flex flex-wrap gap-2">
-                                        {availableColors.map((color) => (
-                                            <button
-                                                key={color.value}
-                                                onClick={() => handleColorChange(color.value)}
-                                                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors cursor-pointer ${
-                                                    selectedColor === color.value
-                                                        ? 'bg-blue-500 text-white'
-                                                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                                                }`}
-                                            >
-                                                {color.value}
-                                            </button>
-                                        ))}
+                            {/* Variant Image Selector - Show variant images (like product details page) */}
+                            {(() => {
+                                const variantsToShow = getAvailableVariantsForSize(selectedSize);
+                                
+                                return variantsToShow.length > 0 && (
+                                    <div className="mb-4">
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Select Variant {selectedVariant && <span className="text-green-600 text-xs">(Selected)</span>}
+                                        </label>
+                                        <div className="flex flex-wrap gap-2">
+                                            {variantsToShow.map((variant) => {
+                                                const colorAttr = variant.attributes?.find(attr => attr.name === 'Color');
+                                                const sizeAttr = variant.attributes?.find(attr => attr.name === 'Size');
+                                                
+                                                // Check if this variant is selected by comparing SKU (most reliable)
+                                                const variantSku = variant.sku || variant._id;
+                                                const isSelected = hasManuallySelectedVariant && selectedVariantSku && variantSku === selectedVariantSku;
+                                                
+                                                // Get variant image from images array (first image) or fallback to featured image
+                                                const variantImage = variant.images && variant.images.length > 0 
+                                                    ? (variant.images[0]?.url || variant.images[0]) 
+                                                    : (variant.image || currentProduct?.featuredImage);
+                                                
+                                                // Build title with variant info
+                                                const variantTitle = [
+                                                    sizeAttr?.value,
+                                                    colorAttr?.value
+                                                ].filter(Boolean).join(' - ') || 'Variant';
+                                                
+                                                return (
+                                                    <button
+                                                        key={variant.sku || variant._id}
+                                                        onClick={() => handleVariantImageChange(variant)}
+                                                        className={`w-14 h-14 rounded-md border-2 transition-all duration-200 flex items-center justify-center cursor-pointer overflow-hidden relative ${
+                                                            isSelected
+                                                                ? 'border-blue-600 ring-4 ring-blue-300 shadow-lg scale-105 bg-blue-50'
+                                                                : 'border-gray-300 hover:border-blue-400 hover:shadow-md hover:scale-105'
+                                                        }`}
+                                                        title={variantTitle}
+                                                    >
+                                                        {variantImage ? (
+                                                            <img
+                                                                src={variantImage}
+                                                                alt={variantTitle}
+                                                                className={`w-full h-full object-cover ${isSelected ? 'opacity-90' : 'opacity-100'}`}
+                                                                onError={(e) => {
+                                                                    e.target.src = currentProduct?.featuredImage || '/images/placeholder.png';
+                                                                }}
+                                                            />
+                                                        ) : (
+                                                            <div className={`w-full h-full flex items-center justify-center text-xs font-medium ${
+                                                                isSelected 
+                                                                    ? 'bg-blue-100 text-blue-700' 
+                                                                    : 'bg-gray-200 text-gray-500'
+                                                            }`}>
+                                                                {colorAttr?.value || sizeAttr?.value || 'V'}
+                                                            </div>
+                                                        )}
+                                                        {isSelected && (
+                                                            <div className="absolute top-0 right-0 bg-blue-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">
+                                                                ✓
+                                                            </div>
+                                                        )}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
-                                </div>
-                            )}
+                                );
+                            })()}
+
+                            {/* Color Selection - Fallback if variant images are not available */}
+                            {(() => {
+                                const variantsToShow = getAvailableVariantsForSize(selectedSize);
+                                // Only show color selector if no variant images are available
+                                return availableColors.length > 0 && variantsToShow.length === 0 && (
+                                    <div className="mb-4">
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Color
+                                        </label>
+                                        <div className="flex flex-wrap gap-2">
+                                            {availableColors.map((color) => (
+                                                <button
+                                                    key={color.value}
+                                                    onClick={() => handleColorChange(color.value)}
+                                                    className={`px-3 py-1 rounded-md text-sm font-medium transition-colors cursor-pointer ${
+                                                        selectedColor === color.value
+                                                            ? 'bg-blue-500 text-white'
+                                                            : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                                                    }`}
+                                                >
+                                                    {color.value}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                );
+                            })()}
 
                             {/* Confirm Button */}
                             <button
@@ -716,9 +899,22 @@ const InventoryPage = () => {
                                         <div className="flex items-start justify-between mb-3">
                                             <div className="flex items-start space-x-3 flex-1">
                                                 <img
-                                                    src={item.product.featuredImage || '/images/placeholder.png'}
+                                                    src={
+                                                        item.variant 
+                                                            ? (
+                                                                // Variant image priority: images array > image property > product featured image
+                                                                (item.variant.images && item.variant.images.length > 0 
+                                                                    ? (item.variant.images[0]?.url || item.variant.images[0])
+                                                                    : (item.variant.image || item.product.featuredImage)
+                                                                )
+                                                            )
+                                                            : (item.product.featuredImage || '/images/placeholder.png')
+                                                    }
                                                     alt={item.product.title}
                                                     className="w-12 h-12 rounded object-cover"
+                                                    onError={(e) => {
+                                                        e.target.src = item.product.featuredImage || '/images/placeholder.png';
+                                                    }}
                                                 />
                                                 <div className="flex-1">
                                                     <h4 className="text-sm font-medium text-gray-900">{item.product.title}</h4>
