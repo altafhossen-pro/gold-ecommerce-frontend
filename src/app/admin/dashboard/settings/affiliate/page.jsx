@@ -21,11 +21,12 @@ export default function AffiliateSettingsPage() {
   const [settings, setSettings] = useState({
     isAffiliateEnabled: true,
     purchaserDiscountType: 'percentage',
-    purchaserDiscountValue: 5,
-    referrerLoyaltyPointsPerPurchase: 10,
-    purchaserLoyaltyPointsPerPurchase: 5,
+    purchaserDiscountValue: '',
+    referrerLoyaltyPointsPerPurchase: '',
+    purchaserLoyaltyPointsPerPurchase: '',
     isConfirmationModalShowWhenUseAffiliateLink: true
   });
+  const [signupBonusCoins, setSignupBonusCoins] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [checkingPermission, setCheckingPermission] = useState(true);
@@ -52,15 +53,31 @@ export default function AffiliateSettingsPage() {
       setLoading(true);
       const response = await settingsAPI.getAffiliateSettings();
       if (response.success) {
-        setSettings(response.data || {
+        const data = response.data || {
           isAffiliateEnabled: true,
           purchaserDiscountType: 'percentage',
           purchaserDiscountValue: 5,
           referrerLoyaltyPointsPerPurchase: 10,
           purchaserLoyaltyPointsPerPurchase: 5
+        };
+        setSettings({
+          ...data,
+          purchaserDiscountValue: data.purchaserDiscountValue?.toString() || '',
+          referrerLoyaltyPointsPerPurchase: data.referrerLoyaltyPointsPerPurchase?.toString() || '',
+          purchaserLoyaltyPointsPerPurchase: data.purchaserLoyaltyPointsPerPurchase?.toString() || ''
         });
       } else {
         toast.error(response.message || 'Failed to load affiliate settings');
+      }
+      
+      // Fetch signup bonus coins from loyalty settings
+      try {
+        const loyaltyResponse = await settingsAPI.getLoyaltySettings();
+        if (loyaltyResponse.success && loyaltyResponse.data) {
+          setSignupBonusCoins(loyaltyResponse.data.signupBonusCoins?.toString() || '');
+        }
+      } catch (error) {
+        console.error('Failed to load signup bonus coins:', error);
       }
     } catch (error) {
       toast.error('Failed to load affiliate settings');
@@ -89,11 +106,43 @@ export default function AffiliateSettingsPage() {
 
     try {
       const token = getCookie('token');
-      const response = await settingsAPI.updateAffiliateSettings(settings, token);
+      
+      // Convert string values to numbers for saving
+      const processedSettings = {
+        ...settings,
+        purchaserDiscountValue: settings.purchaserDiscountValue === '' ? 0 : parseFloat(settings.purchaserDiscountValue) || 0,
+        referrerLoyaltyPointsPerPurchase: settings.referrerLoyaltyPointsPerPurchase === '' ? 0 : parseInt(settings.referrerLoyaltyPointsPerPurchase) || 0,
+        purchaserLoyaltyPointsPerPurchase: settings.purchaserLoyaltyPointsPerPurchase === '' ? 0 : parseInt(settings.purchaserLoyaltyPointsPerPurchase) || 0
+      };
+      
+      // Update affiliate settings
+      const response = await settingsAPI.updateAffiliateSettings(processedSettings, token);
       
       if (response.success) {
-        toast.success('Affiliate settings updated successfully');
-        setSettings(response.data);
+        const data = response.data;
+        setSettings({
+          ...data,
+          purchaserDiscountValue: data.purchaserDiscountValue?.toString() || '',
+          referrerLoyaltyPointsPerPurchase: data.referrerLoyaltyPointsPerPurchase?.toString() || '',
+          purchaserLoyaltyPointsPerPurchase: data.purchaserLoyaltyPointsPerPurchase?.toString() || ''
+        });
+        
+        // Update signup bonus coins in loyalty settings
+        try {
+          const loyaltyResponse = await settingsAPI.getLoyaltySettings();
+          if (loyaltyResponse.success) {
+            const loyaltyData = {
+              ...loyaltyResponse.data,
+              signupBonusCoins: signupBonusCoins === '' ? 0 : parseInt(signupBonusCoins) || 0
+            };
+            await settingsAPI.updateLoyaltySettings(loyaltyData, token);
+          }
+        } catch (error) {
+          console.error('Failed to update signup bonus coins:', error);
+          // Don't fail the whole save if this fails
+        }
+        
+        toast.success('Settings updated successfully');
       } else {
         toast.error(response.message || 'Failed to update settings');
       }
@@ -224,11 +273,25 @@ export default function AffiliateSettingsPage() {
                   Discount Value
                 </label>
                 <input
-                  type="number"
+                  type="text"
                   value={settings.purchaserDiscountValue}
-                  onChange={(e) => handleChange('purchaserDiscountValue', parseFloat(e.target.value) || 0)}
-                  min="0"
-                  step={settings.purchaserDiscountType === 'percentage' ? '0.1' : '1'}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Allow empty string or numbers with decimals
+                    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                      handleChange('purchaserDiscountValue', value);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    // Allow: backspace, delete, tab, escape, enter, numbers, decimal point, and arrow keys
+                    if (!/[0-9.]/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
+                  onWheel={(e) => {
+                    // Prevent wheel scroll from changing input values
+                    e.target.blur();
+                  }}
                   disabled={!hasUpdatePermission}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                   placeholder={settings.purchaserDiscountType === 'percentage' ? 'Enter percentage' : 'Enter amount'}
@@ -253,10 +316,25 @@ export default function AffiliateSettingsPage() {
                 Loyalty Points Per Purchase
               </label>
               <input
-                type="number"
+                type="text"
                 value={settings.referrerLoyaltyPointsPerPurchase}
-                onChange={(e) => handleChange('referrerLoyaltyPointsPerPurchase', parseInt(e.target.value) || 0)}
-                min="0"
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Allow empty string or only numbers
+                  if (value === '' || /^\d+$/.test(value)) {
+                    handleChange('referrerLoyaltyPointsPerPurchase', value);
+                  }
+                }}
+                onKeyDown={(e) => {
+                  // Allow: backspace, delete, tab, escape, enter, and numbers
+                  if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+                    e.preventDefault();
+                  }
+                }}
+                onWheel={(e) => {
+                  // Prevent wheel scroll from changing input values
+                  e.target.blur();
+                }}
                 disabled={!hasUpdatePermission}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 placeholder="Enter loyalty points"
@@ -278,16 +356,71 @@ export default function AffiliateSettingsPage() {
                 Loyalty Points Per Purchase
               </label>
               <input
-                type="number"
+                type="text"
                 value={settings.purchaserLoyaltyPointsPerPurchase}
-                onChange={(e) => handleChange('purchaserLoyaltyPointsPerPurchase', parseInt(e.target.value) || 0)}
-                min="0"
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Allow empty string or only numbers
+                  if (value === '' || /^\d+$/.test(value)) {
+                    handleChange('purchaserLoyaltyPointsPerPurchase', value);
+                  }
+                }}
+                onKeyDown={(e) => {
+                  // Allow: backspace, delete, tab, escape, enter, and numbers
+                  if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+                    e.preventDefault();
+                  }
+                }}
+                onWheel={(e) => {
+                  // Prevent wheel scroll from changing input values
+                  e.target.blur();
+                }}
                 disabled={!hasUpdatePermission}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 placeholder="Enter loyalty points"
               />
               <p className="mt-1 text-xs text-gray-500">
                 Number of loyalty points the purchaser earns (only if they are a logged-in user)
+              </p>
+            </div>
+          </div>
+
+          {/* Signup Bonus Coins */}
+          <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Signup Bonus Coins
+            </h3>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Signup Bonus Coins
+              </label>
+              <input
+                type="text"
+                value={signupBonusCoins}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Allow empty string or only numbers
+                  if (value === '' || /^\d+$/.test(value)) {
+                    setSignupBonusCoins(value);
+                  }
+                }}
+                onKeyDown={(e) => {
+                  // Allow: backspace, delete, tab, escape, enter, and numbers
+                  if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+                    e.preventDefault();
+                  }
+                }}
+                onWheel={(e) => {
+                  // Prevent wheel scroll from changing input values
+                  e.target.blur();
+                }}
+                disabled={!hasUpdatePermission}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                placeholder="Enter coins"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Coins given to new users when they sign up (0 = disabled)
               </p>
             </div>
           </div>
