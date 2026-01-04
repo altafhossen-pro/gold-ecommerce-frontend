@@ -521,14 +521,14 @@ export default function ProductDetails({ productSlug }) {
                                 spaceBetween={12}
                                 slidesPerView={4}
                                 loop={totalImages > 4}
-                                navigation={{
-                                    nextEl: '.swiper-button-next',
-                                    prevEl: '.swiper-button-prev',
-                                }}
-                                pagination={{
+                                navigation={totalImages > 4 ? {
+                                    nextEl: '.swiper-button-next-custom',
+                                    prevEl: '.swiper-button-prev-custom',
+                                } : false}
+                                pagination={totalImages > 1 ? {
                                     clickable: true,
-                                    el: '.swiper-pagination',
-                                }}
+                                    el: '.swiper-pagination-custom',
+                                } : false}
                                 className="thumbnail-swiper"
                             >
                                 {product && totalImages > 0 ? (
@@ -557,8 +557,6 @@ export default function ProductDetails({ productSlug }) {
                                                         alt={image.altText || `${product.title} ${index + 1}`}
                                                         className="w-full h-full object-cover"
                                                     />
-                                                    {/* Featured Image Badge */}
-
                                                 </button>
                                             </SwiperSlide>
                                         );
@@ -574,41 +572,33 @@ export default function ProductDetails({ productSlug }) {
                                         </div>
                                     </SwiperSlide>
                                 )}
-
                             </Swiper>
-                            {
-                                totalImages > 4 && (
-                                    <>
-                                        <div className='!h-full !m-0 ' style={{ display: "ruby-text" }}>
-                                            <button
-                                                className="swiper-button-prev absolute left-0 top-1/2 transform -translate-y-1/2 z-10 w-4  flex items-center justify-center  transition-colors"
-                                                aria-label="Previous image"
-                                            >
-                                                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                                                </svg>
-                                            </button>
-                                            <button
-                                                className="swiper-button-next absolute right-0 top-1/2 transform -translate-y-1/2 z-10 w-4  flex items-center justify-center  transition-colors"
-                                                aria-label="Next image"
-                                            >
-                                                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                                </svg>
-                                            </button>
-                                        </div>
-                                        {/* Custom Navigation Buttons */}
 
-                                    </>
-                                )
-                            }
-
-
-
+                            {/* Custom Navigation Buttons */}
+                            {totalImages > 4 && (
+                                <>
+                                    <button
+                                        className="swiper-button-prev-custom absolute left-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 flex items-center justify-center bg-white rounded-full shadow-md hover:bg-gray-50 transition-colors border border-gray-200"
+                                        aria-label="Previous image"
+                                    >
+                                        <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                        </svg>
+                                    </button>
+                                    <button
+                                        className="swiper-button-next-custom absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 flex items-center justify-center bg-white rounded-full shadow-md hover:bg-gray-50 transition-colors border border-gray-200"
+                                        aria-label="Next image"
+                                    >
+                                        <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                        </svg>
+                                    </button>
+                                </>
+                            )}
 
                             {/* Pagination Dots */}
                             {totalImages > 1 && (
-                                <div className="swiper-pagination flex justify-center mt-3 space-x-1"></div>
+                                <div className="swiper-pagination-custom flex justify-center items-center mt-4 gap-1.5"></div>
                             )}
                         </div>
                     </div>
@@ -1263,26 +1253,60 @@ export default function ProductDetails({ productSlug }) {
                 />
             </div>
 
-            <style jsx>{`
+            <style jsx global>{`
                 .thumbnail-swiper {
-                    padding: 0 40px;
+                    padding: 0;
                 }
-                .swiper-button-next,
-                .swiper-button-prev {
+                .swiper-button-next-custom,
+                .swiper-button-prev-custom {
                     display: flex !important;
+                    cursor: pointer !important;
+                    transition: all 0.1s ease !important;
                 }
-                .swiper-pagination {
+                .swiper-button-next-custom:hover:not(.swiper-button-disabled),
+                .swiper-button-prev-custom:hover:not(.swiper-button-disabled) {
+                    border-color: #ef3d6a !important;
+                    border-width: 2px !important;
+                }
+                .swiper-button-next-custom.swiper-button-disabled,
+                .swiper-button-prev-custom.swiper-button-disabled {
+                    opacity: 0.35;
+                    cursor: not-allowed !important;
+                    pointer-events: none;
+                }
+                .swiper-pagination-custom {
                     position: relative;
-                    margin-top: 10px;
+                    margin-top: 16px;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
                 }
-                .swiper-pagination-bullet {
-                    width: 8px;
-                    height: 8px;
-                    background: #d1d5db;
-                    opacity: 1;
+                .swiper-pagination-custom .swiper-pagination-bullet,
+                .swiper-pagination-custom.swiper-pagination-bullet {
+                    width: 8px !important;
+                    height: 8px !important;
+                    background: #9ca3af !important;
+                    opacity: 1 !important;
+                    margin: 0 4px !important;
+                    border-radius: 50% !important;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    border: 1px solid #e5e7eb !important;
                 }
-                .swiper-pagination-bullet-active {
-                    background: #ef3d6a;
+                .swiper-pagination-custom .swiper-pagination-bullet:hover,
+                .swiper-pagination-custom.swiper-pagination-bullet:hover {
+                    background: #6b7280 !important;
+                    border-color: #d1d5db !important;
+                }
+                .swiper-pagination-custom .swiper-pagination-bullet-active,
+                .swiper-pagination-custom .swiper-pagination-bullet.swiper-pagination-bullet-active,
+                .swiper-pagination-custom.swiper-pagination-bullet-active {
+                    background: #ef3d6a !important;
+                    width: 24px !important;
+                    height: 8px !important;
+                    border-radius: 4px !important;
+                    border: 1px solid #ef3d6a !important;
+                    opacity: 1 !important;
                 }
 
                 /* Add to Cart Button Animation */
