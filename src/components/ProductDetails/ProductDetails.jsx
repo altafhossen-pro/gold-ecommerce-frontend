@@ -709,7 +709,10 @@ export default function ProductDetails({ productSlug }) {
                                                 {variantsToShow.map((variant) => {
                                                     const colorAttr = variant.attributes.find(attr => attr.name === 'Color');
                                                     const isSelected = colorAttr && selectedColor === colorAttr.value;
-                                                    const variantImage = variant.image || product?.featuredImage;
+                                                    // Get variant image from images array (first image) or fallback to featured image
+                                                    const variantImage = variant.images && variant.images.length > 0 
+                                                        ? (variant.images[0]?.url || variant.images[0]) 
+                                                        : (variant.image || product?.featuredImage);
                                                     
                                                     return (
                                                         <button
@@ -726,6 +729,9 @@ export default function ProductDetails({ productSlug }) {
                                                                     src={variantImage}
                                                                     alt={colorAttr?.value || 'Variant'}
                                                                     className="w-full h-full object-cover"
+                                                                    onError={(e) => {
+                                                                        e.target.src = product?.featuredImage || '/images/placeholder.png';
+                                                                    }}
                                                                 />
                                                             ) : (
                                                                 <div className="w-full h-full bg-gray-200 flex items-center justify-center text-xs text-gray-500">
@@ -1037,7 +1043,7 @@ export default function ProductDetails({ productSlug }) {
                                         </div>
 
                                         {/* Specifications Section */}
-                                        {(product.specifications && product.specifications.length > 0) || (!product.specifications || product.specifications.length === 0) ? (
+                                        {product.specifications && product.specifications.length > 0 && (
                                             <div className="bg-gray-50 rounded-lg p-6 border border-gray-200">
                                                 <h4 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
                                                     <svg className="w-4 h-4 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1045,47 +1051,18 @@ export default function ProductDetails({ productSlug }) {
                                                     </svg>
                                                     Specifications
                                                 </h4>
-                                                {product.specifications && product.specifications.length > 0 ? (
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                        {product.specifications.map((spec, index) => (
-                                                            <div key={index} className="bg-white rounded-lg p-3 border border-gray-200 hover:border-pink-300 transition-colors">
-                                                                <div className="flex items-start justify-between gap-3">
-                                                                    <span className="text-sm font-medium text-gray-600 flex-1">{spec.key}</span>
-                                                                    <span className="text-sm font-semibold text-gray-900 text-right flex-1">{spec.value}</span>
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                ) : (
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                        <div className="bg-white rounded-lg p-3 border border-gray-200 hover:border-pink-300 transition-colors">
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    {product.specifications.map((spec, index) => (
+                                                        <div key={index} className="bg-white rounded-lg p-3 border border-gray-200 hover:border-pink-300 transition-colors">
                                                             <div className="flex items-start justify-between gap-3">
-                                                                <span className="text-sm font-medium text-gray-600 flex-1">Material</span>
-                                                                <span className="text-sm font-semibold text-gray-900 text-right flex-1">18k White Gold</span>
+                                                                <span className="text-sm font-medium text-gray-600 flex-1">{spec.key}</span>
+                                                                <span className="text-sm font-semibold text-gray-900 text-right flex-1">{spec.value}</span>
                                                             </div>
                                                         </div>
-                                                        <div className="bg-white rounded-lg p-3 border border-gray-200 hover:border-pink-300 transition-colors">
-                                                            <div className="flex items-start justify-between gap-3">
-                                                                <span className="text-sm font-medium text-gray-600 flex-1">Stone</span>
-                                                                <span className="text-sm font-semibold text-gray-900 text-right flex-1">Diamond</span>
-                                                            </div>
-                                                        </div>
-                                                        <div className="bg-white rounded-lg p-3 border border-gray-200 hover:border-pink-300 transition-colors">
-                                                            <div className="flex items-start justify-between gap-3">
-                                                                <span className="text-sm font-medium text-gray-600 flex-1">Clarity</span>
-                                                                <span className="text-sm font-semibold text-gray-900 text-right flex-1">VS1</span>
-                                                            </div>
-                                                        </div>
-                                                        <div className="bg-white rounded-lg p-3 border border-gray-200 hover:border-pink-300 transition-colors">
-                                                            <div className="flex items-start justify-between gap-3">
-                                                                <span className="text-sm font-medium text-gray-600 flex-1">Color</span>
-                                                                <span className="text-sm font-semibold text-gray-900 text-right flex-1">G</span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                )}
+                                                    ))}
+                                                </div>
                                             </div>
-                                        ) : null}
+                                        )}
                                     </div>
                                 </div>
                             )}

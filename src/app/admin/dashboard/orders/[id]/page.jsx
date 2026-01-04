@@ -337,7 +337,9 @@ export default function OrderDetailsPage() {
             
             if (response.success) {
                 toast.success('Order status updated successfully');
-                setOrder({ ...order, status: newStatus });
+                // Update order with full response data (includes paymentStatus if updated)
+                const updatedOrder = response.data || { ...order, status: newStatus };
+                setOrder({ ...order, ...updatedOrder });
                 closeStatusModal();
             } else {
                 toast.error(response.message || 'Failed to update order status');
@@ -1029,6 +1031,53 @@ export default function OrderDetailsPage() {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Steadfast Tracking Information */}
+                        {(order.status === 'shipped' || order.status === 'delivered') && order.isAddedIntoSteadfast && order.steadfastConsignmentId && (
+                            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+                                <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center">
+                                    <Truck className="h-6 w-6 mr-3 text-pink-600" />
+                                    Steadfast Courier Tracking
+                                </h2>
+                                <div className="bg-gradient-to-r from-pink-50 to-rose-50 rounded-xl p-6 border border-pink-200">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center">
+                                            <div className="p-2 bg-pink-100 rounded-lg">
+                                                <Truck className="h-5 w-5 text-pink-600" />
+                                            </div>
+                                            <div className="ml-4">
+                                                <p className="font-bold text-slate-900">Consignment ID: {order.steadfastConsignmentId}</p>
+                                                <p className="text-xs text-slate-500 font-medium mt-1">Steadfast Tracking</p>
+                                            </div>
+                                        </div>
+                                        <a
+                                            href={`https://steadfast.com.bd/user/consignment/${order.steadfastConsignmentId}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors text-sm font-medium flex items-center"
+                                        >
+                                            <Truck className="h-4 w-4 mr-2" />
+                                            Track Order
+                                        </a>
+                                    </div>
+                                    {order.steadfastTrackingCode && (
+                                        <div className="mt-4 pt-4 border-t border-pink-200">
+                                            <p className="text-sm text-slate-600 mb-2">
+                                                <span className="font-medium">Tracking Code:</span> {order.steadfastTrackingCode}
+                                            </p>
+                                            <a
+                                                href={`https://steadfast.com.bd/t/${order.steadfastTrackingCode}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-sm text-pink-600 hover:text-pink-700 hover:underline"
+                                            >
+                                                View Tracking Details →
+                                            </a>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Quick Actions */}
                         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">

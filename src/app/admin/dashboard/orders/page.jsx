@@ -840,10 +840,11 @@ export default function AdminOrdersPage() {
             
             if (response.success) {
                 toast.success('Order status updated successfully');
-                // Update the order in the local state
+                // Update the order in the local state with full response data (includes paymentStatus if updated)
+                const updatedOrder = response.data || { ...selectedOrder, status: newStatus };
                 const updatedOrders = orders.map(order => 
                     order._id === selectedOrder._id 
-                        ? { ...order, status: newStatus }
+                        ? { ...order, ...updatedOrder }
                         : order
                 );
                 setOrders(updatedOrders);
@@ -1047,7 +1048,7 @@ export default function AdminOrdersPage() {
                                             <div className="text-sm font-medium text-gray-900">
                                                 #{order.orderId || order._id.slice(-8).toUpperCase()}
                                             </div>
-                                            {order.status === 'shipped' && order.isAddedIntoSteadfast && order.steadfastConsignmentId && (
+                                            {(order.status === 'shipped' || order.status === 'delivered') && order.isAddedIntoSteadfast && order.steadfastConsignmentId && (
                                                 <a
                                                     href={`https://steadfast.com.bd/user/consignment/${order.steadfastConsignmentId}`}
                                                     target="_blank"
