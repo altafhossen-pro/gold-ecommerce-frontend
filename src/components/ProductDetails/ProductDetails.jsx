@@ -37,6 +37,7 @@ export default function ProductDetails({ productSlug }) {
     const [magnifyPosition, setMagnifyPosition] = useState({ x: 0, y: 0 });
     const [isManualImageSelection, setIsManualImageSelection] = useState(false);
     const [hasManuallySelectedVariant, setHasManuallySelectedVariant] = useState(false);
+    const [selectedVariantSku, setSelectedVariantSku] = useState(null);
     const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
     // Fetch product data
@@ -78,9 +79,16 @@ export default function ProductDetails({ productSlug }) {
                 setProduct(data.data);
                 // Set default size and color if available
                 if (data.data.variants && data.data.variants.length > 0) {
-                    const firstVariant = data.data.variants[0];
-                    const sizeAttr = firstVariant.attributes.find(attr => attr.name === 'Size');
-                    const colorAttr = firstVariant.attributes.find(attr => attr.name === 'Color');
+                    // Find first stock in variant (stockQuantity > 0 and stockStatus !== 'out_of_stock')
+                    const stockInVariant = data.data.variants.find(variant => 
+                        variant.stockQuantity > 0 && variant.stockStatus !== 'out_of_stock'
+                    );
+                    
+                    // Use stock in variant if available, otherwise use first variant
+                    const defaultVariant = stockInVariant || data.data.variants[0];
+                    
+                    const sizeAttr = defaultVariant.attributes.find(attr => attr.name === 'Size');
+                    const colorAttr = defaultVariant.attributes.find(attr => attr.name === 'Color');
 
                     // Size is optional - set it if available
                     if (sizeAttr) {
@@ -95,10 +103,15 @@ export default function ProductDetails({ productSlug }) {
                     } else {
                         setSelectedColor(""); // No color for this variant
                     }
+                    
+                    // Auto-select default variant (stock in if available, otherwise first variant)
+                    setSelectedVariantSku(defaultVariant.sku || defaultVariant._id);
+                    setHasManuallySelectedVariant(true);
                 } else {
                     // If no variants, set default values
                     setSelectedSize("");
                     setSelectedColor(""); // No color by default
+                    setHasManuallySelectedVariant(false);
                 }
             } else {
                 setProduct(null);
@@ -172,6 +185,17 @@ export default function ProductDetails({ productSlug }) {
     // Get selected variant (size optional, color optional)
     const getSelectedVariant = () => {
         if (!product?.variants) return null;
+        
+        // First try to find by SKU (most reliable)
+        if (selectedVariantSku) {
+            const variantBySku = product.variants.find(variant => 
+                (variant.sku || variant._id) === selectedVariantSku
+            );
+            
+            if (variantBySku) return variantBySku;
+        }
+        
+        // Fallback to size/color matching if SKU not found
         return product.variants.find(variant => {
             const sizeAttr = variant.attributes.find(attr => attr.name === 'Size');
             const colorAttr = variant.attributes.find(attr => attr.name === 'Color');
@@ -226,19 +250,29 @@ export default function ProductDetails({ productSlug }) {
     const handleSizeChange = (size) => {
         setSelectedSize(size);
         setHasManuallySelectedVariant(true); // User manually selected variant
-        // Reset color when size changes - get available variants for new size and select first one
+        // Reset color when size changes - get available variants for new size
         const variantsForSize = getAvailableVariantsForSize(size);
         if (variantsForSize.length > 0) {
-            const firstVariant = variantsForSize[0];
-            const colorAttr = firstVariant.attributes.find(attr => attr.name === 'Color');
+            // Find first stock in variant for this size
+            const stockInVariant = variantsForSize.find(variant => 
+                variant.stockQuantity > 0 && variant.stockStatus !== 'out_of_stock'
+            );
+            
+            // Use stock in variant if available, otherwise use first variant
+            const defaultVariant = stockInVariant || variantsForSize[0];
+            
+            const colorAttr = defaultVariant.attributes.find(attr => attr.name === 'Color');
             if (colorAttr) {
                 setSelectedColor(colorAttr.value);
             } else {
                 setSelectedColor("");
             }
+            // Set SKU for default variant (stock in if available, otherwise first variant)
+            setSelectedVariantSku(defaultVariant.sku || defaultVariant._id);
         } else {
-            // If no variants available for this size, clear selected color
+            // If no variants available for this size, clear selected color and SKU
             setSelectedColor("");
+            setSelectedVariantSku(null);
         }
     };
 
@@ -250,10 +284,27 @@ export default function ProductDetails({ productSlug }) {
 
     // Handle variant image selection (replaces color selection)
     const handleVariantImageChange = (variant) => {
+        // Set size if variant has size, otherwise clear it
+        const sizeAttr = variant.attributes.find(attr => attr.name === 'Size');
+        if (sizeAttr) {
+            setSelectedSize(sizeAttr.value);
+        } else {
+            // If variant has no size, clear selectedSize to match variants without size
+            setSelectedSize("");
+        }
+        
+        // Set color if variant has color, otherwise clear it
         const colorAttr = variant.attributes.find(attr => attr.name === 'Color');
         if (colorAttr) {
             setSelectedColor(colorAttr.value);
+        } else {
+            // If variant has no color, clear selectedColor to match variants without color
+            setSelectedColor("");
         }
+        
+        // Store the selected variant SKU to uniquely identify it
+        setSelectedVariantSku(variant.sku || variant._id);
+        
         setHasManuallySelectedVariant(true);
     };
 
@@ -268,11 +319,9 @@ export default function ProductDetails({ productSlug }) {
                 return sizeAttr && sizeAttr.value === size;
             });
         } else {
-            // If no size selected, show variants without size
-            return product.variants.filter(variant => {
-                const sizeAttr = variant.attributes.find(attr => attr.name === 'Size');
-                return !sizeAttr;
-            });
+            // If no size selected, show all variants (both with and without size)
+            // This allows user to choose variant even when size is not available
+            return product.variants;
         }
     };
 
@@ -697,12 +746,23 @@ export default function ProductDetails({ productSlug }) {
                                             <label className="block text-sm font-medium text-gray-700">Select Variant</label>
                                             <div className="flex flex-wrap gap-2">
                                                 {variantsToShow.map((variant) => {
+                                                    const sizeAttr = variant.attributes.find(attr => attr.name === 'Size');
                                                     const colorAttr = variant.attributes.find(attr => attr.name === 'Color');
-                                                    const isSelected = colorAttr && selectedColor === colorAttr.value;
+                                                    
+                                                    // Check if this exact variant is selected by comparing SKU
+                                                    const variantSku = variant.sku || variant._id;
+                                                    const isSelected = selectedVariantSku && variantSku === selectedVariantSku;
+                                                    
                                                     // Get variant image from images array (first image) or fallback to featured image
                                                     const variantImage = variant.images && variant.images.length > 0 
                                                         ? (variant.images[0]?.url || variant.images[0]) 
                                                         : (variant.image || product?.featuredImage);
+                                                    
+                                                    // Build title with variant info
+                                                    const variantTitle = [
+                                                        sizeAttr?.value,
+                                                        colorAttr?.value
+                                                    ].filter(Boolean).join(' - ') || 'Variant';
                                                     
                                                     return (
                                                         <button
@@ -712,12 +772,12 @@ export default function ProductDetails({ productSlug }) {
                                                                 ? 'border-pink-500 ring-2 ring-pink-200 shadow-sm'
                                                                 : 'border-gray-300 hover:border-pink-400 hover:shadow-sm'
                                                                 }`}
-                                                            title={colorAttr?.value || 'Variant'}
+                                                            title={variantTitle}
                                                         >
                                                             {variantImage ? (
                                                                 <img
                                                                     src={variantImage}
-                                                                    alt={colorAttr?.value || 'Variant'}
+                                                                    alt={variantTitle}
                                                                     className="w-full h-full object-cover"
                                                                     onError={(e) => {
                                                                         e.target.src = product?.featuredImage || '/images/placeholder.png';
@@ -725,7 +785,7 @@ export default function ProductDetails({ productSlug }) {
                                                                 />
                                                             ) : (
                                                                 <div className="w-full h-full bg-gray-200 flex items-center justify-center text-xs text-gray-500">
-                                                                    {colorAttr?.value || 'Variant'}
+                                                                    {sizeAttr?.value || colorAttr?.value || 'V'}
                                                                 </div>
                                                             )}
                                                         </button>
