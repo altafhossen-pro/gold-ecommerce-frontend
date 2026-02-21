@@ -40,14 +40,14 @@ import {
 } from 'lucide-react'
 
 const navigation = [
-    { 
-        name: 'Dashboard', 
-        href: '/admin/dashboard', 
+    {
+        name: 'Dashboard',
+        href: '/admin/dashboard',
         icon: LayoutDashboard,
         type: 'single'
     },
-    { 
-        name: 'Products', 
+    {
+        name: 'Products',
         icon: Package,
         type: 'group',
         children: [
@@ -55,8 +55,8 @@ const navigation = [
             { name: 'Create Product', href: '/admin/dashboard/products/create', icon: PlusCircle },
         ]
     },
-    { 
-        name: 'Orders', 
+    {
+        name: 'Orders',
         icon: ShoppingCart,
         type: 'group',
         children: [
@@ -64,8 +64,8 @@ const navigation = [
             { name: 'Manual Orders', href: '/admin/dashboard/manual-orders', icon: PlusCircle },
         ]
     },
-    { 
-        name: 'Categories', 
+    {
+        name: 'Categories',
         icon: Tag,
         type: 'group',
         children: [
@@ -73,8 +73,8 @@ const navigation = [
             { name: 'Add Category', href: '/admin/dashboard/categories/create', icon: PlusCircle },
         ]
     },
-    { 
-        name: 'Users', 
+    {
+        name: 'Users',
         icon: Users,
         type: 'group',
         children: [
@@ -82,8 +82,8 @@ const navigation = [
             { name: 'All Staff', href: '/admin/dashboard/staff', icon: Shield },
         ]
     },
-    { 
-        name: 'Homepage', 
+    {
+        name: 'Homepage',
         icon: Home,
         type: 'group',
         children: [
@@ -93,8 +93,8 @@ const navigation = [
             { name: 'Testimonials', href: '/admin/dashboard/testimonials', icon: Star },
         ]
     },
-    { 
-        name: 'Offers', 
+    {
+        name: 'Offers',
         icon: Gift,
         type: 'group',
         children: [
@@ -103,8 +103,8 @@ const navigation = [
             { name: 'Own Products Ads', href: '/admin/dashboard/own-ads', icon: Presentation },
         ]
     },
-    { 
-        name: 'Inventory', 
+    {
+        name: 'Inventory',
         icon: Database,
         type: 'group',
         children: [
@@ -112,8 +112,14 @@ const navigation = [
             { name: 'Stock Adjustment', href: '/admin/dashboard/inventory/stock-adjustment', icon: TrendingUp },
         ]
     },
-    { 
-        name: 'Settings', 
+    {
+        name: 'Notifications',
+        href: '/admin/dashboard/notifications',
+        icon: Bell,
+        type: 'single'
+    },
+    {
+        name: 'Settings',
         icon: Settings,
         type: 'group',
         children: [
@@ -272,16 +278,14 @@ export default function AdminSidebar({ onMobileMenuClose }) {
                                     }
                                     onMobileMenuClose?.()
                                 }}
-                                className={`group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
-                                    isActive
+                                className={`group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${isActive
                                         ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-600'
                                         : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                                }`}
+                                    }`}
                             >
                                 <item.icon
-                                    className={`mr-3 h-5 w-5 transition-colors ${
-                                        isActive ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-500'
-                                    }`}
+                                    className={`mr-3 h-5 w-5 transition-colors ${isActive ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-500'
+                                        }`}
                                 />
                                 {item.name}
                             </Link>
@@ -292,17 +296,15 @@ export default function AdminSidebar({ onMobileMenuClose }) {
                                 {/* Group Header */}
                                 <button
                                     onClick={() => toggleExpanded(item.name)}
-                                    className={`group w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${
-                                        isActive
+                                    className={`group w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${isActive
                                             ? 'bg-blue-50 text-blue-700'
                                             : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                                    }`}
+                                        }`}
                                 >
                                     <div className="flex items-center">
                                         <item.icon
-                                            className={`mr-3 h-5 w-5 transition-colors ${
-                                                isActive ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-500'
-                                            }`}
+                                            className={`mr-3 h-5 w-5 transition-colors ${isActive ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-500'
+                                                }`}
                                         />
                                         {item.name}
                                     </div>
@@ -323,16 +325,14 @@ export default function AdminSidebar({ onMobileMenuClose }) {
                                                     key={child.name}
                                                     href={child.href}
                                                     onClick={() => onMobileMenuClose?.()}
-                                                    className={`group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-                                                        childIsActive
+                                                    className={`group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${childIsActive
                                                             ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-600'
                                                             : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
-                                                    }`}
+                                                        }`}
                                                 >
                                                     <child.icon
-                                                        className={`mr-3 h-4 w-4 transition-colors ${
-                                                            childIsActive ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-500'
-                                                        }`}
+                                                        className={`mr-3 h-4 w-4 transition-colors ${childIsActive ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-500'
+                                                            }`}
                                                     />
                                                     {child.name}
                                                 </Link>

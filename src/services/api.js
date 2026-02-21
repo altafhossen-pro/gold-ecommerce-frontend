@@ -6,7 +6,7 @@ const apiCall = async (endpoint, options = {}) => {
         const defaultHeaders = {
             'Content-Type': 'application/json',
         };
-        
+
         const requestOptions = {
             headers: {
                 ...defaultHeaders,
@@ -14,11 +14,11 @@ const apiCall = async (endpoint, options = {}) => {
             },
             ...options,
         };
-        
-        
+
+
         const response = await fetch(`${API_BASE_URL}${endpoint}`, requestOptions);
         const data = await response.json();
-        
+
         // Include status code in response for error handling
         if (!response.ok) {
             const error = new Error(data.message || 'Request failed');
@@ -26,7 +26,7 @@ const apiCall = async (endpoint, options = {}) => {
             error.response = { data, status: response.status };
             throw error;
         }
-        
+
         return data;
     } catch (error) {
         // Re-throw with status if it's a fetch error
@@ -138,7 +138,7 @@ export const productAPI = {
     },
 
     // Admin: Update product
-    updateProduct: (id, productData,token) => {
+    updateProduct: (id, productData, token) => {
         return apiCall(`/product/${id}`, {
             method: 'PATCH',
             body: JSON.stringify(productData),
@@ -182,6 +182,62 @@ export const productAPI = {
     getAdminProductById: (id, token) => {
         return apiCall(`/product/admin/${id}`, {
             method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+    },
+};
+
+// Notification API functions
+export const notificationAPI = {
+    // Get all notifications with pagination and filters
+    getNotifications: (params = {}, token) => {
+        const queryParams = new URLSearchParams();
+        Object.keys(params).forEach(key => {
+            if (params[key] !== undefined && params[key] !== null) {
+                queryParams.append(key, params[key]);
+            }
+        });
+        const queryString = queryParams.toString();
+        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+        return apiCall(`/notification?${queryString}`, { headers });
+    },
+
+    // Get single notification by ID
+    getNotificationById: (id) => {
+        return apiCall(`/notification/${id}`);
+    },
+
+    // Admin: Create notification
+    createNotification: (notificationData, token) => {
+        return apiCall('/notification', {
+            method: 'POST',
+            body: JSON.stringify(notificationData),
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+    },
+
+    // Admin: Update notification
+    updateNotification: (id, notificationData, token) => {
+        return apiCall(`/notification/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(notificationData),
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+    },
+
+    // Admin: Delete notification
+    deleteNotification: (id, token) => {
+        return apiCall(`/notification/${id}`, {
+            method: 'DELETE',
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json',
@@ -395,7 +451,7 @@ export const userAPI = {
         const queryParams = new URLSearchParams();
         Object.keys(params).forEach(key => {
             if (params[key]) {
-                queryParams.append(key,  params[key]);
+                queryParams.append(key, params[key]);
             }
         });
         return apiCall(`/admin/user?${queryParams.toString()}`, {
@@ -807,8 +863,8 @@ export const testimonialAPI = {
     // Get all testimonials (admin)
     getTestimonials: (params = {}, token) => {
         const queryString = new URLSearchParams(params).toString();
-        return apiCall(`/testimonial?${queryString}`,{
-            headers : {
+        return apiCall(`/testimonial?${queryString}`, {
+            headers: {
                 'Authorization': `Bearer ${token}`,
             },
         });
@@ -829,7 +885,7 @@ export const testimonialAPI = {
     },
 
     // Create testimonial
-    createTestimonial: (data,token) => {
+    createTestimonial: (data, token) => {
         return apiCall('/testimonial', {
             method: 'POST',
             body: JSON.stringify(data),
@@ -853,7 +909,7 @@ export const testimonialAPI = {
     },
 
     // Delete testimonial
-    deleteTestimonial: (id,token) => {
+    deleteTestimonial: (id, token) => {
         return apiCall(`/testimonial/${id}`, {
             method: 'DELETE',
             headers: {
@@ -1374,12 +1430,12 @@ export const settingsAPI = {
             body: JSON.stringify(deliveryChargeData),
         });
     },
-    
+
     // Get steadfast settings only
     getSteadfastSettings: () => {
         return apiCall('/settings/steadfast');
     },
-    
+
     // Update steadfast settings only (Admin only)
     updateSteadfastSettings: (steadfastData, token) => {
         return apiCall('/settings/steadfast', {
@@ -1906,7 +1962,7 @@ export const upsellAPI = {
         const params = new URLSearchParams();
         if (query) params.append('query', query);
         if (excludeId) params.append('excludeId', excludeId);
-        
+
         return apiCall(`/upsell/search/products?${params.toString()}`, {
             headers: {
                 'Authorization': `Bearer ${token}`,
