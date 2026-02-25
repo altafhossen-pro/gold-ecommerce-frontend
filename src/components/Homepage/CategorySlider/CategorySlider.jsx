@@ -140,7 +140,7 @@ export default function CategorySlider() {
     }
 
     return (
-        <section className="lg:py-12 py-4 px-4 bg-white">
+        <section className="lg:py-8 py-2 px-4 bg-white">
             <div className="max-w-screen-2xl mx-auto">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-8">
@@ -195,7 +195,7 @@ export default function CategorySlider() {
                             slidesPerView: 7,
                         },
                     }}
-                    className="category-swiper !pb-3"
+                    className="category-swiper "
                 >
                     {categories.map((category, index) => (
                         <SwiperSlide key={category._id}>
