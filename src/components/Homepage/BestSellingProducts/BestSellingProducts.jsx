@@ -42,7 +42,7 @@ export default function BestSellingProducts() {
             setLoading(true);
             setError(null);
             const data = await productAPI.getBestsellingProducts(10);
-            
+
             if (data.success) {
                 // Keep original data for variants like FeaturedProducts does
                 const productsData = data.data || [];
@@ -84,15 +84,15 @@ export default function BestSellingProducts() {
     }, [products, addToCart]);
 
     return (
-        <section className="py-8 px-4 bg-white">
+        <section className="py-4 px-4 bg-white">
             <div className="max-w-screen-2xl mx-auto">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-2">
                     <h2 className="text-2xl font-bold text-gray-800">Best Selling Product</h2>
-                    
+
                     {/* Navigation Buttons */}
                     <div className="flex gap-2">
-                        <button 
+                        <button
                             className="best-selling-prev-btn w-10 h-10 rounded-lg border border-pink-300 text-gray-800 hover:bg-pink-50 transition-colors flex items-center justify-center"
                             aria-label="Previous best selling products"
                         >
@@ -100,7 +100,7 @@ export default function BestSellingProducts() {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                             </svg>
                         </button>
-                        <button 
+                        <button
                             className="best-selling-next-btn w-10 h-10 rounded-lg border border-pink-300 text-gray-800 hover:bg-pink-50 transition-colors flex items-center justify-center"
                             aria-label="Next best selling products"
                         >
@@ -134,7 +134,7 @@ export default function BestSellingProducts() {
                             <p className="text-sm sm:text-base text-gray-600 mb-4">
                                 {error}
                             </p>
-                            <button 
+                            <button
                                 onClick={fetchBestsellingProducts}
                                 className="bg-pink-500 text-white px-4 sm:px-6 py-2 rounded-lg font-semibold text-sm hover:bg-pink-600 transition-colors"
                             >

@@ -73,7 +73,7 @@ export default function DashboardPage() {
         try {
             setLoading(true)
             const response = await analyticsAPI.getDashboardStats(period, token)
-            
+
             if (response.success) {
                 setDashboardData(response.data)
             } else {
@@ -280,7 +280,7 @@ export default function DashboardPage() {
     // Prepare chart data
     const prepareChartData = () => {
         if (!sales?.monthlyData) return []
-        
+
         return sales.monthlyData.map(item => ({
             month: `${item._id.year}-${item._id.month.toString().padStart(2, '0')}`,
             sales: item.total,
@@ -306,7 +306,7 @@ export default function DashboardPage() {
                     <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
                     <p className="text-gray-600">Welcome back! Here's what's happening with your store.</p>
                 </div>
-                
+
                 <div className="flex items-center space-x-4">
                     {/* Period Selector */}
                     <select
@@ -321,7 +321,7 @@ export default function DashboardPage() {
                         <option value="90d">Last 90 days</option>
                         <option value="1y">Last year</option>
                     </select>
-                    
+
                     {/* Refresh Button */}
                     <button
                         onClick={handleRefresh}
@@ -358,12 +358,12 @@ export default function DashboardPage() {
                                 </div> */}
                             </div>
                             <div className={`p-3 rounded-full ${stat.color === 'blue' ? 'bg-blue-100' :
-                                    stat.color === 'green' ? 'bg-green-100' :
-                                        stat.color === 'purple' ? 'bg-purple-100' : 'bg-orange-100'
+                                stat.color === 'green' ? 'bg-green-100' :
+                                    stat.color === 'purple' ? 'bg-purple-100' : 'bg-orange-100'
                                 }`}>
                                 <stat.icon className={`h-6 w-6 ${stat.color === 'blue' ? 'text-blue-600' :
-                                        stat.color === 'green' ? 'text-green-600' :
-                                            stat.color === 'purple' ? 'text-purple-600' : 'text-orange-600'
+                                    stat.color === 'green' ? 'text-green-600' :
+                                        stat.color === 'purple' ? 'text-purple-600' : 'text-orange-600'
                                     }`} />
                             </div>
                         </div>
@@ -387,19 +387,19 @@ export default function DashboardPage() {
                                 <CartesianGrid strokeDasharray="3 3" />
                                 <XAxis dataKey="month" />
                                 <YAxis />
-                                <Tooltip 
+                                <Tooltip
                                     formatter={(value, name) => [
                                         name === 'sales' ? formatCurrency(value) : value,
                                         name === 'sales' ? 'Sales' : 'Orders'
                                     ]}
                                 />
                                 <Legend />
-                                <Area 
-                                    type="monotone" 
-                                    dataKey="sales" 
-                                    stackId="1" 
-                                    stroke="#EC4899" 
-                                    fill="#FCE7F3" 
+                                <Area
+                                    type="monotone"
+                                    dataKey="sales"
+                                    stackId="1"
+                                    stroke="#EC4899"
+                                    fill="#FCE7F3"
                                 />
                             </AreaChart>
                         </ResponsiveContainer>
@@ -437,14 +437,14 @@ export default function DashboardPage() {
                                             <Cell key={`cell-${index}`} fill={entry.color} />
                                         ))}
                                     </Pie>
-                                    <Tooltip 
+                                    <Tooltip
                                         formatter={(value, name) => [
                                             `${value} orders`,
                                             name
                                         ]}
                                     />
-                                    <Legend 
-                                        verticalAlign="bottom" 
+                                    <Legend
+                                        verticalAlign="bottom"
                                         height={36}
                                         formatter={(value, entry) => (
                                             <span style={{ color: entry.color }}>
@@ -471,7 +471,7 @@ export default function DashboardPage() {
                 <div className="px-6 py-4 border-b border-gray-200">
                     <div className="flex items-center justify-between">
                         <h2 className="text-lg font-semibold text-gray-900">Recent Orders</h2>
-                        <Link 
+                        <Link
                             href="/admin/dashboard/orders"
                             className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center"
                         >
@@ -524,8 +524,8 @@ export default function DashboardPage() {
                                             <div className="flex items-center">
                                                 <Mail className="h-4 w-4 text-gray-400 mr-2" />
                                                 <div className="text-sm text-gray-900">
-                                                    {order.orderType === 'manual' && order.manualOrderInfo?.phone 
-                                                        ? order.manualOrderInfo.phone 
+                                                    {order.orderType === 'manual' && order.manualOrderInfo?.phone
+                                                        ? order.manualOrderInfo.phone
                                                         : order.user?.email || order.user?.phone || 'N/A'}
                                                 </div>
                                             </div>
@@ -656,7 +656,7 @@ export default function DashboardPage() {
                                 <CartesianGrid strokeDasharray="3 3" />
                                 <XAxis dataKey="_id" />
                                 <YAxis />
-                                <Tooltip 
+                                <Tooltip
                                     formatter={(value, name) => [
                                         name === 'total' ? formatCurrency(value) : value,
                                         name === 'total' ? 'Amount' : 'Count'
@@ -734,7 +734,7 @@ export default function DashboardPage() {
                                             {Math.min(...product.variants.map(v => v.stockQuantity || 0))} left
                                         </div>
                                     </div>
-                                    <Link 
+                                    <Link
                                         href={`/admin/dashboard/products/${product._id}/edit`}
                                         className="ml-2 p-1 text-red-600 hover:text-red-800 hover:bg-red-200 rounded transition-colors"
                                         title="Edit Product"

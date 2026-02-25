@@ -3,16 +3,16 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { 
-    ArrowLeft, 
-    Package, 
-    Calendar, 
-    User, 
-    MapPin, 
-    CreditCard, 
-    Phone, 
-    Mail, 
-    Truck, 
+import {
+    ArrowLeft,
+    Package,
+    Calendar,
+    User,
+    MapPin,
+    CreditCard,
+    Phone,
+    Mail,
+    Truck,
     Clock,
     CheckCircle,
     AlertCircle,
@@ -209,11 +209,11 @@ export default function OrderEditPage() {
 
     const updateItemQuantity = (index, quantity) => {
         if (quantity < 1) return;
-        
+
         setFormData(prev => ({
             ...prev,
-            items: prev.items.map((item, i) => 
-                i === index 
+            items: prev.items.map((item, i) =>
+                i === index
                     ? { ...item, quantity, subtotal: item.price * quantity }
                     : item
             )
@@ -222,11 +222,11 @@ export default function OrderEditPage() {
 
     const updateItemPrice = (index, price) => {
         if (price < 0) return;
-        
+
         setFormData(prev => ({
             ...prev,
-            items: prev.items.map((item, i) => 
-                i === index 
+            items: prev.items.map((item, i) =>
+                i === index
                     ? { ...item, price, subtotal: price * item.quantity }
                     : item
             )
@@ -243,14 +243,14 @@ export default function OrderEditPage() {
         try {
             setSaving(true);
             const token = getCookie('token');
-            
+
             const updateData = {
                 ...formData,
                 total: calculateTotal()
             };
 
-            const response = await orderAPI.updateOrderComprehensive(orderId, updateData, token);
-            
+            const response = await orderAPI.updateOrderComprehensive(orderId, updateData, token, { overrideStatus: 'true' });
+
             if (response.success) {
                 toast.success('Order updated successfully');
                 router.push(`/admin/dashboard/orders/${orderId}`);
@@ -352,11 +352,10 @@ export default function OrderEditPage() {
                         </div>
                         <div className="flex items-center justify-between mb-2">
                             <span className="text-sm font-medium text-slate-600">Status:</span>
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                order.status === 'returned' 
-                                    ? 'bg-pink-100 text-pink-800 border-pink-200' 
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${order.status === 'returned'
+                                    ? 'bg-pink-100 text-pink-800 border-pink-200'
                                     : 'bg-red-100 text-red-800 border-red-200'
-                            }`}>
+                                }`}>
                                 {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                             </span>
                         </div>
@@ -411,7 +410,7 @@ export default function OrderEditPage() {
                                 </p>
                             </div>
                         </div>
-                        
+
                         <div className="flex items-center space-x-3">
                             <Link
                                 href={`/admin/dashboard/orders/${orderId}`}
@@ -423,11 +422,10 @@ export default function OrderEditPage() {
                             <button
                                 onClick={handleSave}
                                 disabled={saving}
-                                className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                    saving
+                                className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${saving
                                         ? 'bg-gray-400 cursor-not-allowed text-white'
                                         : 'bg-blue-600 hover:bg-blue-700 text-white'
-                                }`}
+                                    }`}
                             >
                                 <Save className="h-4 w-4 mr-2" />
                                 {saving ? 'Saving...' : 'Save Changes'}
@@ -457,7 +455,7 @@ export default function OrderEditPage() {
                                     Add Item
                                 </button>
                             </div>
-                            
+
                             <div className="space-y-6">
                                 {formData.items.map((item, index) => (
                                     <div key={index} className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
@@ -472,12 +470,12 @@ export default function OrderEditPage() {
                                                     {item.quantity}
                                                 </div>
                                             </div>
-                                            
+
                                             <div className="flex-1 min-w-0">
                                                 <h3 className="text-lg font-semibold text-gray-900 mb-3">
                                                     {item.name}
                                                 </h3>
-                                                
+
                                                 {/* Editable Fields */}
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                                     <div>
@@ -532,7 +530,7 @@ export default function OrderEditPage() {
                                                     </div>
                                                 )}
                                             </div>
-                                            
+
                                             <div className="flex-shrink-0 text-right">
                                                 <div className="bg-gray-50 rounded-lg p-4 mb-3">
                                                     <p className="text-2xl font-bold text-gray-900">
@@ -551,7 +549,7 @@ export default function OrderEditPage() {
                                         </div>
                                     </div>
                                 ))}
-                                
+
                                 {formData.items.length === 0 && (
                                     <div className="text-center py-12">
                                         <ShoppingBag className="h-12 w-12 text-slate-400 mx-auto mb-4" />
@@ -652,7 +650,7 @@ export default function OrderEditPage() {
                                         placeholder="Reason for status change (optional)"
                                     />
                                 </div>
-                                
+
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
                                         Payment Status
@@ -668,7 +666,7 @@ export default function OrderEditPage() {
                                         <option value="refunded">Refunded</option>
                                     </select>
                                 </div>
-                                
+
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
                                         Payment Method
@@ -701,7 +699,7 @@ export default function OrderEditPage() {
                                 <DollarSign className="h-5 w-5 mr-2 text-emerald-600" />
                                 Order Pricing
                             </h2>
-                            
+
                             <div className="space-y-4">
                                 <div className="grid grid-cols-1 gap-4">
                                     <div>
@@ -717,7 +715,7 @@ export default function OrderEditPage() {
                                             step="0.01"
                                         />
                                     </div>
-                                    
+
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">
                                             General Discount (৳)
@@ -731,7 +729,7 @@ export default function OrderEditPage() {
                                             step="0.01"
                                         />
                                     </div>
-                                    
+
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">
                                             Coupon Discount (৳)
@@ -745,7 +743,7 @@ export default function OrderEditPage() {
                                             step="0.01"
                                         />
                                     </div>
-                                    
+
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">
                                             Loyalty Points Discount (৳)
@@ -760,7 +758,7 @@ export default function OrderEditPage() {
                                         />
                                     </div>
                                 </div>
-                                
+
                                 {/* Total Display */}
                                 <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                                     <div className="flex justify-between items-center">
@@ -768,12 +766,12 @@ export default function OrderEditPage() {
                                         <span className="text-2xl font-bold text-gray-900">৳{calculateTotal()}</span>
                                     </div>
                                     <div className="text-xs text-gray-500 mt-1">
-                                        Items: ৳{formData.items.reduce((sum, item) => sum + item.subtotal, 0)} + 
-                                        Shipping: ৳{formData.shippingCost} - 
+                                        Items: ৳{formData.items.reduce((sum, item) => sum + item.subtotal, 0)} +
+                                        Shipping: ৳{formData.shippingCost} -
                                         Discounts: ৳{(formData.discount || 0) + (formData.couponDiscount || 0) + (formData.loyaltyDiscount || 0)}
                                     </div>
                                 </div>
-                                
+
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
                                         Reason for Price Changes
@@ -795,7 +793,7 @@ export default function OrderEditPage() {
                                 <MapPin className="h-5 w-5 mr-2 text-red-600" />
                                 Shipping Address
                             </h2>
-                            
+
                             <div className="space-y-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -809,7 +807,7 @@ export default function OrderEditPage() {
                                         placeholder="Enter street address"
                                     />
                                 </div>
-                                
+
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -836,7 +834,7 @@ export default function OrderEditPage() {
                                         />
                                     </div>
                                 </div>
-                                
+
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -863,7 +861,7 @@ export default function OrderEditPage() {
                                         />
                                     </div>
                                 </div>
-                                
+
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
                                         Reason for Address Change
@@ -908,7 +906,7 @@ export default function OrderEditPage() {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                             {products
-                                .filter(product => 
+                                .filter(product =>
                                     product.title.toLowerCase().includes(searchTerm.toLowerCase())
                                 )
                                 .map(product => (
@@ -918,11 +916,10 @@ export default function OrderEditPage() {
                                             setSelectedProduct(product);
                                             setNewItemPrice(product.priceRange?.min || 0);
                                         }}
-                                        className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                                            selectedProduct?._id === product._id
+                                        className={`p-4 border rounded-lg cursor-pointer transition-colors ${selectedProduct?._id === product._id
                                                 ? 'border-blue-500 bg-blue-50'
                                                 : 'border-gray-200 hover:border-gray-300'
-                                        }`}
+                                            }`}
                                     >
                                         <img
                                             src={product.featuredImage}
@@ -965,7 +962,7 @@ export default function OrderEditPage() {
                                         />
                                     </div>
                                 </div>
-                                
+
                                 {selectedProduct.variants && selectedProduct.variants.length > 0 && (
                                     <div className="mb-4">
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -991,7 +988,7 @@ export default function OrderEditPage() {
                                         </select>
                                     </div>
                                 )}
-                                
+
                                 <div className="flex justify-end space-x-3">
                                     <button
                                         onClick={() => setShowProductSearch(false)}

@@ -735,8 +735,10 @@ export const orderAPI = {
     },
 
     // Comprehensive order update (for admin)
-    updateOrderComprehensive: (orderId, updateData, token) => {
-        return apiCall(`/order/${orderId}/comprehensive`, {
+    updateOrderComprehensive: (orderId, updateData, token, params = {}) => {
+        const queryString = new URLSearchParams(params).toString();
+        const url = `/order/${orderId}/comprehensive${queryString ? `?${queryString}` : ''}`;
+        return apiCall(url, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',

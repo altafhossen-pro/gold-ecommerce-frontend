@@ -43,7 +43,7 @@ export default function FeaturedProducts() {
             setLoading(true);
             setError(null);
             const data = await productAPI.getFeaturedProducts(10); // Limit to 10 products
-            
+
             if (data.success) {
                 // Keep original data for variants like SimilarProducts does
                 const productsData = data.data || [];
@@ -58,7 +58,7 @@ export default function FeaturedProducts() {
                     isWishlisted: wishlist.some(item => item.productId === product._id) // Sync with global wishlist
                 }));
                 setProducts(transformedProducts);
-                
+
                 // Store total count for "See More" button logic
                 if (data.pagination && data.pagination.total) {
                     setTotalFeaturedProducts(data.pagination.total);
@@ -77,7 +77,7 @@ export default function FeaturedProducts() {
     const fetchCategories = async () => {
         try {
             const data = await categoryAPI.getFeaturedCategories();
-            
+
             if (data.success) {
                 setCategories(data.data);
             }
@@ -115,7 +115,7 @@ export default function FeaturedProducts() {
     }, [products, addToCart]);
 
     return (
-        <section className="py-8 sm:py-12 px-4 bg-white">
+        <section className="py-8 sm:py-0 px-4 bg-white">
             <div className="max-w-screen-2xl mx-auto">
                 {/* Header */}
                 <div className="text-center mb-6 sm:mb-8">
@@ -161,7 +161,7 @@ export default function FeaturedProducts() {
                             <p className="text-sm sm:text-base text-gray-600 mb-4">
                                 {error}
                             </p>
-                            <button 
+                            <button
                                 onClick={fetchFeaturedProducts}
                                 className="bg-pink-500 text-white px-4 sm:px-6 py-2 rounded-lg font-semibold text-sm hover:bg-pink-600 transition-colors"
                             >
@@ -193,7 +193,7 @@ export default function FeaturedProducts() {
                             <p className="text-sm sm:text-base text-gray-600 mb-4">
                                 No products found based on your filter: <span className="font-medium text-pink-500">{filterCategories.find(cat => cat.id === activeFilter)?.name}</span>
                             </p>
-                            <button 
+                            <button
                                 onClick={() => setActiveFilter('all')}
                                 className="bg-pink-500 text-white px-4 sm:px-6 py-2 rounded-lg font-semibold text-sm hover:bg-pink-600 transition-colors"
                             >
@@ -206,7 +206,7 @@ export default function FeaturedProducts() {
                 {/* See More Button - Show only when there are more than 10 total featured products */}
                 {totalFeaturedProducts > 10 && (
                     <div className="text-center mt-8 sm:mt-12">
-                        <button 
+                        <button
                             onClick={() => router.push('/shop')}
                             className="bg-white text-pink-500 px-6 sm:px-8 py-3 rounded-lg font-semibold text-sm sm:text-base border-2 border-pink-500 hover:bg-pink-500 hover:text-white transition-all duration-300 shadow-sm hover:shadow-md"
                         >

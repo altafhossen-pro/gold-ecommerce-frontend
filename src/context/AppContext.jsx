@@ -23,7 +23,7 @@ export const AppProvider = ({ children }) => {
     const [user, setUser] = useState(null)
     const [isAuthenticated, setIsAuthenticated] = useState(false)
     const [token, setToken] = useState(null)
-    
+
     // Permissions state
     const [permissions, setPermissions] = useState([])
     const [roleDetails, setRoleDetails] = useState(null)
@@ -67,10 +67,10 @@ export const AppProvider = ({ children }) => {
     // Cart functions
     const addToCart = (product, selectedVariant, quantity = 1) => {
         // Create variant key for unique identification (size is optional now)
-        const variantKey = selectedVariant ? 
-            `${product._id}-${selectedVariant.size || 'no-size'}-${selectedVariant.color || 'no-color'}` : 
+        const variantKey = selectedVariant ?
+            `${product._id}-${selectedVariant.size || 'no-size'}-${selectedVariant.color || 'no-color'}` :
             product._id;
-        
+
         // Create variant display string (size is optional now)
         const variantDisplay = selectedVariant ? (() => {
             const parts = [];
@@ -78,7 +78,7 @@ export const AppProvider = ({ children }) => {
             if (selectedVariant.color) parts.push(`Color: ${selectedVariant.color}`);
             return parts.length > 0 ? parts.join(', ') : 'Default';
         })() : 'Default';
-        
+
         const cartItem = {
             id: Date.now(), // Unique cart item ID
             productId: product._id,
@@ -130,7 +130,7 @@ export const AppProvider = ({ children }) => {
             setCart([...cart, cartItem]);
             toast.success('Added to cart successfully!');
         }
-        
+
         // Auto-open cart modal after adding to cart
         setIsCartOpen(true);
     }
@@ -138,15 +138,15 @@ export const AppProvider = ({ children }) => {
     // Batch add multiple items to cart
     const addMultipleToCart = (items) => {
         if (!items || items.length === 0) return;
-        
+
         const newCartItems = [];
         const updatedCart = [...cart];
-        
+
         items.forEach(({ product, selectedVariant, quantity = 1 }) => {
-            const variantKey = selectedVariant ? 
-                `${product._id}-${selectedVariant.size || 'no-size'}-${selectedVariant.color || 'no-color'}` : 
+            const variantKey = selectedVariant ?
+                `${product._id}-${selectedVariant.size || 'no-size'}-${selectedVariant.color || 'no-color'}` :
                 product._id;
-            
+
             // Create variant display string (size is optional now)
             const variantDisplay = selectedVariant ? (() => {
                 const parts = [];
@@ -154,7 +154,7 @@ export const AppProvider = ({ children }) => {
                 if (selectedVariant.color) parts.push(`Color: ${selectedVariant.color}`);
                 return parts.length > 0 ? parts.join(', ') : 'Default';
             })() : 'Default';
-            
+
             const cartItem = {
                 id: Date.now() + Math.random(), // Unique cart item ID
                 productId: product._id,
@@ -193,7 +193,7 @@ export const AppProvider = ({ children }) => {
             };
 
             const existingItemIndex = updatedCart.findIndex(item => item.variantKey === variantKey);
-            
+
             if (existingItemIndex !== -1) {
                 // Update quantity if same variant exists
                 updatedCart[existingItemIndex].quantity += quantity;
@@ -203,13 +203,13 @@ export const AppProvider = ({ children }) => {
                 newCartItems.push(cartItem);
             }
         });
-        
+
         // Update cart with all new items at once
         setCart([...updatedCart, ...newCartItems]);
-        
+
         // Show success message
         toast.success(`${items.length} product(s) added to cart`);
-        
+
         // Auto-open cart modal after adding to cart
         setIsCartOpen(true);
     }
@@ -225,7 +225,7 @@ export const AppProvider = ({ children }) => {
             toast.error('Quantity cannot be less than 1');
             return;
         }
-        
+
         setCart(cart.map(item =>
             item.id === cartItemId
                 ? { ...item, quantity, total: item.price * quantity }
@@ -285,13 +285,13 @@ export const AppProvider = ({ children }) => {
 
             // Try to get original variant data from the product
             let selectedVariant = null;
-            
+
             if (wishlistItem.variants && wishlistItem.variants.length > 0) {
                 // Use the first original variant
                 const firstVariant = wishlistItem.variants[0];
                 const sizeAttr = firstVariant.attributes?.find(attr => attr.name === 'Size');
                 const colorAttr = firstVariant.attributes?.find(attr => attr.name === 'Color');
-                
+
                 selectedVariant = {
                     size: sizeAttr?.value || null, // Size is optional now
                     color: colorAttr?.value || null, // Color is optional
@@ -318,7 +318,7 @@ export const AppProvider = ({ children }) => {
 
             // Add to cart
             addToCart(cartProduct, selectedVariant, 1);
-            
+
             return true;
         } catch (error) {
             console.error('Error moving to cart:', error);
@@ -336,6 +336,15 @@ export const AppProvider = ({ children }) => {
         setUser(userData)
         setToken(userToken)
         setIsAuthenticated(true)
+
+        // Set permissions and role details if present in login response
+        if (userData?.permissions) {
+            setPermissions(userData.permissions)
+        }
+        if (userData?.roleDetails) {
+            setRoleDetails(userData.roleDetails)
+        }
+
         setCookie('token', userToken, {
             maxAge: 5 * 365 * 24 * 60 * 60, // 5 years (5 * 365 days)
             path: '/',
@@ -361,10 +370,10 @@ export const AppProvider = ({ children }) => {
                 setUser(data.data)
                 setIsAuthenticated(true)
                 setToken(savedToken)
-                
+
                 // Reload affiliate code from cookie after user profile is loaded
                 loadAffiliateCode()
-                
+
                 // Set permissions and role details
                 if (data.data.permissions) {
                     setPermissions(data.data.permissions)
@@ -428,16 +437,16 @@ export const AppProvider = ({ children }) => {
             setRoleDetails(userData.roleDetails)
         }
     }
-    
+
     // Check if user has permission
     const hasPermission = (module, action) => {
         if (!permissions || permissions.length === 0) return false
-        
+
         // Super admin has all permissions
         if (roleDetails?.isSuperAdmin) return true
-        
+
         // Check if permission exists
-        return permissions.some(p => 
+        return permissions.some(p =>
             p.module === module && p.action === action
         )
     }
@@ -507,19 +516,19 @@ export const AppProvider = ({ children }) => {
     // Load affiliate code from cookie
     const loadAffiliateCode = useCallback(() => {
         if (typeof window === 'undefined') return;
-        
+
         try {
             const code = getCookie('affiliateCode');
-            
+
             if (code) {
                 // Set affiliate code and mark as available
                 setAffiliateCode(code);
                 setIsAvailableAffiliateCode(true);
-                
+
                 // Get expiry timestamp from cookie (stored when cookie was set)
                 const expiryTimestamp = getCookie('affiliateCodeExpiry');
                 let expiryDate = null;
-                
+
                 if (expiryTimestamp) {
                     expiryDate = new Date(parseInt(expiryTimestamp));
                     // Check if expired
@@ -542,7 +551,7 @@ export const AppProvider = ({ children }) => {
                         path: '/'
                     });
                 }
-                
+
                 setAffiliateCodeExpireTime(expiryDate);
             } else {
                 // No affiliate code in cookie, clear state and expiry cookie
@@ -586,10 +595,10 @@ export const AppProvider = ({ children }) => {
             const savedToken = getCookie('token')
             const savedCart = localStorage.getItem('cart')
             const savedWishlist = localStorage.getItem('wishlist')
-            
+
             // Fetch delivery charge settings first (no auth required)
             await fetchDeliveryChargeSettings()
-            
+
             if (savedToken) {
                 setToken(savedToken)
                 // Fetch user profile from backend
@@ -597,18 +606,18 @@ export const AppProvider = ({ children }) => {
             } else {
                 setLoading(false)
             }
-            
+
             if (savedCart) {
                 setCart(JSON.parse(savedCart))
             }
             if (savedWishlist) {
                 setWishlist(JSON.parse(savedWishlist))
             }
-            
+
             // Set cart loading to false after initialization
             setCartLoading(false)
         }
-        
+
         initializeApp()
     }, [fetchUserProfile, fetchDeliveryChargeSettings])
 
@@ -639,7 +648,7 @@ export const AppProvider = ({ children }) => {
         deliverySettingsLoading,
         permissions,
         roleDetails,
-        
+
         // Affiliate state
         affiliateCode,
         affiliateCodeExpireTime,

@@ -7,14 +7,14 @@ import Link from 'next/link';
 function ProductCard({ product, onWishlistToggle, onAddToCart, showWishlistOnHover = true }) {
     // Stock checking state
     const [stockData, setStockData] = useState(null);
-    
+
     // Hover state for image change
     const [isHovered, setIsHovered] = useState(false);
-    
+
     // Get hover image: variant image if multiple variants, else next gallery image
     const getHoverImage = () => {
         const variantCount = product.variants?.length || 0;
-        
+
         // If multiple variants (>1), show variant image
         if (variantCount > 1) {
             // Find first variant with an image
@@ -26,7 +26,7 @@ function ProductCard({ product, onWishlistToggle, onAddToCart, showWishlistOnHov
                 }
                 return false;
             });
-            
+
             if (variantWithImage && variantWithImage.images && variantWithImage.images.length > 0) {
                 const firstImage = variantWithImage.images[0];
                 // Handle both object format {url: "...", ...} and direct string URL
@@ -36,7 +36,7 @@ function ProductCard({ product, onWishlistToggle, onAddToCart, showWishlistOnHov
                 }
             }
         }
-        
+
         // If single variant (===1) or no variants (===0), show next gallery image
         // (featured image is already shown, so show first gallery image)
         if (product.gallery && product.gallery.length > 0) {
@@ -53,7 +53,7 @@ function ProductCard({ product, onWishlistToggle, onAddToCart, showWishlistOnHov
                 return secondGalleryImage?.url || (typeof secondGalleryImage === 'string' ? secondGalleryImage : null);
             }
         }
-        
+
         // Also check if product has gallery property directly (from API)
         if (product.gallery && Array.isArray(product.gallery) && product.gallery.length > 0) {
             const firstGallery = product.gallery[0];
@@ -67,10 +67,10 @@ function ProductCard({ product, onWishlistToggle, onAddToCart, showWishlistOnHov
                 return secondGallery?.url || (typeof secondGallery === 'string' ? secondGallery : null);
             }
         }
-        
+
         return null;
     };
-    
+
     const hoverImage = getHoverImage();
     const displayImage = isHovered && hoverImage ? hoverImage : product.image;
 
@@ -82,17 +82,17 @@ function ProductCard({ product, onWishlistToggle, onAddToCart, showWishlistOnHov
             let hasAnyStock = false;
             let totalAvailableStock = 0;
             let availableVariants = [];
-            
+
             for (const variant of product.variants) {
                 const variantStock = variant.stockQuantity || 0;
-                
+
                 if (variantStock > 0) {
                     hasAnyStock = true;
                     totalAvailableStock += variantStock;
                     availableVariants.push(variant);
                 }
             }
-            
+
             setStockData({
                 isAvailable: hasAnyStock,
                 availableStock: totalAvailableStock,
@@ -102,7 +102,7 @@ function ProductCard({ product, onWishlistToggle, onAddToCart, showWishlistOnHov
         } else {
             // For products without variants, check totalStock
             const totalStock = product.totalStock || 0;
-            
+
             setStockData({
                 isAvailable: totalStock > 0,
                 availableStock: totalStock,
@@ -122,7 +122,7 @@ function ProductCard({ product, onWishlistToggle, onAddToCart, showWishlistOnHov
         if (stockData !== null) {
             return !stockData.isAvailable;
         }
-        
+
         // Fallback to local stock data
         if (product.variants && product.variants.length > 0) {
             // For products with variants, check if ANY variant has stock
@@ -137,7 +137,7 @@ function ProductCard({ product, onWishlistToggle, onAddToCart, showWishlistOnHov
     const outOfStock = isOutOfStock();
 
     return (
-        <div 
+        <div
             className="relative group overflow-hidden rounded-xl shadow-lg border border-[#E7E7E7] hover:shadow-lg transition-all bg-[#F6F6F6] duration-300 hover:ring-1 hover:ring-[#F7AABC]"
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
@@ -149,18 +149,16 @@ function ProductCard({ product, onWishlistToggle, onAddToCart, showWishlistOnHov
                     <img
                         src={product.image}
                         alt={product.name}
-                        className={`absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-all duration-600 ease-in-out ${
-                            isHovered && hoverImage ? 'opacity-0' : 'opacity-100'
-                        }`}
+                        className={`absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-all duration-600 ease-in-out ${isHovered && hoverImage ? 'opacity-0' : 'opacity-100'
+                            }`}
                     />
                     {/* Hover Image (Variant) */}
                     {hoverImage && (
                         <img
                             src={hoverImage}
                             alt={product.name}
-                            className={`absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-all duration-600 ease-in-out ${
-                                isHovered ? 'opacity-100' : 'opacity-0'
-                            }`}
+                            className={`absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-all duration-600 ease-in-out ${isHovered ? 'opacity-100' : 'opacity-0'
+                                }`}
                         />
                     )}
                 </Link>
@@ -185,7 +183,7 @@ function ProductCard({ product, onWishlistToggle, onAddToCart, showWishlistOnHov
             <div className="p-3 sm:p-4 ">
                 <div className='flex items-center justify-between mb-2'>
                     <Link href={`/product/${product.slug}`} className="flex-1 mr-2">
-                        <h3 className="font-semibold text-gray-800 text-sm sm:text-base lg:text-lg leading-tight overflow-hidden" style={{
+                        <h3 className="text-gray-800 text-sm sm:text-base lg:text-lg leading-tight overflow-hidden" style={{
                             display: '-webkit-box',
                             WebkitLineClamp: 2,
                             WebkitBoxOrient: 'vertical'

@@ -7,17 +7,17 @@ import { orderAPI, productAPI, loyaltyAPI, couponAPI, addressAPI, upsellAPI, set
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import { getCookie, setCookie, deleteCookie } from 'cookies-next';
-import CheckoutOptionsModal from '@/components/Common/CheckoutOptionsModal';
+
 
 export default function Checkout() {
-    const { 
-        cart, 
-        cartTotal, 
-        updateCartItem, 
-        removeFromCart, 
-        cartLoading, 
-        user, 
-        clearCart, 
+    const {
+        cart,
+        cartTotal,
+        updateCartItem,
+        removeFromCart,
+        cartLoading,
+        user,
+        clearCart,
         deliveryChargeSettings,
         affiliateCode,
         isAvailableAffiliateCode,
@@ -27,13 +27,13 @@ export default function Checkout() {
         loadAffiliateCode
     } = useAppContext();
     const router = useRouter();
-    
+
     // All state declarations first
     // Checkout options modal state
     const [showCheckoutModal, setShowCheckoutModal] = useState(false);
     const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-    const [isGuestCheckout, setIsGuestCheckout] = useState(false);
-    
+    const [isGuestCheckout, setIsGuestCheckout] = useState(true);
+
     // Form data state
     const [formData, setFormData] = useState({
         fullName: '',
@@ -98,21 +98,23 @@ export default function Checkout() {
     // Check authentication status
     useEffect(() => {
         const token = getCookie('token');
-        
+
         // If we have a token but user data is still loading
         if (token && !user) {
             setIsCheckingAuth(true);
             setShowCheckoutModal(false);
         }
-        // If no token, show modal immediately
+        // If no token, default to guest checkout without showing modal
         else if (!token) {
             setIsCheckingAuth(false);
-            setShowCheckoutModal(true);
+            setShowCheckoutModal(false);
+            setIsGuestCheckout(true);
         }
-        // If user is loaded and has email, hide modal
+        // If user is loaded and has email, hide modal and use authenticated checkout
         else if (user && user.email) {
             setIsCheckingAuth(false);
             setShowCheckoutModal(false);
+            setIsGuestCheckout(false);
         }
     }, [user]);
 
@@ -121,7 +123,9 @@ export default function Checkout() {
         const timer = setTimeout(() => {
             if (isCheckingAuth) {
                 setIsCheckingAuth(false);
-                setShowCheckoutModal(true);
+                // Don't show modal, just default to guest
+                setIsGuestCheckout(true);
+                setShowCheckoutModal(false);
             }
         }, 5000); // 5 second timeout
 
@@ -156,7 +160,7 @@ export default function Checkout() {
 
         try {
             const response = await upsellAPI.calculateCartDiscounts(cart);
-            
+
             if (response.success && response.data) {
                 setUpsellDiscount(response.data.totalDiscount || 0);
             } else {
@@ -277,7 +281,7 @@ export default function Checkout() {
         const updateTimer = () => {
             const now = new Date();
             const diff = affiliateExpireTime.getTime() - now.getTime();
-            
+
             if (diff <= 0) {
                 setTimeRemaining(null);
                 setAffiliateExpireTime(null);
@@ -321,7 +325,7 @@ export default function Checkout() {
 
             if (response.success && response.data) {
                 const data = response.data;
-                
+
                 // Set street address in deliveryAddress field
                 if (data.street && !formData.deliveryAddress) {
                     setFormData(prev => ({
@@ -340,13 +344,13 @@ export default function Checkout() {
                             division: division.name,
                             divisionId: data.divisionId
                         }));
-                        
+
                         // Fetch districts for this division and wait for response
                         const districtsResponse = await addressAPI.getDistrictsByDivision(data.divisionId);
                         if (districtsResponse.success && districtsResponse.data) {
                             const fetchedDistricts = districtsResponse.data;
                             setDistricts(fetchedDistricts);
-                            
+
                             // If districtId is available, set district
                             if (data.districtId) {
                                 const district = fetchedDistricts.find(dist => dist.id === data.districtId);
@@ -356,14 +360,14 @@ export default function Checkout() {
                                         district: district.name,
                                         districtId: data.districtId
                                     }));
-                                    
+
                                     // Check if it's Dhaka (ID 65)
                                     if (data.districtId === '65') {
                                         const areasResponse = await addressAPI.getAllDhakaCityAreas();
                                         if (areasResponse.success && areasResponse.data) {
                                             const fetchedAreas = areasResponse.data;
                                             setDhakaAreas(fetchedAreas);
-                                            
+
                                             // Set area if areaId is available
                                             if (data.areaId) {
                                                 const area = fetchedAreas.find(a => a._id === data.areaId);
@@ -382,7 +386,7 @@ export default function Checkout() {
                                         if (upazilasResponse.success && upazilasResponse.data) {
                                             const fetchedUpazilas = upazilasResponse.data;
                                             setUpazilas(fetchedUpazilas);
-                                            
+
                                             // Set upazila if upazilaId is available
                                             if (data.upazilaId) {
                                                 const upazila = fetchedUpazilas.find(u => u.id === data.upazilaId);
@@ -436,13 +440,13 @@ export default function Checkout() {
                             division: division.name,
                             divisionId: data.divisionId
                         }));
-                        
+
                         // Fetch districts for this division and wait for response
                         const districtsResponse = await addressAPI.getDistrictsByDivision(data.divisionId);
                         if (districtsResponse.success && districtsResponse.data) {
                             const fetchedDistricts = districtsResponse.data;
                             setDistricts(fetchedDistricts);
-                            
+
                             // If districtId is available, set district
                             if (data.districtId) {
                                 const district = fetchedDistricts.find(dist => dist.id === data.districtId);
@@ -452,14 +456,14 @@ export default function Checkout() {
                                         district: district.name,
                                         districtId: data.districtId
                                     }));
-                                    
+
                                     // Check if it's Dhaka (ID 65)
                                     if (data.districtId === '65') {
                                         const areasResponse = await addressAPI.getAllDhakaCityAreas();
                                         if (areasResponse.success && areasResponse.data) {
                                             const fetchedAreas = areasResponse.data;
                                             setDhakaAreas(fetchedAreas);
-                                            
+
                                             // Set area if areaId is available
                                             if (data.areaId) {
                                                 const area = fetchedAreas.find(a => a._id === data.areaId);
@@ -478,7 +482,7 @@ export default function Checkout() {
                                         if (upazilasResponse.success && upazilasResponse.data) {
                                             const fetchedUpazilas = upazilasResponse.data;
                                             setUpazilas(fetchedUpazilas);
-                                            
+
                                             // Set upazila if upazilaId is available
                                             if (data.upazilaId) {
                                                 const upazila = fetchedUpazilas.find(u => u.id === data.upazilaId);
@@ -521,7 +525,7 @@ export default function Checkout() {
     const checkStockAvailability = async () => {
         try {
             setStockLoading(true);
-            
+
             // Prepare cart items for API call
             const cartItems = cart.map(item => ({
                 id: item.id,
@@ -531,24 +535,24 @@ export default function Checkout() {
             }));
 
             const response = await productAPI.checkStockAvailability(cartItems);
-            
+
             if (response.success) {
                 // Create a map of stock data for quick lookup
                 const stockMap = {};
                 const outOfStock = [];
-                
+
                 response.data.stockCheckResults.forEach(result => {
                     stockMap[result.cartItemId] = {
                         isAvailable: result.isAvailable,
                         availableStock: result.availableStock,
                         reason: result.reason
                     };
-                    
+
                     if (!result.isAvailable) {
                         outOfStock.push(result);
                     }
                 });
-                
+
                 setStockData(stockMap);
                 setOutOfStockItems(outOfStock);
             }
@@ -556,7 +560,7 @@ export default function Checkout() {
             // Fallback to local stock data if API fails
             const fallbackStockData = {};
             const fallbackOutOfStock = [];
-            
+
             cart.forEach(item => {
                 const isAvailable = (item.stockQuantity || 0) >= item.quantity;
                 fallbackStockData[item.id] = {
@@ -564,7 +568,7 @@ export default function Checkout() {
                     availableStock: item.stockQuantity || 0,
                     reason: 'Local check'
                 };
-                
+
                 if (!isAvailable) {
                     fallbackOutOfStock.push({
                         cartItemId: item.id,
@@ -573,7 +577,7 @@ export default function Checkout() {
                     });
                 }
             });
-            
+
             setStockData(fallbackStockData);
             setOutOfStockItems(fallbackOutOfStock);
         } finally {
@@ -669,16 +673,16 @@ export default function Checkout() {
 
     // Calculate subtotal (needed for calculations)
     const subtotal = cartTotal;
-    
+
     // Dynamic delivery charge calculation based on delivery type
     const calculateDeliveryCharge = () => {
         if (!deliveryChargeSettings || !formData.deliveryType) return 0;
-        
+
         // Check if cart total meets free shipping requirement
         if (subtotal >= deliveryChargeSettings.shippingFreeRequiredAmount) {
             return 0; // Free shipping
         }
-        
+
         // Check delivery type for delivery charge
         if (formData.deliveryType === 'insideDhaka') {
             return deliveryChargeSettings.insideDhaka;
@@ -687,16 +691,16 @@ export default function Checkout() {
         } else if (formData.deliveryType === 'outsideDhaka') {
             return deliveryChargeSettings.outsideDhaka;
         }
-        
+
         return 0;
     };
-    
+
     const shippingCost = calculateDeliveryCharge();
     const discount = 0; // General discount (not coupon discount)
     // Combine normal discount with upsell discount (affiliate discount shown separately)
     const totalDiscountForUI = discount + upsellDiscount;
     const totalCost = useLoyaltyPoints ? 0 : (subtotal + shippingCost - discount - upsellDiscount - affiliateDiscount - loyaltyDiscount - couponDiscount);
-    
+
     // Auto-select delivery type when division/district is selected
     useEffect(() => {
         if (formData.divisionId && formData.districtId) {
@@ -710,7 +714,7 @@ export default function Checkout() {
             }
         }
     }, [formData.divisionId, formData.districtId]);
-    
+
     // Recalculate delivery charge when delivery type changes
     useEffect(() => {
         // This will trigger re-calculation when formData.deliveryType changes
@@ -784,19 +788,19 @@ export default function Checkout() {
         try {
             setCouponLoading(true);
             setCouponError('');
-            
+
             const response = await couponAPI.validateCoupon(couponCode.trim(), subtotal);
-            
+
             if (response && response.success) {
                 const coupon = response.data.coupon;
                 const discountAmount = response.data.discountAmount;
-                const discountPercentage = coupon.discountType === 'percentage' 
-                    ? `${coupon.discountValue}%` 
+                const discountPercentage = coupon.discountType === 'percentage'
+                    ? `${coupon.discountValue}%`
                     : 'Fixed amount';
-                
+
                 setAppliedCoupon(coupon);
                 setCouponDiscount(discountAmount);
-                
+
                 // Show detailed success message
                 toast.success(
                     `Coupon applied! ${discountPercentage} discount (৳${discountAmount}) applied. You save ৳${discountAmount}!`
@@ -826,10 +830,10 @@ export default function Checkout() {
         setCouponError('');
     };
 
-    
+
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-        
+
         if (name === 'division') {
             // Find division ID from name
             const selectedDivision = divisions.find(div => div.name === value);
@@ -921,19 +925,19 @@ export default function Checkout() {
         const currentItem = cart.find(item => item.id === itemId);
         if (currentItem) {
             const newQuantity = currentItem.quantity + change;
-            
+
             // Check minimum quantity
             if (newQuantity < 1) {
                 return;
             }
-            
+
             // Check maximum available stock
             const availableStock = stockData[itemId]?.availableStock || currentItem.stockQuantity || 0;
             if (newQuantity > availableStock) {
                 toast.error(`Only ${availableStock} items available in stock`);
                 return;
             }
-            
+
             updateCartItem(itemId, newQuantity);
         }
     };
@@ -990,7 +994,7 @@ export default function Checkout() {
         if (isGuestCheckout && isAvailableAffiliateCode && affiliateCode) {
             try {
                 const checkResponse = await affiliateAPI.checkGuestAffiliateCodeUsage(affiliateCode, formData.mobileNumber);
-                
+
                 if (checkResponse.success && checkResponse.data) {
                     // If guest user is trying to use their own affiliate code
                     if (!checkResponse.data.canUse && checkResponse.data.reason === 'own_code') {
@@ -1003,7 +1007,7 @@ export default function Checkout() {
                         toast.error('This phone number has already used this affiliate code. Each affiliate code can only be used once per phone number.');
                         return; // Don't proceed with checkout
                     }
-                    
+
                     // If code is invalid
                     if (!checkResponse.data.canUse || checkResponse.data.reason !== 'valid') {
                         toast.error('Invalid affiliate code');
@@ -1027,7 +1031,7 @@ export default function Checkout() {
                 try {
                     // Calculate total from cart items
                     const calculatedTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-                    
+
                     // Prepare order data for Cash on Delivery
                     const orderData = {
                         items: cart.map(item => ({
@@ -1108,7 +1112,7 @@ export default function Checkout() {
                         })
                     };
 
-                    
+
                     // Create order based on checkout type
                     let response;
                     if (isGuestCheckout) {
@@ -1126,10 +1130,10 @@ export default function Checkout() {
                         const token = getCookie('token');
                         response = await orderAPI.createOrder(orderData, token);
                     }
-                    
+
                     if (response.success) {
                         toast.success('Order placed successfully! Cash on delivery');
-                        
+
                         // Clear affiliate code from state and cookie after successful order (one-time use)
                         if (isAvailableAffiliateCode && affiliateCode) {
                             deleteCookie('affiliateCode');
@@ -1138,7 +1142,7 @@ export default function Checkout() {
                             setIsAvailableAffiliateCode(false);
                             setAffiliateCodeExpireTime(null);
                         }
-                        
+
                         // Clear cart and redirect to order confirmation with order details
                         clearCart();
                         const order = response.data;
@@ -1164,15 +1168,15 @@ export default function Checkout() {
                     toast.error('Failed to place order. Please try again.');
                 }
                 break;
-                
+
             case 'bkash':
                 toast.error('This feature is currently under development');
                 break;
-                
+
             case 'manual':
                 toast.error('This feature is currently under development');
                 break;
-                
+
             default:
                 toast.error('Please select a payment method');
         }
@@ -1196,7 +1200,7 @@ export default function Checkout() {
     return (
         <div className="min-h-screen bg-gray-50">
             {/* Sub Navigation */}
-            
+
             {/* Main Content */}
             <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
                 <h1 className="text-2xl sm:text-3xl font-bold text-center text-gray-900 mb-6 sm:mb-8">Checkout</h1>
@@ -1302,56 +1306,56 @@ export default function Checkout() {
                                                 const selectedDistrict = districts.find(dist => dist.name === formData.district);
                                                 return selectedDistrict && selectedDistrict.id !== '65';
                                             })() && (
-                                                <>
-                                                    <label className="block text-sm text-gray-700 mb-2">
-                                                        Upazila / উপজেলাঃ
-                                                    </label>
-                                                    <select
-                                                        name="upazila"
-                                                        value={formData.upazila}
-                                                        onChange={handleInputChange}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-pink-500 focus:border-pink-500"
-                                                        disabled={upazilasLoading}
-                                                    >
-                                                        <option value="">
-                                                            {upazilasLoading ? 'Loading...' : 'Select Upazila'}
-                                                        </option>
-                                                        {upazilas.map((upazila) => (
-                                                            <option key={upazila.id} value={upazila.name}>
-                                                                {upazila.name}
+                                                    <>
+                                                        <label className="block text-sm text-gray-700 mb-2">
+                                                            Upazila / উপজেলাঃ
+                                                        </label>
+                                                        <select
+                                                            name="upazila"
+                                                            value={formData.upazila}
+                                                            onChange={handleInputChange}
+                                                            className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-pink-500 focus:border-pink-500"
+                                                            disabled={upazilasLoading}
+                                                        >
+                                                            <option value="">
+                                                                {upazilasLoading ? 'Loading...' : 'Select Upazila'}
                                                             </option>
-                                                        ))}
-                                                    </select>
-                                                </>
-                                            )}
+                                                            {upazilas.map((upazila) => (
+                                                                <option key={upazila.id} value={upazila.name}>
+                                                                    {upazila.name}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </>
+                                                )}
 
                                             {/* Show Area for Dhaka city (ID = 65) */}
                                             {(() => {
                                                 const selectedDistrict = districts.find(dist => dist.name === formData.district);
                                                 return selectedDistrict && selectedDistrict.id === '65';
                                             })() && (
-                                                <>
-                                                    <label className="block text-sm text-gray-700 mb-2">
-                                                        Area / এলাকাঃ
-                                                    </label>
-                                                    <select
-                                                        name="area"
-                                                        value={formData.area}
-                                                        onChange={handleInputChange}
-                                                        className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-pink-500 focus:border-pink-500"
-                                                        disabled={dhakaAreasLoading}
-                                                    >
-                                                        <option value="">
-                                                            {dhakaAreasLoading ? 'Loading...' : 'Select Area'}
-                                                        </option>
-                                                        {dhakaAreas.map((area) => (
-                                                            <option key={area._id} value={area.name}>
-                                                                {area.name}
+                                                    <>
+                                                        <label className="block text-sm text-gray-700 mb-2">
+                                                            Area / এলাকাঃ
+                                                        </label>
+                                                        <select
+                                                            name="area"
+                                                            value={formData.area}
+                                                            onChange={handleInputChange}
+                                                            className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-pink-500 focus:border-pink-500"
+                                                            disabled={dhakaAreasLoading}
+                                                        >
+                                                            <option value="">
+                                                                {dhakaAreasLoading ? 'Loading...' : 'Select Area'}
                                                             </option>
-                                                        ))}
-                                                    </select>
-                                                </>
-                                            )}
+                                                            {dhakaAreas.map((area) => (
+                                                                <option key={area._id} value={area.name}>
+                                                                    {area.name}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </>
+                                                )}
                                         </div>
                                     )}
                                 </div>
@@ -1393,13 +1397,12 @@ export default function Checkout() {
                         {/* Delivery Type Selection */}
                         <div className="bg-white border border-gray-300 shadow rounded-lg p-4 sm:p-6">
                             <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4 sm:mb-6">02. Delivery Type <span className="text-red-500">*</span></h2>
-                            
+
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                <label className={`flex items-center p-3 border rounded cursor-pointer transition-colors ${
-                                    formData.deliveryType === 'insideDhaka' 
-                                        ? 'border-pink-500 bg-pink-50' 
-                                        : 'border-gray-300 hover:border-pink-300'
-                                }`}>
+                                <label className={`flex items-center p-3 border rounded cursor-pointer transition-colors ${formData.deliveryType === 'insideDhaka'
+                                    ? 'border-pink-500 bg-pink-50'
+                                    : 'border-gray-300 hover:border-pink-300'
+                                    }`}>
                                     <input
                                         type="radio"
                                         name="deliveryType"
@@ -1415,12 +1418,11 @@ export default function Checkout() {
                                         </div>
                                     </div>
                                 </label>
-                                
-                                <label className={`flex items-center p-3 border rounded cursor-pointer transition-colors ${
-                                    formData.deliveryType === 'subDhaka' 
-                                        ? 'border-pink-500 bg-pink-50' 
-                                        : 'border-gray-300 hover:border-pink-300'
-                                }`}>
+
+                                <label className={`flex items-center p-3 border rounded cursor-pointer transition-colors ${formData.deliveryType === 'subDhaka'
+                                    ? 'border-pink-500 bg-pink-50'
+                                    : 'border-gray-300 hover:border-pink-300'
+                                    }`}>
                                     <input
                                         type="radio"
                                         name="deliveryType"
@@ -1436,12 +1438,11 @@ export default function Checkout() {
                                         </div>
                                     </div>
                                 </label>
-                                
-                                <label className={`flex items-center p-3 border rounded cursor-pointer transition-colors ${
-                                    formData.deliveryType === 'outsideDhaka' 
-                                        ? 'border-pink-500 bg-pink-50' 
-                                        : 'border-gray-300 hover:border-pink-300'
-                                }`}>
+
+                                <label className={`flex items-center p-3 border rounded cursor-pointer transition-colors ${formData.deliveryType === 'outsideDhaka'
+                                    ? 'border-pink-500 bg-pink-50'
+                                    : 'border-gray-300 hover:border-pink-300'
+                                    }`}>
                                     <input
                                         type="radio"
                                         name="deliveryType"
@@ -1458,7 +1459,7 @@ export default function Checkout() {
                                     </div>
                                 </label>
                             </div>
-                            
+
                             {/* Auto-selected info */}
                             {formData.divisionId && formData.districtId && (
                                 <div className="mt-3 text-xs text-blue-600 bg-blue-50 p-2 rounded">
@@ -1532,7 +1533,7 @@ export default function Checkout() {
                             {paymentMethod === 'manual' && (
                                 <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                                     <h3 className="font-semibold text-blue-800 mb-4">Manual Payment Details:</h3>
-                                    
+
                                     {/* Payment Instructions */}
                                     <div className="text-sm text-blue-700 space-y-1 mb-4">
                                         <p><strong>Personal Bkash/Nogod:</strong> +88 018 40 20 90 60 - (Send money only)</p>
@@ -1577,7 +1578,7 @@ export default function Checkout() {
                         {!isGuestCheckout && loyaltyData && loyaltyData.coins > 0 && (
                             <div className="bg-white border border-gray-300 shadow rounded-lg p-4 sm:p-6">
                                 <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4 sm:mb-6">04. Loyalty Points</h2>
-                                
+
                                 {appliedCoupon && (
                                     <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                                         <div className="flex items-center space-x-2">
@@ -1588,7 +1589,7 @@ export default function Checkout() {
                                         </div>
                                     </div>
                                 )}
-                                
+
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between p-4 bg-pink-50 border border-pink-200 rounded-lg">
                                         <div>
@@ -1630,8 +1631,8 @@ export default function Checkout() {
                                                             Pay with {coinsNeeded} coins (৳{subtotal})
                                                         </label>
                                                     </div>
-                                                    
-                                                    
+
+
                                                     {useLoyaltyPoints && loyaltyData && (
                                                         <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
                                                             <div className="space-y-2">
@@ -1672,7 +1673,7 @@ export default function Checkout() {
                                     {loyaltySettings && (
                                         <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                                             <p className="text-xs text-blue-800">
-                                                💡 <strong>Note:</strong> To use loyalty coins, you need to order at least ৳{loyaltySettings.minRedeemAmount} worth of items. 
+                                                💡 <strong>Note:</strong> To use loyalty coins, you need to order at least ৳{loyaltySettings.minRedeemAmount} worth of items.
                                             </p>
                                         </div>
                                     )}
@@ -1713,27 +1714,26 @@ export default function Checkout() {
 
                         {/* Action Buttons - Desktop only (hidden on mobile) */}
                         <div className="hidden lg:flex flex-col sm:flex-row gap-3 sm:gap-4">
-                            <button 
+                            <button
                                 onClick={() => router.push('/')}
                                 className="flex-1 flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 border border-gray-300 text-gray-700 rounded hover:bg-gray-50 text-sm sm:text-base"
                             >
                                 <ArrowLeft className="w-4 h-4" />
                                 Back to Shopping
                             </button>
-                            <button 
+                            <button
                                 onClick={handleConfirmOrder}
                                 disabled={cartLoading || cart.length === 0 || outOfStockItems.length > 0 || stockLoading}
-                                className={`flex-1 flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded font-semibold text-sm sm:text-base ${
-                                    cartLoading || cart.length === 0 || outOfStockItems.length > 0 || stockLoading
-                                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                                        : 'bg-pink-500 text-white hover:bg-pink-600'
-                                }`}
+                                className={`flex-1 flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded font-semibold text-sm sm:text-base ${cartLoading || cart.length === 0 || outOfStockItems.length > 0 || stockLoading
+                                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                    : 'bg-pink-500 text-white hover:bg-pink-600'
+                                    }`}
                             >
                                 {stockLoading ? 'Checking Stock...' :
-                                 cartLoading ? 'Loading...' :
-                                 cart.length === 0 ? 'Cart Empty' :
-                                 outOfStockItems.length > 0 ? 'Remove Out of Stock Items' :
-                                 'Confirm Order'}
+                                    cartLoading ? 'Loading...' :
+                                        cart.length === 0 ? 'Cart Empty' :
+                                            outOfStockItems.length > 0 ? 'Remove Out of Stock Items' :
+                                                'Confirm Order'}
                                 <ArrowRight className="w-4 h-4" />
                             </button>
                         </div>
@@ -1767,7 +1767,7 @@ export default function Checkout() {
                             ) : cart.length === 0 ? (
                                 <div className="text-center py-8">
                                     <p className="text-gray-500 mb-4">Your cart is empty</p>
-                                    <button 
+                                    <button
                                         onClick={() => router.push('/')}
                                         className="px-4 py-2 bg-pink-500 text-white rounded hover:bg-pink-600 text-sm"
                                     >
@@ -1778,101 +1778,98 @@ export default function Checkout() {
                                 cart.map((item) => {
                                     const isOutOfStock = stockData[item.id] && !stockData[item.id].isAvailable;
                                     return (
-                                    <div key={item.id} className={`flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 p-3 border rounded ${
-                                        isOutOfStock ? 'border-red-200 bg-red-50' : 'border-gray-200'
-                                    }`}>
-                                        {/* Product Image and Info */}
-                                        <div className="flex items-start gap-3 flex-1 min-w-0 w-full sm:w-auto">
-                                            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded overflow-hidden flex-shrink-0">
-                                                <img 
-                                                    src={item.image} 
-                                                    alt={item.name}
-                                                    className="w-full h-full object-cover"
-                                                />
-                                            </div>
-
-                                            <div className="flex-1 min-w-0">
-                                                <h3 className="font-medium text-gray-900 text-sm truncate">{item.name}</h3>
-                                                {isOutOfStock && (
-                                                    <div className="text-xs text-red-600 font-medium mb-1">
-                                                        {stockData[item.id]?.reason === 'Insufficient stock' 
-                                                            ? `Only ${stockData[item.id]?.availableStock || 0} available`
-                                                            : 'Out of Stock'
-                                                        }
-                                                    </div>
-                                                )}
-                                                {item.size && (
-                                                    <p className="text-xs text-gray-600">Size: {item.size}</p>
-                                                )}
-                                                {item.color && (
-                                                    <div className="flex items-center gap-1 mt-1">
-                                                        <span className="text-xs text-gray-600">Color:</span>
-                                                        <div 
-                                                            className="w-3 h-3 rounded-full border border-gray-300"
-                                                            style={{ 
-                                                                backgroundColor: item.colorHexCode,
-                                                                border: item.colorHexCode?.toLowerCase() === '#ffffff' || item.colorHexCode?.toLowerCase() === '#fff' 
-                                                                    ? '1px solid #d1d5db' 
-                                                                    : 'none'
-                                                            }}
-                                                            title={item.color}
-                                                        ></div>
-                                                    </div>
-                                                )}
-                                                <p className="text-xs text-gray-600">Price: {item.price} ৳</p>
-                                            </div>
-                                        </div>
-
-                                        {/* Quantity Controls and Actions */}
-                                        <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
-                                            {/* Quantity Controls */}
-                                            {isOutOfStock ? (
-                                                <div className="text-xs text-red-600 font-medium">
-                                                    Remove from cart
+                                        <div key={item.id} className={`flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 p-3 border rounded ${isOutOfStock ? 'border-red-200 bg-red-50' : 'border-gray-200'
+                                            }`}>
+                                            {/* Product Image and Info */}
+                                            <div className="flex items-start gap-3 flex-1 min-w-0 w-full sm:w-auto">
+                                                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded overflow-hidden flex-shrink-0">
+                                                    <img
+                                                        src={item.image}
+                                                        alt={item.name}
+                                                        className="w-full h-full object-cover"
+                                                    />
                                                 </div>
-                                            ) : (
-                                                <div className="flex items-center space-x-2">
-                                                    <button
-                                                        onClick={() => handleQuantityChange(item.id, -1)}
-                                                        className="w-7 h-7 sm:w-6 sm:h-6 flex items-center justify-center border border-gray-300 rounded text-sm hover:bg-gray-50"
-                                                    >
-                                                        <Minus className="w-3 h-3" />
-                                                    </button>
-                                                    <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
-                                                    <button
-                                                        onClick={() => handleQuantityChange(item.id, 1)}
-                                                        disabled={item.quantity >= (stockData[item.id]?.availableStock || item.stockQuantity || 0)}
-                                                        className={`w-7 h-7 sm:w-6 sm:h-6 flex items-center justify-center border border-gray-300 rounded text-sm hover:bg-gray-50 ${
-                                                            item.quantity >= (stockData[item.id]?.availableStock || item.stockQuantity || 0)
+
+                                                <div className="flex-1 min-w-0">
+                                                    <h3 className="font-medium text-gray-900 text-sm truncate">{item.name}</h3>
+                                                    {isOutOfStock && (
+                                                        <div className="text-xs text-red-600 font-medium mb-1">
+                                                            {stockData[item.id]?.reason === 'Insufficient stock'
+                                                                ? `Only ${stockData[item.id]?.availableStock || 0} available`
+                                                                : 'Out of Stock'
+                                                            }
+                                                        </div>
+                                                    )}
+                                                    {item.size && (
+                                                        <p className="text-xs text-gray-600">Size: {item.size}</p>
+                                                    )}
+                                                    {item.color && (
+                                                        <div className="flex items-center gap-1 mt-1">
+                                                            <span className="text-xs text-gray-600">Color:</span>
+                                                            <div
+                                                                className="w-3 h-3 rounded-full border border-gray-300"
+                                                                style={{
+                                                                    backgroundColor: item.colorHexCode,
+                                                                    border: item.colorHexCode?.toLowerCase() === '#ffffff' || item.colorHexCode?.toLowerCase() === '#fff'
+                                                                        ? '1px solid #d1d5db'
+                                                                        : 'none'
+                                                                }}
+                                                                title={item.color}
+                                                            ></div>
+                                                        </div>
+                                                    )}
+                                                    <p className="text-xs text-gray-600">Price: {item.price} ৳</p>
+                                                </div>
+                                            </div>
+
+                                            {/* Quantity Controls and Actions */}
+                                            <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
+                                                {/* Quantity Controls */}
+                                                {isOutOfStock ? (
+                                                    <div className="text-xs text-red-600 font-medium">
+                                                        Remove from cart
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex items-center space-x-2">
+                                                        <button
+                                                            onClick={() => handleQuantityChange(item.id, -1)}
+                                                            className="w-7 h-7 sm:w-6 sm:h-6 flex items-center justify-center border border-gray-300 rounded text-sm hover:bg-gray-50"
+                                                        >
+                                                            <Minus className="w-3 h-3" />
+                                                        </button>
+                                                        <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
+                                                        <button
+                                                            onClick={() => handleQuantityChange(item.id, 1)}
+                                                            disabled={item.quantity >= (stockData[item.id]?.availableStock || item.stockQuantity || 0)}
+                                                            className={`w-7 h-7 sm:w-6 sm:h-6 flex items-center justify-center border border-gray-300 rounded text-sm hover:bg-gray-50 ${item.quantity >= (stockData[item.id]?.availableStock || item.stockQuantity || 0)
                                                                 ? 'opacity-50 cursor-not-allowed'
                                                                 : 'cursor-pointer'
-                                                        }`}
+                                                                }`}
+                                                        >
+                                                            <Plus className="w-3 h-3" />
+                                                        </button>
+                                                    </div>
+                                                )}
+
+                                                {/* Total Price and Remove Button */}
+                                                <div className="flex items-center gap-3">
+                                                    <div className="text-right">
+                                                        <p className="font-semibold text-gray-900 text-sm sm:text-base">{item.total} ৳</p>
+                                                    </div>
+
+                                                    {/* Remove Button */}
+                                                    <button
+                                                        onClick={() => handleRemoveItem(item.id)}
+                                                        className={`p-1.5 sm:p-1 ${isOutOfStock
+                                                            ? 'text-red-500 hover:text-red-700'
+                                                            : 'text-pink-500 hover:text-pink-700'
+                                                            }`}
                                                     >
-                                                        <Plus className="w-3 h-3" />
+                                                        <Trash2 className="w-4 h-4 sm:w-4 sm:h-4" />
                                                     </button>
                                                 </div>
-                                            )}
-
-                                            {/* Total Price and Remove Button */}
-                                            <div className="flex items-center gap-3">
-                                                <div className="text-right">
-                                                    <p className="font-semibold text-gray-900 text-sm sm:text-base">{item.total} ৳</p>
-                                                </div>
-
-                                                {/* Remove Button */}
-                                                <button
-                                                    onClick={() => handleRemoveItem(item.id)}
-                                                    className={`p-1.5 sm:p-1 ${
-                                                        isOutOfStock 
-                                                            ? 'text-red-500 hover:text-red-700' 
-                                                            : 'text-pink-500 hover:text-pink-700'
-                                                    }`}
-                                                >
-                                                    <Trash2 className="w-4 h-4 sm:w-4 sm:h-4" />
-                                                </button>
                                             </div>
                                         </div>
-                                    </div>
                                     );
                                 })
                             )}
@@ -1881,13 +1878,13 @@ export default function Checkout() {
                         {/* Coupon Code */}
                         <div className="mt-6">
                             <label className="block text-sm font-medium text-gray-700 mb-2">ENTER YOUR COUPON CODE</label>
-                            
+
                             {(useLoyaltyPoints || isGuestCheckout) && (
                                 <div className="mb-3 p-2 bg-yellow-50 border border-yellow-200 rounded">
                                     <div className="flex items-center space-x-2">
                                         <AlertTriangle className="h-3 w-3 text-yellow-600" />
                                         <span className="text-xs text-yellow-800">
-                                            {isGuestCheckout 
+                                            {isGuestCheckout
                                                 ? 'Coupon feature is available for registered users only'
                                                 : 'Coupon cannot be used when paying with loyalty points'
                                             }
@@ -1895,7 +1892,7 @@ export default function Checkout() {
                                     </div>
                                 </div>
                             )}
-                            
+
                             <div className="flex flex-col sm:flex-row gap-2">
                                 <input
                                     type="text"
@@ -1922,7 +1919,7 @@ export default function Checkout() {
                                     )}
                                 </button>
                             </div>
-                            
+
                             {couponError && (
                                 <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded">
                                     <div className="flex items-center space-x-2">
@@ -1931,7 +1928,7 @@ export default function Checkout() {
                                     </div>
                                 </div>
                             )}
-                            
+
                             {appliedCoupon && (
                                 <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded">
                                     <div className="flex items-center justify-between">
@@ -1950,7 +1947,7 @@ export default function Checkout() {
                                         </button>
                                     </div>
                                     <div className="mt-1 text-xs text-green-600">
-                                        <span className="font-medium">Discount:</span> {appliedCoupon.discountType === 'percentage' 
+                                        <span className="font-medium">Discount:</span> {appliedCoupon.discountType === 'percentage'
                                             ? `${appliedCoupon.discountValue}% off`
                                             : `৳${appliedCoupon.discountValue} off`
                                         } | <span className="font-medium">You Save:</span> ৳{couponDiscount}
@@ -1993,8 +1990,8 @@ export default function Checkout() {
                                         <span className="text-pink-500 font-medium">{shippingCost} ৳</span>
                                     )}
                                 </div>
-                                
-                                
+
+
                                 {/* Discount (only show if there's a discount, excluding affiliate) */}
                                 {totalDiscountForUI > 0 && (
                                     <div className="flex justify-between">
@@ -2024,7 +2021,7 @@ export default function Checkout() {
                                         )}
                                     </div>
                                 )}
-                                
+
                                 {/* Coupon Discount */}
                                 {appliedCoupon && (
                                     <div className="flex justify-between">
@@ -2032,7 +2029,7 @@ export default function Checkout() {
                                         <span className="text-blue-600">-৳{couponDiscount}</span>
                                     </div>
                                 )}
-                                
+
                                 {/* Loyalty Points Breakdown */}
                                 {useLoyaltyPoints && loyaltyData && (
                                     <>
@@ -2062,39 +2059,32 @@ export default function Checkout() {
 
                     {/* Action Buttons - Mobile only (below order summary) */}
                     <div className="lg:hidden flex flex-col gap-3 mt-4">
-                        <button 
+                        <button
                             onClick={() => router.push('/')}
                             className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 text-gray-700 rounded hover:bg-gray-50 text-sm"
                         >
                             <ArrowLeft className="w-4 h-4" />
                             Back
                         </button>
-                        <button 
+                        <button
                             onClick={handleConfirmOrder}
                             disabled={cartLoading || cart.length === 0 || outOfStockItems.length > 0 || stockLoading}
-                            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded font-semibold text-sm ${
-                                cartLoading || cart.length === 0 || outOfStockItems.length > 0 || stockLoading
-                                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                                    : 'bg-pink-500 text-white hover:bg-pink-600'
-                            }`}
+                            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded font-semibold text-sm ${cartLoading || cart.length === 0 || outOfStockItems.length > 0 || stockLoading
+                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                : 'bg-pink-500 text-white hover:bg-pink-600'
+                                }`}
                         >
                             {stockLoading ? 'Checking...' :
-                             cartLoading ? 'Loading...' :
-                             cart.length === 0 ? 'Cart Empty' :
-                             outOfStockItems.length > 0 ? 'Remove Items' :
-                             'Confirm Order'}
+                                cartLoading ? 'Loading...' :
+                                    cart.length === 0 ? 'Cart Empty' :
+                                        outOfStockItems.length > 0 ? 'Remove Items' :
+                                            'Confirm Order'}
                             <ArrowRight className="w-4 h-4" />
                         </button>
                     </div>
                 </div>
             </div>
 
-            {/* Checkout Options Modal */}
-            <CheckoutOptionsModal 
-                isOpen={showCheckoutModal}
-                onClose={() => setShowCheckoutModal(false)}
-                onGuestCheckout={handleGuestCheckout}
-            />
         </div>
     );
 }

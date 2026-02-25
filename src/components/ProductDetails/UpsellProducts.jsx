@@ -26,9 +26,9 @@ const UpsellProducts = ({ currentProductId }) => {
         try {
             setLoading(true);
             const response = await upsellAPI.getUpsellsByMainProductPublic(currentProductId);
-            
+
             if (response.success && response.data && response.data.linkedProducts?.length > 0) {
-                
+
                 setUpsellData(response.data);
                 // Pre-select all products by default
                 const allProductIds = response.data.linkedProducts.map(link => link.product._id);
@@ -43,8 +43,8 @@ const UpsellProducts = ({ currentProductId }) => {
 
     // Toggle product selection
     const toggleProductSelection = (productId) => {
-        setSelectedProducts(prev => 
-            prev.includes(productId) 
+        setSelectedProducts(prev =>
+            prev.includes(productId)
                 ? prev.filter(id => id !== productId)
                 : [...prev, productId]
         );
@@ -84,29 +84,29 @@ const UpsellProducts = ({ currentProductId }) => {
                         // Use addProductToCart to get the proper variant selection
                         // But don't add to cart yet, just prepare the data
                         let selectedVariant = null;
-                        
+
                         if (product.variants && product.variants.length > 0) {
                             // Find the first available variant (with stock > 0)
                             let selectedVariantData = null;
-                            
+
                             for (const variant of product.variants) {
                                 if ((variant.stockQuantity || 0) > 0) {
                                     selectedVariantData = variant;
                                     break;
                                 }
                             }
-                            
+
                             // If no variant has stock, skip this product
                             if (!selectedVariantData) {
                                 // console.warn(`Product ${product.title} is out of stock`);
                                 failedCount++;
                                 continue;
                             }
-                            
+
                             // Extract size/color attributes from the selected variant
                             const sizeAttr = selectedVariantData.attributes?.find(attr => attr.name === 'Size');
                             const colorAttr = selectedVariantData.attributes?.find(attr => attr.name === 'Color');
-                            
+
                             // Don't apply discount here - discount is applied to total, not individual products
                             selectedVariant = {
                                 size: sizeAttr?.value || null, // Size is optional now
@@ -122,13 +122,13 @@ const UpsellProducts = ({ currentProductId }) => {
                             // If no variants, create a default variant
                             const productStock = product.totalStock || 0;
                             const isProductOutOfStock = productStock <= 0;
-                            
+
                             if (isProductOutOfStock) {
                                 // console.warn(`Product ${product.title} is out of stock (totalStock: ${productStock})`);
                                 failedCount++;
                                 continue;
                             }
-                            
+
                             // Don't apply discount here - discount is applied to total, not individual products
                             selectedVariant = {
                                 size: null, // Size is optional now
@@ -145,7 +145,7 @@ const UpsellProducts = ({ currentProductId }) => {
                         // Store cart item data instead of adding immediately
                         cartItemsToAdd.push({ product, selectedVariant, quantity: 1 });
                         addedCount++;
-                        
+
                     } catch (productError) {
                         // console.error(`Error preparing product ${link.product.title}:`, productError);
                         failedCount++;
@@ -156,7 +156,7 @@ const UpsellProducts = ({ currentProductId }) => {
             // Add all cart items at once using batch function
             if (cartItemsToAdd.length > 0) {
                 addMultipleToCart(cartItemsToAdd);
-                
+
                 // Show additional success message if some failed
                 if (failedCount > 0) {
                     toast.success(`${addedCount} product(s) added to cart, ${failedCount} failed`);
@@ -176,13 +176,13 @@ const UpsellProducts = ({ currentProductId }) => {
     const areAllProductsSelected = () => {
         if (!upsellData?.linkedProducts) return false;
         return selectedProducts.length === upsellData.linkedProducts.length &&
-               upsellData.linkedProducts.every(link => selectedProducts.includes(link.product._id));
+            upsellData.linkedProducts.every(link => selectedProducts.includes(link.product._id));
     };
 
     // Calculate total price
     const calculateTotalPrice = () => {
         if (!upsellData) return 0;
-        
+
         // Calculate total of selected products (without discount)
         const totalPrice = upsellData.linkedProducts
             .filter(link => selectedProducts.includes(link.product._id))
@@ -190,11 +190,11 @@ const UpsellProducts = ({ currentProductId }) => {
                 const price = link.product.priceRange?.min || 0;
                 return total + price;
             }, 0);
-        
+
         // Apply discount only if all products are selected and discount is enabled
         if (areAllProductsSelected() && upsellData.hasDiscount && upsellData.discountValue) {
             const { discountType, discountValue } = upsellData;
-            
+
             if (discountType === 'percentage') {
                 const discountAmount = (totalPrice * discountValue) / 100;
                 return totalPrice - discountAmount;
@@ -203,7 +203,7 @@ const UpsellProducts = ({ currentProductId }) => {
                 return Math.max(0, totalPrice - discountValue);
             }
         }
-        
+
         return totalPrice;
     };
 
@@ -220,7 +220,7 @@ const UpsellProducts = ({ currentProductId }) => {
             }, 0);
 
         const { discountType, discountValue } = upsellData;
-        
+
         if (discountType === 'percentage') {
             return (totalPrice * discountValue) / 100;
         } else {
@@ -249,7 +249,7 @@ const UpsellProducts = ({ currentProductId }) => {
         <div className="py-8 bg-gray-50">
             <div className="max-w-7xl mx-auto px-0  lg:px-8">
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Frequently Bought Together</h2>
-                
+
                 <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     {/* Products */}
                     {upsellData.linkedProducts.map((link, index) => (
@@ -262,7 +262,7 @@ const UpsellProducts = ({ currentProductId }) => {
                                     </div>
                                 </div>
                             )}
-                            
+
                             <div className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow">
                                 {/* Product Image */}
                                 <div className="relative mb-3">
@@ -273,27 +273,26 @@ const UpsellProducts = ({ currentProductId }) => {
                                             className="w-full h-32 object-cover rounded-lg"
                                         />
                                     </Link>
-                                    
+
                                     {/* Selection Checkbox */}
                                     <button
-                                    title={selectedProducts.includes(link.product._id) ? 'Remove from selection' : 'Add to selection'}
+                                        title={selectedProducts.includes(link.product._id) ? 'Remove from selection' : 'Add to selection'}
                                         onClick={() => toggleProductSelection(link.product._id)}
-                                        className={`absolute top-2 right-2 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all cursor-pointer ${
-                                            selectedProducts.includes(link.product._id)
+                                        className={`absolute top-2 right-2 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all cursor-pointer ${selectedProducts.includes(link.product._id)
                                                 ? 'bg-blue-500 border-blue-500 text-white'
                                                 : 'bg-white border-gray-300 hover:border-blue-400'
-                                        }`}
+                                            }`}
                                     >
                                         {selectedProducts.includes(link.product._id) && (
                                             <Check className="w-4 h-4" />
                                         )}
                                     </button>
                                 </div>
-                                
+
                                 {/* Product Info */}
                                 <div>
                                     <Link href={`/product/${link.product.slug}`}>
-                                        <h3 className="font-medium text-gray-900 text-sm line-clamp-2 hover:text-pink-600 transition-colors">
+                                        <h3 className="text-gray-900 text-sm line-clamp-2 hover:text-pink-600 transition-colors">
                                             {link.product.title}
                                         </h3>
                                     </Link>
@@ -303,28 +302,28 @@ const UpsellProducts = ({ currentProductId }) => {
                                         </span>
                                         {/* Check if any variant has originalPrice different from currentPrice */}
                                         {(() => {
-                                            const hasVariantDiscount = link.product.variants?.some(variant => 
-                                                variant.originalPrice && 
+                                            const hasVariantDiscount = link.product.variants?.some(variant =>
+                                                variant.originalPrice &&
                                                 variant.originalPrice > variant.currentPrice
                                             );
-                                            
+
                                             // Fallback to priceRange check
-                                            const hasRangeDiscount = link.product.priceRange?.max && 
+                                            const hasRangeDiscount = link.product.priceRange?.max &&
                                                 link.product.priceRange?.max > link.product.priceRange?.min;
-                                            
+
                                             if (hasVariantDiscount) {
-                                                const variantWithDiscount = link.product.variants.find(variant => 
-                                                    variant.originalPrice && 
+                                                const variantWithDiscount = link.product.variants.find(variant =>
+                                                    variant.originalPrice &&
                                                     variant.originalPrice > variant.currentPrice
                                                 );
-                                                
+
                                                 return (
                                                     <span className="text-sm text-gray-500 line-through">
                                                         ৳{variantWithDiscount.originalPrice}
                                                     </span>
                                                 );
                                             }
-                                            
+
                                             if (hasRangeDiscount) {
                                                 return (
                                                     <span className="text-sm text-gray-500 line-through">
@@ -332,7 +331,7 @@ const UpsellProducts = ({ currentProductId }) => {
                                                     </span>
                                                 );
                                             }
-                                            
+
                                             return null;
                                         })()}
                                     </div>
@@ -350,7 +349,7 @@ const UpsellProducts = ({ currentProductId }) => {
                                     Add all {selectedProducts.length} to Cart
                                 </h3>
                             </div>
-                            
+
                             <div className="space-y-2 mb-4">
                                 {/* Subtotal */}
                                 <div className="bg-white rounded-lg p-2 shadow-sm">
@@ -363,15 +362,15 @@ const UpsellProducts = ({ currentProductId }) => {
                                                 .toFixed(2)}
                                         </span>
                                     </div>
-                                    
+
                                     {/* Discount (only if all products selected) */}
                                     {areAllProductsSelected() && upsellData.hasDiscount && upsellData.discountValue > 0 && (
                                         <div className="flex justify-between items-center pt-2 border-t border-gray-200">
                                             <span className="text-green-600 font-medium text-sm flex items-center gap-1">
                                                 Discount
                                                 <span className="text-xs">
-                                                    ({upsellData.discountType === 'percentage' 
-                                                        ? `${upsellData.discountValue}%` 
+                                                    ({upsellData.discountType === 'percentage'
+                                                        ? `${upsellData.discountValue}%`
                                                         : `৳${upsellData.discountValue}`})
                                                 </span>
                                             </span>
@@ -380,7 +379,7 @@ const UpsellProducts = ({ currentProductId }) => {
                                             </span>
                                         </div>
                                     )}
-                                    
+
                                     {/* Total */}
                                     <div className="flex justify-between items-center pt-2 border-t border-gray-200 mt-2">
                                         <span className="text-gray-900 font-bold text-base">Total:</span>
@@ -389,7 +388,7 @@ const UpsellProducts = ({ currentProductId }) => {
                                         </span>
                                     </div>
                                 </div>
-                                
+
                                 {/* Discount info message */}
                                 {upsellData.hasDiscount && upsellData.discountValue > 0 && (
                                     <div className="bg-green-50 border border-green-200 rounded-lg p-2">
@@ -398,8 +397,8 @@ const UpsellProducts = ({ currentProductId }) => {
                                                 <>🎉 Discount Applied!</>
                                             ) : (
                                                 <>Select all {upsellData.linkedProducts.length} products to get{' '}
-                                                    {upsellData.discountType === 'percentage' 
-                                                        ? `${upsellData.discountValue}%` 
+                                                    {upsellData.discountType === 'percentage'
+                                                        ? `${upsellData.discountValue}%`
                                                         : `৳${upsellData.discountValue}`} discount
                                                 </>
                                             )}

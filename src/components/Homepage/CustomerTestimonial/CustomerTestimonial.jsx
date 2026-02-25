@@ -15,9 +15,8 @@ function TestimonialCard({ testimonial }) {
         return Array.from({ length: 1 }, (_, index) => (
             <Star
                 key={index}
-                className={`w-4 h-4 ${
-                    index < rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
-                }`}
+                className={`w-4 h-4 ${index < rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
+                    }`}
             />
         ));
     };
@@ -69,7 +68,7 @@ export default function CustomerTestimonial() {
         try {
             setLoading(true);
             const response = await testimonialAPI.getActiveTestimonials();
-            
+
             if (response.success) {
                 setTestimonials(response.data.testimonials);
             } else {
@@ -93,7 +92,7 @@ export default function CustomerTestimonial() {
         return null;
     }
     return (
-        <section className="py-12 px-4 bg-white">
+        <section className="py-4 px-4 bg-white">
             <div className="max-w-screen-2xl mx-auto">
                 {/* Header */}
                 <div className="text-center mb-8">
@@ -140,7 +139,7 @@ export default function CustomerTestimonial() {
                     </Swiper>
                 )}
 
-                
+
 
 
             </div>

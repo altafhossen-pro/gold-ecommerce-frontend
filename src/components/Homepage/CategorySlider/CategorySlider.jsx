@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
-import { Navigation } from 'swiper/modules';
+import { Navigation, Autoplay } from 'swiper/modules';
 import { categoryAPI } from '@/services/api';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -13,12 +13,11 @@ import 'swiper/css/navigation';
 
 function CategoryCard({ category, isActive = false, onCategoryClick }) {
     return (
-        <div 
-            className={`relative  rounded-xl border transition-all duration-300 cursor-pointer hover:shadow-lg ${
-                isActive 
-                    ? 'bg-pink-500 border-pink-500 text-white' 
+        <div
+            className={`relative  rounded-xl border transition-all duration-300 cursor-pointer hover:shadow-lg ${isActive
+                    ? 'bg-pink-500 border-pink-500 text-white'
                     : 'bg-white border-pink-100 text-gray-700 hover:border-pink-200'
-            }`}
+                }`}
             onClick={() => onCategoryClick(category)}
         >
             <div className="flex flex-col   space-y-3">
@@ -73,7 +72,7 @@ export default function CategorySlider() {
             try {
                 setLoading(true);
                 const data = await categoryAPI.getMainCategories();
-                
+
                 if (data.success) {
                     setCategories(data.data);
                 } else {
@@ -146,10 +145,10 @@ export default function CategorySlider() {
                 {/* Header */}
                 <div className="flex items-center justify-between mb-8">
                     <h2 className="text-2xl font-bold text-gray-800">Browse Category</h2>
-                    
+
                     {/* Navigation Buttons */}
                     <div className="flex gap-2">
-                        <button 
+                        <button
                             className="category-prev-btn w-10 h-10 rounded-lg border border-pink-300 text-pink-500 hover:bg-pink-50 transition-colors flex items-center justify-center"
                             aria-label="Previous categories"
                         >
@@ -157,7 +156,7 @@ export default function CategorySlider() {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                             </svg>
                         </button>
-                        <button 
+                        <button
                             className="category-next-btn w-10 h-10 rounded-lg border border-pink-300 text-pink-500 hover:bg-pink-50 transition-colors flex items-center justify-center"
                             aria-label="Next categories"
                         >
@@ -170,9 +169,14 @@ export default function CategorySlider() {
 
                 {/* Category Slider */}
                 <Swiper
-                    modules={[Navigation]}
+                    modules={[Navigation, Autoplay]}
                     spaceBetween={20}
                     slidesPerView={2}
+                    loop={true}
+                    autoplay={{
+                        delay: 3000,
+                        disableOnInteraction: false,
+                    }}
                     navigation={{
                         nextEl: '.category-next-btn',
                         prevEl: '.category-prev-btn',
@@ -195,8 +199,8 @@ export default function CategorySlider() {
                 >
                     {categories.map((category, index) => (
                         <SwiperSlide key={category._id}>
-                            <CategoryCard 
-                                category={category} 
+                            <CategoryCard
+                                category={category}
                                 isActive={false}
                                 onCategoryClick={handleCategoryClick}
                             />
