@@ -80,7 +80,7 @@ export default function Footer() {
   return (
     <footer className=" text-black bg-gradient-to-r from-pink-100  to-purple-100" >
       {/* Main Footer Content */}
-      <div className="max-w-screen-2xl mx-auto px-4 py-12">
+      <div className="max-w-screen-2xl mx-auto px-4 lg:py-12 py-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
 
           {/* About Section */}
@@ -164,7 +164,7 @@ export default function Footer() {
                   className="h-10 w-auto object-contain"
                 />
               </a>
-              
+
               {/* Google Play Store Badge */}
               <a
                 href="https://play.google.com/store/apps/details?id=com.forpink.app"

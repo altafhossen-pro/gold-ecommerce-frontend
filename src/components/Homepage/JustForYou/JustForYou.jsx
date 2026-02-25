@@ -46,7 +46,7 @@ export default function JustForYou() {
             setError(null);
             // Fetch initial products (15) and some extra to support "Show More" functionality
             const data = await productAPI.getRandomProducts(25, excludeIds);
-            
+
             if (data.success) {
                 const productsData = data.data || [];
                 const transformedProducts = productsData.map(product => ({
@@ -74,7 +74,7 @@ export default function JustForYou() {
     const handleShowMore = async () => {
         const currentCount = displayedProducts.length;
         const nextCount = currentCount + loadMoreCount;
-        
+
         // If we have more products in the fetched list, show them
         if (nextCount <= products.length) {
             setDisplayedProducts(products.slice(0, nextCount));
@@ -82,13 +82,13 @@ export default function JustForYou() {
             // Otherwise, fetch more random products excluding already loaded ones
             try {
                 setLoadingMore(true);
-                
+
                 // Get all currently loaded product IDs to exclude
                 const excludeIds = products.map(p => p._id);
-                
+
                 // Fetch new products excluding already loaded ones
                 const data = await productAPI.getRandomProducts(loadMoreCount, excludeIds);
-                
+
                 if (data.success) {
                     const productsData = data.data || [];
                     const transformedProducts = productsData.map(product => ({
@@ -101,7 +101,7 @@ export default function JustForYou() {
                         totalStock: product.totalStock || 0,
                         isWishlisted: wishlist.some(item => item.productId === product._id)
                     }));
-                    
+
                     // Add new products to existing list
                     if (transformedProducts.length > 0) {
                         const updatedProducts = [...products, ...transformedProducts];
@@ -141,7 +141,7 @@ export default function JustForYou() {
     const hasMoreProducts = (displayedProducts.length < products.length || hasMoreAvailable) && products.length > 0;
 
     return (
-        <section className="py-8 sm:py-12 px-4 bg-white">
+        <section className="py-4 sm:py-12 px-4 bg-white">
             <div className="max-w-screen-2xl mx-auto">
                 {/* Header */}
                 <div className="text-center mb-6 sm:mb-8">
@@ -171,7 +171,7 @@ export default function JustForYou() {
                             </div>
                             <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-2">Unable to Load Products</h3>
                             <p className="text-sm sm:text-base text-gray-600 mb-4">{error}</p>
-                            <button 
+                            <button
                                 onClick={fetchRandomProducts}
                                 className="bg-pink-500 text-white px-4 sm:px-6 py-2 rounded-lg font-semibold text-sm hover:bg-pink-600 transition-colors cursor-pointer"
                             >
@@ -196,7 +196,7 @@ export default function JustForYou() {
                         {/* Show More Button */}
                         {hasMoreProducts && (
                             <div className="text-center mt-8 sm:mt-12">
-                                <button 
+                                <button
                                     onClick={handleShowMore}
                                     disabled={loadingMore}
                                     className="bg-white text-pink-500 px-6 sm:px-8 py-3 rounded-lg font-semibold text-sm sm:text-base border-2 border-pink-500 hover:bg-pink-500 hover:text-white transition-all duration-300 shadow-sm hover:shadow-md cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"

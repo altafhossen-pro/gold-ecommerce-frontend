@@ -115,7 +115,7 @@ export default function FeaturedProducts() {
     }, [products, addToCart]);
 
     return (
-        <section className="py-8 sm:py-0 px-4 bg-white">
+        <section className="py-4 sm:py-0 px-4 bg-white">
             <div className="max-w-screen-2xl mx-auto">
                 {/* Header */}
                 <div className="text-center mb-6 sm:mb-8">

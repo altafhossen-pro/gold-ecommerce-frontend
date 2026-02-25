@@ -15,8 +15,8 @@ function CategoryCard({ category, isActive = false, onCategoryClick }) {
     return (
         <div
             className={`relative  rounded-xl border transition-all duration-300 cursor-pointer hover:shadow-lg ${isActive
-                    ? 'bg-pink-500 border-pink-500 text-white'
-                    : 'bg-white border-pink-100 text-gray-700 hover:border-pink-200'
+                ? 'bg-pink-500 border-pink-500 text-white'
+                : 'bg-white border-pink-100 text-gray-700 hover:border-pink-200'
                 }`}
             onClick={() => onCategoryClick(category)}
         >
@@ -140,7 +140,7 @@ export default function CategorySlider() {
     }
 
     return (
-        <section className="py-12 px-4 bg-white">
+        <section className="lg:py-12 py-4 px-4 bg-white">
             <div className="max-w-screen-2xl mx-auto">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-8">
