@@ -45,7 +45,7 @@ function Header({ isTrackingShow = true }) {
     if (href === '/' && pathname === '/') {
       return true;
     }
-    
+
     // Handle New Arrivals - check for specific shop sort parameter
     if (href === '/shop?sort=new-arrivals') {
       if (pathname === '/shop') {
@@ -54,7 +54,7 @@ function Header({ isTrackingShow = true }) {
       }
       return false;
     }
-    
+
     // Handle regular Shop - only active when on /shop without sort parameter
     if (href === '/shop') {
       if (pathname === '/shop') {
@@ -64,27 +64,27 @@ function Header({ isTrackingShow = true }) {
       }
       return false;
     }
-    
+
     // Handle other routes - check if current pathname starts with the href
     if (href !== '/' && pathname.startsWith(href)) {
       return true;
     }
-    
+
     // Handle categories route
     if (href === '/categories' && pathname.startsWith('/categories')) {
       return true;
     }
-    
+
     // Handle offers route
     if (href === '/offers' && pathname.startsWith('/offers')) {
       return true;
     }
-    
+
     // Handle contact route
     if (href === '/contact-us' && pathname.startsWith('/contact-us')) {
       return true;
     }
-    
+
     return false;
   };
 
@@ -176,10 +176,9 @@ function Header({ isTrackingShow = true }) {
 
               {/* Icons */}
               <div className="flex items-center space-x-1 sm:space-x-3">
-                {/* User - Hidden on mobile, shown on desktop */}
                 <div className="hidden lg:block">
                   {
-                    user?.email ? user?.role === 'admin' ? (
+                    user?._id ? user?.role === 'admin' ? (
                       <Link href={`/admin/dashboard`} className="p-1 block bg-gray-100 hover:bg-gray-200 cursor-pointer rounded-full transition-colors border border-gray-200" aria-label="Admin Dashboard">
                         {user?.avatar ? (
                           <img
@@ -265,7 +264,7 @@ function Header({ isTrackingShow = true }) {
                 <div className="flex items-center space-x-8">
                   {/* Categories Megamenu */}
                   <CategoryMegamenu />
-                  
+
                   {/* Other navigation items */}
                   {menuLoading ? (
                     <div className="flex space-x-8">
@@ -294,7 +293,7 @@ function Header({ isTrackingShow = true }) {
                 </div>
 
                 {/* Right side - Track your order */}
-                {1==1 && (
+                {1 == 1 && (
                   <Link href="/tracking" className="flex items-center space-x-2 text-gray-700 hover:text-[#f18daa] transition-colors">
                     <Truck className="w-4 h-4" />
                     <span className="font-medium">Track your order</span>
@@ -337,12 +336,11 @@ function Header({ isTrackingShow = true }) {
                         href={item.href}
                         target={item.target}
                         onClick={() => setIsMobileMenuOpen(false)}
-                        className={`mobile-menu-item px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
-                          isActive
-                            ? 'bg-[#EF3D6A] text-white shadow-sm'
-                            : 'text-gray-700 hover:bg-pink-50 hover:text-[#EF3D6A]'
-                        }`}
-                        style={{ 
+                        className={`mobile-menu-item px-4 py-3 rounded-lg font-medium transition-all duration-200 ${isActive
+                          ? 'bg-[#EF3D6A] text-white shadow-sm'
+                          : 'text-gray-700 hover:bg-pink-50 hover:text-[#EF3D6A]'
+                          }`}
+                        style={{
                           animationDelay: `${index * 0.05}s`
                         }}
                       >
@@ -368,7 +366,6 @@ function Header({ isTrackingShow = true }) {
         isOpen={isWishlistOpen}
         onClose={() => setIsWishlistOpen(false)}
       />
-
     </>
   );
 }
