@@ -2257,6 +2257,77 @@ export const contactAPI = {
     },
 };
 
+// Android Banner API
+export const androidBannerAPI = {
+    // Get active android banners
+    getActiveBanners: () => {
+        return apiCall('/android-banner/active');
+    },
+
+    // Get all banners (admin)
+    getAllAndroidBanners: (params = {}, token) => {
+        const queryString = new URLSearchParams(params).toString();
+        return apiCall(`/android-banner?${queryString}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+
+    // Get banner by ID
+    getAndroidBannerById: (id, token) => {
+        return apiCall(`/android-banner/${id}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+
+    // Create banner
+    createAndroidBanner: (data, token) => {
+        return apiCall('/android-banner', {
+            method: 'POST',
+            body: JSON.stringify(data),
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+
+    // Update banner
+    updateAndroidBanner: (id, data, token) => {
+        return apiCall(`/android-banner/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+
+    // Delete banner
+    deleteAndroidBanner: (id, token) => {
+        return apiCall(`/android-banner/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+
+    // Toggle banner status
+    toggleBannerStatus: (id, token) => {
+        return apiCall(`/android-banner/${id}/toggle`, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
+};
+
 export default {
     productAPI,
     categoryAPI,
@@ -2270,6 +2341,7 @@ export default {
     reviewAPI,
     testimonialAPI,
     offerBannerAPI,
+    androidBannerAPI,
     menuAPI,
     heroBannerAPI,
     heroProductAPI,

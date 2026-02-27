@@ -90,6 +90,7 @@ const navigation = [
             { name: 'Hero Banners', href: '/admin/dashboard/hero-banner', icon: Image },
             { name: 'Hero Products', href: '/admin/dashboard/hero-products', icon: Grid3X3 },
             { name: 'Offer Banners', href: '/admin/dashboard/offer-banner', icon: Megaphone },
+            { name: 'Android Banners', href: '/admin/dashboard/android-banner', icon: Megaphone },
             { name: 'Testimonials', href: '/admin/dashboard/testimonials', icon: Star },
         ]
     },
@@ -279,8 +280,8 @@ export default function AdminSidebar({ onMobileMenuClose }) {
                                     onMobileMenuClose?.()
                                 }}
                                 className={`group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${isActive
-                                        ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-600'
-                                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                    ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-600'
+                                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                                     }`}
                             >
                                 <item.icon
@@ -297,8 +298,8 @@ export default function AdminSidebar({ onMobileMenuClose }) {
                                 <button
                                     onClick={() => toggleExpanded(item.name)}
                                     className={`group w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${isActive
-                                            ? 'bg-blue-50 text-blue-700'
-                                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                        ? 'bg-blue-50 text-blue-700'
+                                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                                         }`}
                                 >
                                     <div className="flex items-center">
@@ -326,8 +327,8 @@ export default function AdminSidebar({ onMobileMenuClose }) {
                                                     href={child.href}
                                                     onClick={() => onMobileMenuClose?.()}
                                                     className={`group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${childIsActive
-                                                            ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-600'
-                                                            : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
+                                                        ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-600'
+                                                        : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
                                                         }`}
                                                 >
                                                     <child.icon
