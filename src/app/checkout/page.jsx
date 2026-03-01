@@ -747,8 +747,10 @@ export default function Checkout() {
 
         // Check if user has enough coins to cover the entire order
         if (loyaltyData.coins >= coinsNeeded) {
-            // User can pay with loyalty points only
-            setLoyaltyDiscount(subtotal);
+            // Calculate discount based on coins used * coin value (not subtotal)
+            // This ensures frontend and backend calculations match
+            const calculatedDiscount = Math.round(coinsNeeded * loyaltyData.coinValue);
+            setLoyaltyDiscount(calculatedDiscount);
         } else {
             toast.error(`Insufficient coins. You need ${coinsNeeded} coins but have ${loyaltyData.coins} coins.`);
             setUseLoyaltyPoints(false);
@@ -1093,7 +1095,9 @@ export default function Checkout() {
                         total: useLoyaltyPoints ? 0 : calculatedTotal, // If using loyalty points, total is 0
                         discount: discount,
                         upsellDiscount: upsellDiscount, // Separate field for upsell discount
-                        loyaltyDiscount: useLoyaltyPoints ? calculatedTotal : loyaltyDiscount,
+                        // Calculate loyalty discount based on coins used * coin value (not subtotal)
+                        // This ensures frontend and backend calculations match
+                        loyaltyDiscount: useLoyaltyPoints ? Math.round(coinsNeeded * (loyaltyData?.coinValue || 2)) : loyaltyDiscount,
                         loyaltyPointsUsed: useLoyaltyPoints ? coinsNeeded : 0,
                         shippingCost: shippingCost,
                         orderNotes: formData.orderNotes,
